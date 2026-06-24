@@ -15,6 +15,7 @@
  *   const sources = await getAvailableSources('SPY');
  */
 
+import * as massive          from './sources/massive';        // Polygon.io (paid key — VITE_MASSIVE_API_KEY)
 import * as coingecko        from './sources/coingecko';
 import * as hyperliquid      from './sources/hyperliquid';
 import * as bybit            from './sources/bybit';
@@ -38,25 +39,18 @@ function classifySymbol(symbol) {
 }
 
 // ─── Crypto sources (in priority order) ─────────────────────────────────────
-// Strategy: exchanges first (no rate limits, no geo restrictions, high liquidity),
-// then CoinGecko last as a daily-candle fallback (it's heavily rate-limited but
-// has the widest altcoin coverage for obscure tokens).
+// Strategy:
+//   Tier 0: Massive/Polygon (paid key) — broadest coverage, highest limits, intraday+daily
+//   Tier 1: Free high-reliability exchanges (no auth, no rate limits, no geo blocks)
+//   Tier 2: Solid backup exchanges
+//   Tier 3: More rate-limited or narrower coverage
+//   Tier 4: Last resort — CoinGecko (rate-limited but widest altcoin coverage)
 //
-// Tier 1: High-reliability exchanges — no auth, no rate limit issues, no geo blocks
-//   - OKX perps (highest liquidity, broadest altcoin coverage among perps)
-//   - Hyperliquid (native perp DEX, great for intraday, no rate limits)
-//   - Kraken spot (reliable, no geo issues, good for majors)
-//
-// Tier 2: Solid backups — may have minor rate limits but still generous
-//   - Bybit (high liquidity, broad coverage)
-//
-// Tier 3: More rate-limited or narrower coverage
-//   - Gate (good for long-tail altcoins)
-//   - Kucoin (good for long-tail altcoins)
-//
-// Tier 4: Last resort — rate-limited but widest altcoin coverage
-//   - CoinGecko (free tier ~30 req/min, frequently 429s; use only when exchanges don't list the token)
+// Massive is tier 0 only when VITE_MASSIVE_API_KEY is configured; otherwise
+// it's filtered out by the `supports` check (returns false if no key).
 const CRYPTO_SOURCES = [
+  { id: 'massive',     tier: 0, fetch: massive.fetchCandles,     bestFor: ['all'],
+    supports: () => massive.isConfigured() },  // skip if no API key
   { id: 'okx_perps',   tier: 1, fetch: okxCrypto.fetchCandles,   bestFor: ['all'] },
   { id: 'hyperliquid', tier: 1, fetch: hyperliquid.fetchCandles, bestFor: ['15m','30m','1H','4H','1w'] },
   { id: 'kraken',      tier: 1, fetch: kraken.fetchCandles,      bestFor: ['1D','1w'] },
@@ -67,11 +61,16 @@ const CRYPTO_SOURCES = [
 ];
 
 // ─── Tradfi sources (in priority order) ─────────────────────────────────────
+// Massive/Polygon has the broadest tradfi coverage (all US stocks, ETFs, forex,
+// commodities, indices) — preferred when API key is configured.
 const TRADFI_SOURCES = [
-  // OKX SWAP perps first for the 7 most liquid names (lowest latency)
+  // Massive (Polygon) — covers ALL tradfi tickers + forex + indices
+  { id: 'massive',         tier: 0, fetch: massive.fetchCandles,
+    supports: () => massive.isConfigured() },
+  // OKX SWAP perps for the 7 most liquid names (no auth needed, high liquidity)
   { id: 'okx_swap',        tier: 1, fetch: okxTradfi.fetchCandles,
     supports: (s) => OKX_TRADFI.has(s.toUpperCase()) },
-  // Lighter for everything else (214-market universe)
+  // Lighter for everything else (214-market universe — stocks, ETFs, FX, commodities)
   { id: 'lighter',         tier: 1, fetch: lighter.fetchCandles,
     supports: async (s) => lighter.isSupported(s) },
   // Binance xStocks (NVDA/TSLA backup)
