@@ -13,7 +13,7 @@ import { fetchTradMarketData } from '@/lib/board/traditionalMarkets';
 
 const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'Macro'];
 
-const DEFAULT_EXCHANGE = 'massive';
+const DEFAULT_EXCHANGE = 'auto';
 
 export default function Board() {
   const [activeTab, setActiveTab] = useState(0);
@@ -71,15 +71,9 @@ export default function Board() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check for Massive API key
-  useEffect(() => {
-    if (!apiKeyChecked.current && exchange === 'massive') {
-      apiKeyChecked.current = true;
-      if (!localStorage.getItem('MASSIVE_API_KEY') && !import.meta.env?.VITE_MASSIVE_API_KEY) {
-        setShowApiKeyModal(true);
-      }
-    }
-  }, [exchange]);
+  // API key modal trigger removed — 'auto' default uses free sources.
+  // Kept the ref so existing MassiveApiKeyInput component still imports cleanly;
+  // will be triggered manually if user picks 'massive' exchange (now aliased to 'auto').
 
   const regime           = data?.regime           ?? {};
   const regimeLabel      = data?.regimeLabel       ?? { label: 'MIXED', color: 'neutral' };
@@ -107,7 +101,11 @@ export default function Board() {
           value={exchange}
           onChange={e => setExchange(e.target.value)}
         >
-          <option value="massive"       style={{ background: 'var(--scanner-bg2)' }}>Massive (Polygon)</option>
+          <option value="auto"          style={{ background: 'var(--scanner-bg2)' }}>Auto (Recommended) ✦</option>
+          <option value="coingecko"     style={{ background: 'var(--scanner-bg2)' }}>CoinGecko (Daily)</option>
+          <option value="hyperliquid"   style={{ background: 'var(--scanner-bg2)' }}>Hyperliquid (Perps)</option>
+          <option value="bybit"         style={{ background: 'var(--scanner-bg2)' }}>Bybit</option>
+          <option value="okx_perps"     style={{ background: 'var(--scanner-bg2)' }}>OKX Perps</option>
           <option value="okx"           style={{ background: 'var(--scanner-bg2)' }}>OKX (Spot)</option>
           <option value="kraken"        style={{ background: 'var(--scanner-bg2)' }}>Kraken</option>
           <option value="binance"       style={{ background: 'var(--scanner-bg2)' }}>Binance Spot ⚠ VPN</option>

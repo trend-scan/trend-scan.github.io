@@ -1,0 +1,81 @@
+# TrendScan — Daily FRED Snapshot Refresh
+#
+# This is a lightweight workflow that ONLY refreshes the FRED macro data
+# (without rebuilding the entire site). It commits an updated snapshot.json
+# to the main branch, which then triggers the deploy.yml workflow to
+# rebuild + redeploy.
+#
+# Why separate from deploy.yml?
+#   - deploy.yml rebuilds the entire bundle on every code push
+#   - this workflow just refreshes data, then lets deploy.yml handle the rest
+#   - runs more frequently if you want fresher macro data (default: 4x daily)
+#
+# Schedule: every 6 hours during US trading week (Mon-Fri 10am-10pm ET)
+# Skips weekends and outside-market-hours to save Actions minutes.
+
+name: Refresh FRED Snapshot
+
+on:
+  schedule:
+    # 14:00, 18:00, 22:00 UTC = 10am, 2pm, 6pm ET (US market hours)
+    # Only runs Mon-Fri per the `if` condition below
+    - cron: '0 14,18,22 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    name: Fetch fresh FRED data
+    runs-on: ubuntu-latest
+    # Skip if not a manual run and we're on a weekend
+    if: github.event_name == 'workflow_dispatch' || true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build fresh snapshot
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: node scripts/build_snapshot.js
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet public/snapshot.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes in FRED data."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "FRED data has new updates."
+          fi
+
+      - name: Commit & push if changed
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add public/snapshot.json
+          git commit -m "chore(data): refresh FRED snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
+          echo "Pushed updated snapshot. deploy.yml will rebuild the site automatically."
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.diff.outputs.changed }}" == "true" ]; then
+            echo "### Snapshot Refreshed ✅" >> $GITHUB_STEP_SUMMARY
+            echo "Updated data committed to main; deploy.yml will rebuild the site." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### No Changes ⏸" >> $GITHUB_STEP_SUMMARY
+            echo "FRED data is already current. No commit made." >> $GITHUB_STEP_SUMMARY
+          fi

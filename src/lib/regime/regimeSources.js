@@ -3,10 +3,23 @@
  * Sources: CoinGecko, Binance, Kraken, FRED, Alternative.me
  */
 
-// ─── API Keys ────────────────────────────────────────────────────────────────
+/**
+ * Regime Data Sources - Multi-Source with Auto-Fallback
+ *
+ * Architecture (post-refactor):
+ *   - Macro data (FRED series):     routed through macroResolver
+ *                                    (fredProxy → alphavantage → treasuryGov)
+ *   - Crypto OHLC:                  routed through sourceResolver
+ *                                    (coingecko → hyperliquid → bybit → gate → kucoin)
+ *   - Free APIs (Binance, Kraken, CoinGecko global): kept inline (already CORS-friendly)
+ *
+ * Removed: direct FRED calls (CORS-blocked in browser)
+ * Removed: Massive/Polygon direct calls (broken free-tier key, replaced by free sources)
+ * Removed: hardcoded FRED API key (moved to GitHub Actions secret, baked into snapshot.json)
+ */
 
-const FRED_API_KEY = import.meta.env.VITE_FRED_API_KEY ?? '234ddf07b7e98f24f45a1b0981679a9e';
-const MASSIVE_API_KEY = import.meta.env.VITE_MASSIVE_API_KEY ?? '';
+import { fetchAllMacro, computeNetLiquidity } from './macroResolver.js';
+import { fetchCandles as resolverFetchCandles } from '../scanner/sourceResolver.js';
 
 // ─── Fetch Helpers ─────────────────────────────────────────────────────────────
 
@@ -113,29 +126,21 @@ export async function fetchFearGreed(limit = 90) {
   }));
 }
 
-// ─── FRED ────────────────────────────────────────────────────────────────────
+// ─── FRED (via macroResolver) ────────────────────────────────────────────────
+//
+// FRED's API does not send CORS headers, so direct browser calls fail.
+// macroResolver routes through:
+//   1. fredProxy (reads pre-baked snapshot.json from /public — populated by GitHub Actions)
+//   2. alphaVantage (live fallback for CPI, M2, ICSA)
+//   3. treasuryGov (live fallback for TGA, RRP)
+//
+// Series only available via FRED proxy (HY spread, breakevens, 5Y5Y, NFCI, Fed Assets,
+// Fed Reserves) will return [] if the snapshot hasn't been built yet — the regime
+// engine has graceful degradation for missing series.
 
 export async function fetchFredSeries(seriesId, limit = 104) {
-  const url = `https://api.stlouisfed.org/fred/series/observations` +
-    `?series_id=${seriesId}` +
-    `&api_key=${FRED_API_KEY}` +
-    `&file_type=json` +
-    `&sort_order=desc` +
-    `&limit=${limit}`;
-
-  const data = await safeFetch(url);
-  if (data.error) {
-    throw new Error(data.error.message || 'FRED fetch failed');
-  }
-
-  return (data.observations || [])
-    .filter(o => o.value !== '.')
-    .map(o => ({
-      date: o.date,
-      time: new Date(o.date).getTime(),
-      value: parseFloat(o.value),
-    }))
-    .reverse();
+  const { series } = await fetchAllMacro();
+  return series[seriesId] || [];
 }
 
 // FRED series to fetch
@@ -159,110 +164,56 @@ const FRED_SERIES = {
 };
 
 export async function fetchAllFredData() {
-  const results = {};
-  let fredAvailable = false;
+  // Delegate to macroResolver — it handles all the fallback logic.
+  const { series, available } = await fetchAllMacro();
 
-  // Fetch in batches to avoid overwhelming
-  const seriesIds = Object.keys(FRED_SERIES);
-  const batchSize = 5;
-
-  for (let i = 0; i < seriesIds.length; i += batchSize) {
-    const batch = seriesIds.slice(i, i + batchSize);
-    const promises = batch.map(async (id) => {
-      try {
-        const series = await fetchFredSeries(id, FRED_SERIES[id].limit);
-        return { id, series, error: null };
-      } catch (e) {
-        return { id, series: [], error: e.message };
-      }
-    });
-
-    const batchResults = await Promise.all(promises);
-    for (const { id, series, error } of batchResults) {
-      results[id] = series;
-      if (!error && series.length > 0) {
-        fredAvailable = true;
-      }
-    }
+  // Compute derived FED_NET_LIQ series
+  if (series.WALCL?.length && series.WTREGEN?.length && series.RRPONTSYD?.length) {
+    series.FED_NET_LIQ = computeNetLiquidity(series);
   }
 
-  // Compute derived series
-  if (results.WALCL && results.WTREGEN && results.RRPONTSYD) {
-    // Fed Net Liquidity = Fed Assets - Treasury General - Reverse Repos
-    const dates = [...new Set([
-      ...results.WALCL.map(d => d.date),
-      ...results.WTREGEN.map(d => d.date),
-      ...results.RRPONTSYD.map(d => d.date),
-    ])].sort();
-
-    results.FED_NET_LIQ = dates.map(date => {
-      const walcl = results.WALCL.find(d => d.date === date);
-      const wtregen = results.WTREGEN.find(d => d.date === date);
-      const rrp = results.RRPONTSYD.find(d => d.date === date);
-      if (walcl && wtregen && rrp) {
-        return {
-          date,
-          time: walcl.time,
-          value: (walcl.value - wtregen.value - rrp.value) / 1000, // in trillions
-        };
-      }
-      return null;
-    }).filter(Boolean);
-  }
-
-  return { series: results, fredAvailable };
+  return { series, fredAvailable: available };
 }
 
-// ─── Massive API (Primary) ────────────────────────────────────────────────────
+// ─── Massive API (REPLACED) ────────────────────────────────────────────────────
+//
+// The original Massive/Polygon direct fetchers are replaced with sourceResolver calls.
+// They still work (kept for backward compat with any external callers) but now route
+// through CoinGecko/Hyperliquid/Bybit/etc. — no API key needed.
 
 export async function fetchMassiveCryptoOHLC(ticker, limit = 365) {
-  if (!MASSIVE_API_KEY) return null;
-
   try {
-    const to = new Date().toISOString().split('T')[0];
-    const from = new Date(Date.now() - limit * 86400000).toISOString().split('T')[0];
-
-    const url = `https://api.massive.com/v2/aggs/ticker/X:${ticker}/range/1/day/${from}/${to}?apiKey=${MASSIVE_API_KEY}&sort=asc&limit=${limit}`;
-
-    const data = await safeFetch(url);
-    if (!data.results?.length) return null;
-
-    return data.results.map(c => ({
-      time: c.t,
-      open: c.o,
-      high: c.h,
-      low: c.l,
-      close: c.c,
-      volume: c.v,
+    const { candles } = await resolverFetchCandles(ticker, { timeframe: '1D', limit });
+    if (!candles) return null;
+    return candles.map(c => ({
+      time: c.ts,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      volume: c.vol,
     }));
   } catch (e) {
-    console.warn('Massive fetch failed:', e.message);
+    console.warn('Crypto OHLC fetch failed:', e.message);
     return null;
   }
 }
 
 export async function fetchMassiveForexOHLC(pair, limit = 365) {
-  if (!MASSIVE_API_KEY) return null;
-
+  // Forex pairs (e.g. EURUSD, GBPUSD) — Lighter has these as perps
   try {
-    const to = new Date().toISOString().split('T')[0];
-    const from = new Date(Date.now() - limit * 86400000).toISOString().split('T')[0];
-
-    const url = `https://api.massive.com/v2/aggs/ticker/C:${pair}/range/1/day/${from}/${to}?apiKey=${MASSIVE_API_KEY}&sort=asc&limit=${limit}`;
-
-    const data = await safeFetch(url);
-    if (!data.results?.length) return null;
-
-    return data.results.map(c => ({
-      time: c.t,
-      open: c.o,
-      high: c.h,
-      low: c.l,
-      close: c.c,
-      volume: c.v,
+    const { candles } = await resolverFetchCandles(pair, { timeframe: '1D', limit, type: 'tradfi' });
+    if (!candles) return null;
+    return candles.map(c => ({
+      time: c.ts,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      volume: c.vol,
     }));
   } catch (e) {
-    console.warn('Massive forex fetch failed:', e.message);
+    console.warn('Forex OHLC fetch failed:', e.message);
     return null;
   }
 }

@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS = {
   slowType: 'vwap',
   emaSlow: 200,
   vwapDays: 30,
-  exchange: 'okx_perps',
+  exchange: 'auto',
   timeframe: '4H',
   concurrency: 7,
   // Filters
@@ -36,12 +36,8 @@ export default function Scanner() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const throttleRef = useRef(null);
 
-  // Check if Massive is selected and has no API key
-  useEffect(() => {
-    if (settings.exchange === 'massive' && !localStorage.getItem('MASSIVE_API_KEY') && !import.meta.env?.VITE_MASSIVE_API_KEY) {
-      setShowApiKeyModal(true);
-    }
-  }, [settings.exchange]);
+  // Massive API key check removed — 'auto' default uses free sources via the resolver.
+  // Modal can still be triggered manually from ScannerControls if user wants Massive/Polygon.
 
   const handleProgress = useCallback((p) => {
     setStatus(p.phase);

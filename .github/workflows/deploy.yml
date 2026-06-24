@@ -1,47 +1,105 @@
-name: Build and Deploy to GitHub Pages
+# TrendScan — Build & Deploy to GitHub Pages
+#
+# Triggers:
+#   1. Push to main (any change to src/, scripts/, public/, index.html, etc.)
+#   2. Daily at 22:00 UTC (after US market close) — refreshes the FRED snapshot
+#   3. Manual dispatch from the Actions tab
+#
+# What it does:
+#   1. Installs Node + deps
+#   2. Runs scripts/build_snapshot.js — fetches FRED macro data server-side
+#      using the FRED_API_KEY secret, writes public/snapshot.json
+#   3. Runs npm run build — Vite builds the production bundle to dist/
+#   4. Copies snapshot.json into dist/ (so it's served at /snapshot.json)
+#   5. Pushes dist/ contents to the gh-pages branch (deploying the live site)
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+#   FRED_API_KEY  — free key from https://fred.stlouisfed.org/docs/api/api_key.html
+
+name: Build & Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'index.html'
+      - 'package.json'
+      - 'vite.config.js'
+      - '.github/workflows/deploy.yml'
+  schedule:
+    # 22:00 UTC daily = 6pm ET (after US market close)
+    # FRED publishes daily series around 10am ET, so this catches them
+    - cron: '0 22 * * *'
   workflow_dispatch:
 
+# Don't run concurrent deploys for the same ref
+concurrency:
+  group: 'pages-deploy'
+  cancel-in-progress: true
+
 permissions:
-  contents: write
+  contents: write   # needed to push to gh-pages branch
   pages: write
   id-token: write
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
   build:
+    name: Build & deploy to GitHub Pages
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: actions/checkout@v4
         with:
-          version: 8
+          fetch-depth: 0  # need full history to push back to gh-pages
 
       - name: Setup Node
-        uses: actions/setup-node@v4.0.3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'pnpm'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci --no-audit --no-fund
 
-      - name: Build
-        run: pnpm build
+      - name: Build FRED snapshot
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: node scripts/build_snapshot.js
+
+      - name: Build site (Vite)
+        env:
+          # Inject the Massive key at build time only if provided (otherwise
+          # resolver uses free sources). Optional secret.
+          VITE_MASSIVE_API_KEY: ${{ secrets.VITE_MASSIVE_API_KEY }}
+          VITE_ALPHAVANTAGE_KEY: ${{ secrets.VITE_ALPHAVANTAGE_KEY }}
+        run: npm run build
+
+      - name: Copy snapshot.json into build output
+        run: |
+          mkdir -p dist
+          cp public/snapshot.json dist/snapshot.json
+          # .nojekyll tells GitHub Pages to serve files as-is (no Jekyll processing)
+          touch dist/.nojekyll
 
       - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4.0.0
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          cname: drewnotcarey.github.io
+          publish_branch: gh-pages
+          keep_files: false
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'deploy: ${{ github.event.head_commit.message || format(''daily rebuild {0}'', github.run_id) }}'
+
+      - name: Summary
+        run: |
+          echo "### Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Snapshot size:** $(du -h dist/snapshot.json | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bundle size:** $(du -sh dist/assets | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed to:** https://drewnotcarey.github.io/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build time:** $(date -u)" >> $GITHUB_STEP_SUMMARY

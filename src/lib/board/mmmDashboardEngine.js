@@ -204,30 +204,33 @@ async function fetchKrakenCandles(krakenPair, interval = 1440, limit = 300) {
   }
 }
 
+// Replaced the malformed Massive fetcher with the multi-source resolver.
+// The old implementation had:
+//   1. URL missing /range/{multiplier}/{timespan}/{from}/{to} path segments
+//   2. Bogus 'mmapitoken' auth header (Polygon doesn't recognize this)
+//   3. No localStorage fallback (only env var, which doesn't work for runtime keys)
+// The resolver handles all of this correctly and falls back across CoinGecko,
+// Hyperliquid, Bybit, OKX SWAP perps, Lighter, etc.
 async function fetchMassiveCandles(symbol, range = '1/day', limit = 300) {
   try {
-    const apiKey = import.meta.env.VITE_MASSIVE_API_KEY;
-    if (!apiKey) return null;
-
-    const url = `https://api.massive.com/v2/aggs/ticker/X:${symbol}USD/range/?timespan=${range}&limit=${limit}`;
-    const res = await fetch(url, {
-      headers: { 'mmapitoken': apiKey }
-    });
-
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (!json.results?.length) return null;
-
-    return json.results.map(c => ({
-      ts:    c.t,
-      open:  c.o,
-      high:  c.h,
-      low:   c.l,
-      close: c.c,
-      vol:   c.v,
+    // Lazy import to avoid circular dependency
+    const { fetchCandles } = await import('../scanner/sourceResolver.js');
+    // Map Massive-style range ('1/day') to our timeframe ('1D')
+    const tf = range.includes('day') ? '1D' :
+               range.includes('hour') ? '1H' :
+               range.includes('week') ? '1w' : '1D';
+    const { candles } = await fetchCandles(symbol, { timeframe: tf, limit });
+    if (!candles) return null;
+    return candles.map(c => ({
+      ts:    c.ts,
+      open:  c.open,
+      high:  c.high,
+      low:   c.low,
+      close: c.close,
+      vol:   c.vol,
     }));
   } catch (e) {
-    console.warn(`Failed to fetch massive ${symbol}:`, e.message);
+    console.warn(`Failed to fetch ${symbol} via resolver:`, e.message);
     return null;
   }
 }

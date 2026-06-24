@@ -21,8 +21,8 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
       minify: 'esbuild',
     },
-    define: {
-      'import.meta.env.VITE_MASSIVE_API_KEY': JSON.stringify(env.VITE_MASSIVE_API_KEY || ''),
-    },
+    // No more build-time key injection — the sourceResolver handles keys at runtime,
+    // and the daily FRED snapshot is fetched server-side in GitHub Actions.
+    // Vite auto-loads VITE_* vars from .env via the loadEnv() call above.
   }
 })

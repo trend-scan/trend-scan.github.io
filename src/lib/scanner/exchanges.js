@@ -488,16 +488,44 @@ export async function fetch24hChange(symbol, exchange, candles) {
 }
 
 // ── DISPATCHER ───────────────────────────
+//
+// Two modes:
+//
+// 1. EXPLICIT mode (legacy): pass exchange='okx_perps' etc. — uses that single source.
+//    Backward-compatible with existing Scanner/Board UIs.
+//
+// 2. AUTO mode (new): pass exchange='auto' (or omit) — delegates to sourceResolver
+//    which tries multiple sources in priority order with automatic fallback.
+//    This is the new default; no API key required.
+//
 export async function fetchCandles(symbol, exchange, timeframe = '4H') {
+  // AUTO mode — delegate to resolver
+  if (!exchange || exchange === 'auto' || exchange === 'massive') {
+    // 'massive' is now an alias for AUTO — Massive key is broken per diagnosis;
+    // resolver routes to working free sources instead.
+    const { candles } = await resolveCandles(symbol, { timeframe });
+    return candles;
+  }
+
+  // Explicit mode — single source (legacy behavior preserved)
   if (exchange === 'okx') return await fetchOKXSpotCandles(symbol, timeframe);
   if (exchange === 'okx_perps') return await fetchOKXPerpsCandles(symbol, timeframe);
   if (exchange === 'kraken') return await fetchKrakenCandles(symbol, timeframe);
   if (exchange === 'binance') return await fetchBinanceCandles(symbol, timeframe);
   if (exchange === 'binance_perps') return await fetchBinancePerpsCandles(symbol, timeframe);
-  if (exchange === 'massive') return await fetchMassiveCandles(symbol, timeframe);
   return null;
 }
 
+// Lazy import to avoid circular dependency
+let _resolveCandles = null;
+async function resolveCandles(symbol, opts) {
+  if (!_resolveCandles) {
+    const mod = await import('./sourceResolver.js');
+    _resolveCandles = mod.fetchCandles;
+  }
+  const { candles } = await _resolveCandles(symbol, opts);
+  return { candles };
+}
 // Export xStocks fetcher for traditional market data
 export async function fetchXStocksCandlesExport(symbol, timeframe = '1D', limit = 300) {
   return await fetchXStocksCandles(symbol, timeframe, limit);

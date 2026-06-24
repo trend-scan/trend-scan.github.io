@@ -1,1 +1,203 @@
+# TrendScan
 
+Multi-source crypto + tradfi market scanner with macro regime monitoring. Deployed as a static site on GitHub Pages with daily server-side data refreshes via GitHub Actions.
+
+## Architecture
+
+```
+[Client Browser]
+  ├─ Loads index.html (with inlined Vite bundle)
+  ├─ Reads /snapshot.json (pre-baked FRED macro data — instant)
+  ├─ Live fetches crypto OHLC via sourceResolver:
+  │     CoinGecko → Hyperliquid → Bybit → Gate → Kucoin (auto fallback)
+  ├─ Live fetches tradfi OHLC via sourceResolver:
+  │     OKX SWAP perps → Lighter → Binance xStocks (auto fallback)
+  └─ Computes regime signals, factor scores, breadth — all client-side
+
+[GitHub Actions — daily at 22:00 UTC]
+  ├─ Runs scripts/build_snapshot.js with FRED_API_KEY secret
+  ├─ Fetches 11 FRED series + CoinGecko top 100 + Fear & Greed
+  ├─ Writes public/snapshot.json (committed to repo)
+  ├─ Runs npm run build
+  └─ Pushes dist/ to gh-pages branch → live site updates
+```
+
+## Quick start (local dev)
+
+```bash
+npm install
+npm run dev          # start Vite dev server
+# open http://localhost:5173
+```
+
+No API keys needed for local development — all primary sources are free and CORS-enabled.
+
+## Setup for production (GitHub Pages)
+
+### 1. Get a free FRED API key
+
+Register at https://fred.stlouisfed.org/docs/api/api_key.html (free, takes 30 seconds).
+
+### 2. Add it as a repository secret
+
+1. Go to your repo on GitHub → **Settings** → **Secrets and variables** → **Actions**
+2. Click **New repository secret**
+3. Name: `FRED_API_KEY`
+4. Value: paste your FRED key
+5. Click **Add secret**
+
+### 3. Ensure GitHub Pages is configured
+
+1. Go to **Settings** → **Pages**
+2. Source: **Deploy from a branch**
+3. Branch: `gh-pages` / root
+4. Save
+
+(If `gh-pages` doesn't exist yet, the deploy workflow will create it on the first run.)
+
+### 4. Push to main
+
+```bash
+git add .
+git commit -m "feat: multi-source resolver + daily snapshot workflow"
+git push origin main
+```
+
+The `deploy.yml` workflow will:
+1. Install deps
+2. Run `scripts/build_snapshot.js` with your `FRED_API_KEY` secret
+3. Build the Vite bundle
+4. Push to `gh-pages` branch
+
+Your site at `https://<username>.github.io/` will be live within ~2 minutes.
+
+### 5. (Optional) Add a paid Polygon/MASSIVE key
+
+If you have a paid Polygon plan and want to use it as a (high-priority) source:
+
+1. Repo → Settings → Secrets → Actions
+2. Add secret `VITE_MASSIVE_API_KEY` with your Polygon key
+3. The deploy workflow injects it at build time
+
+This is **optional** — the resolver works fine with just the free sources.
+
+## Source priority (auto mode)
+
+### Crypto OHLC
+
+| Tier | Source       | Timeframes supported        | Auth required |
+|------|--------------|-----------------------------|---------------|
+| 1    | CoinGecko    | 1D, 1w (daily best)         | No            |
+| 1    | Hyperliquid  | 15m–1w (intraday best)      | No            |
+| 2    | Bybit        | All                          | No            |
+| 3    | Gate         | All                          | No            |
+| 3    | Kucoin       | All                          | No            |
+
+### Tradfi OHLC
+
+| Tier | Source           | Tickers                                                     | Auth required |
+|------|------------------|-------------------------------------------------------------|---------------|
+| 1    | OKX SWAP perps   | SPY, QQQ, NVDA, TSLA, AAPL, XAU (gold), XAG (silver)        | No            |
+| 1    | Lighter          | 214 markets (stocks, ETFs, indices, commodities, FX)        | No            |
+| 2    | Binance xStocks  | NVDA, TSLA                                                  | No            |
+
+### Macro data (FRED replacements)
+
+| Series         | Primary source       | Live fallback         |
+|----------------|----------------------|-----------------------|
+| CPIAUCSL       | snapshot (FRED)      | Alpha Vantage         |
+| M2SL           | snapshot (FRED)      | Alpha Vantage         |
+| ICSA           | snapshot (FRED)      | Alpha Vantage         |
+| WTREGEN        | snapshot (FRED)      | Treasury.gov          |
+| RRPONTSYD      | snapshot (FRED)      | Treasury.gov          |
+| BAMLH0A0HYM2   | snapshot (FRED only) | —                     |
+| T10YIE         | snapshot (FRED only) | —                     |
+| T5YIFR         | snapshot (FRED only) | —                     |
+| NFCI           | snapshot (FRED only) | —                     |
+| WALCL          | snapshot (FRED only) | —                     |
+| WRESBAL        | snapshot (FRED only) | —                     |
+
+Series marked "snapshot (FRED only)" cannot be fetched from the browser (FRED is CORS-blocked). They are fetched server-side by GitHub Actions and baked into `/snapshot.json`.
+
+## Workflows
+
+### `.github/workflows/deploy.yml`
+
+- Triggers on: push to main, daily at 22:00 UTC, manual dispatch
+- Builds the site, fetches FRED data, deploys to `gh-pages` branch
+
+### `.github/workflows/refresh-snapshot.yml`
+
+- Triggers: 14:00, 18:00, 22:00 UTC Mon-Fri (US market hours), manual dispatch
+- Only refreshes `snapshot.json` (faster, no full rebuild)
+- If snapshot changed, commits to main → triggers `deploy.yml` for rebuild
+
+## Development commands
+
+```bash
+npm run dev              # Vite dev server
+npm run build            # Production build → dist/
+npm run build:snapshot   # Manually build snapshot.json (requires FRED_API_KEY env)
+npm run lint             # ESLint
+npm run typecheck        # TypeScript check
+```
+
+## File structure (key paths)
+
+```
+.
+├── .github/workflows/
+│   ├── deploy.yml                    # Build + deploy to gh-pages
+│   └── refresh-snapshot.yml          # Refresh FRED data only
+├── public/
+│   └── snapshot.json                 # Pre-baked FRED + crypto data (committed)
+├── scripts/
+│   └── build_snapshot.js             # Server-side FRED fetcher (runs in CI)
+└── src/
+    └── lib/
+        ├── scanner/
+        │   ├── sourceResolver.js     # Multi-source auto-fallback dispatcher
+        │   ├── sources/
+        │   │   ├── coingecko.js      # Free daily OHLC
+        │   │   ├── hyperliquid.js    # Free intraday perps
+        │   │   ├── bybit.js
+        │   │   ├── gate.js
+        │   │   ├── kucoin.js
+        │   │   ├── okxTradfi.js      # SPY/QQQ/NVDA/TSLA/AAPL/XAU/XAG perps
+        │   │   ├── lighter.js        # 214-market tradfi universe
+        │   │   └── binanceXStocks.js
+        │   └── exchanges.js          # Legacy dispatcher (now delegates to resolver)
+        └── regime/
+            ├── macroResolver.js      # Multi-source macro fallback chain
+            ├── macroSources/
+            │   ├── alphaVantage.js   # CPI/M2/ICSA live fallback
+            │   ├── treasuryGov.js    # TGA/RRP live fallback
+            │   └── fredProxy.js      # Reads pre-baked snapshot.json
+            └── regimeSources.js      # Top-level regime data fetcher
+```
+
+## Troubleshooting
+
+### "FRED data unavailable" warning on Macro Regime page
+
+The `snapshot.json` hasn't been built yet. Either:
+- Wait for the daily workflow to run (check the Actions tab)
+- Manually trigger the deploy workflow from the Actions tab
+- Run `npm run build:snapshot` locally with `FRED_API_KEY=your_key` and commit `public/snapshot.json`
+
+### Scanner shows 0 results
+
+The auto-resolver tries multiple sources. If all fail:
+- Check the browser console for `[resolver]` warnings
+- Try forcing a single source from the dropdown (e.g. "Hyperliquid")
+- Some sources may rate-limit IPs that hit them heavily; wait 5 min and retry
+
+### Build fails in CI
+
+- Check that `FRED_API_KEY` is set in repo secrets
+- Check the Actions tab for the failing workflow's logs
+- The build script is lenient — if FRED fails, it writes an empty snapshot and the site still deploys
+
+## License
+
+Private project.
