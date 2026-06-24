@@ -292,16 +292,18 @@ function buildEqualWeightSeries(symbols, candlesBySymbol) {
 function subtractSeries(a, b) {
   if (!a || !b || a.length === 0 || b.length === 0) return [];
   const minLen = Math.min(a.length, b.length);
-  // Assume both are aligned (same dates); normalize to start at 1.0 each
-  const aStart = a[a.length - minLen];
-  const bStart = b[b.length - minLen];
+  // Take the trailing minLen values from each (aligned to most recent dates)
+  const aSlice = a.slice(a.length - minLen);
+  const bSlice = b.slice(b.length - minLen);
+  // Normalize each to start at 1.0, then compute (a_norm - b_norm)
+  const aStart = aSlice[0];
+  const bStart = bSlice[0];
+  if (!aStart || !bStart) return [];
   const out = [];
-  for (let i = a.length - minLen; i < a.length; i++) {
-    const j = i - (a.length - minLen);
-    const aIdx = b.length - minLen + j;
-    if (aStart && bStart && b[bIdx]) {
-      out.push((a[i] / aStart) - (b[aIdx] / bStart));
-    }
+  for (let i = 0; i < minLen; i++) {
+    const aNorm = aSlice[i] / aStart;
+    const bNorm = bSlice[i] / bStart;
+    out.push(aNorm - bNorm);
   }
   return out;
 }
