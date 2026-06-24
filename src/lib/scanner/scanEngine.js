@@ -1,0 +1,199 @@
+import { calcEMA, calcVWAP } from './calculations';
+import { fetchCandles, fetch24hChange, preloadExchange, fetchTop300, CANDLES_PER_DAY } from './exchanges';
+
+// ── CoinGecko Market Data Cache ─────────────────────────────────────────────────
+// Fetch market data from CoinGecko to get volume and market cap
+let _cgMarketCache = null;
+let _cgMarketCacheTime = 0;
+const CG_CACHE_TTL = 60 * 1000; // 1 minute cache
+
+async function fetchCGMarketData(cgKey) {
+  const now = Date.now();
+  if (_cgMarketCache && (now - _cgMarketCacheTime) < CG_CACHE_TTL) {
+    return _cgMarketCache;
+  }
+
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=250&page=1&sparkline=false`;
+    const headers = cgKey ? { 'x-cg-demo-api-key': cgKey } : {};
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error(`CoinGecko markets HTTP ${res.status}`);
+    const data = await res.json();
+
+    _cgMarketCache = {};
+    for (const coin of data) {
+      _cgMarketCache[coin.symbol.toUpperCase()] = {
+        marketCap: coin.market_cap || 0,
+        volume24h: coin.total_volume || 0,
+        marketCapRank: coin.market_cap_rank || 999999,
+      };
+    }
+    _cgMarketCacheTime = now;
+    return _cgMarketCache;
+  } catch (e) {
+    console.warn('CoinGecko markets fetch failed:', e.message);
+    return _cgMarketCache || {};
+  }
+}
+
+async function analyzeAsset(asset, settings, cgMarketData) {
+  const { fastType, emaFast, vwapFastDays, midType, emaMid, vwapMidDays, slowType, emaSlow, vwapDays, exchange, timeframe, minVolume, minMarketCap } = settings;
+
+  // Apply volume filter if specified
+  if (minVolume > 0 && cgMarketData) {
+    const marketInfo = cgMarketData[asset.symbol];
+    if (!marketInfo || marketInfo.volume24h < minVolume) {
+      return null; // Filter out low volume assets
+    }
+  }
+
+  // Apply market cap filter if specified
+  if (minMarketCap > 0 && cgMarketData) {
+    const marketInfo = cgMarketData[asset.symbol];
+    if (!marketInfo || marketInfo.marketCap < minMarketCap) {
+      return null; // Filter out low market cap assets
+    }
+  }
+
+  const cpd = CANDLES_PER_DAY[timeframe] || 6; // candles per day for this timeframe
+  // 7 days of sparkline candles regardless of timeframe
+  const sparklineCandles = 7 * cpd;
+
+  const required = Math.max(
+    fastType === 'vwap' ? (vwapFastDays || 3) * cpd : (emaFast || 21),
+    midType  === 'vwap' ? (vwapMidDays  || 14) * cpd : (emaMid  || 50),
+    slowType === 'vwap' ? (vwapDays     || 30) * cpd : (emaSlow || 200),
+    sparklineCandles
+  );
+
+  const candles = await fetchCandles(asset.symbol, exchange, timeframe);
+  if (!candles || candles.length < required) return null;
+
+  const closes = candles.map(c => c.close);
+
+  // Pass candlesPerDay to VWAP so it respects the selected timeframe
+  const fast = fastType === 'vwap' ? calcVWAP(candles, vwapFastDays || 3, cpd)  : calcEMA(closes, emaFast);
+  const mid  = midType  === 'vwap' ? calcVWAP(candles, vwapMidDays  || 14, cpd) : calcEMA(closes, emaMid);
+  const slow = slowType === 'vwap' ? calcVWAP(candles, vwapDays     || 30, cpd) : calcEMA(closes, emaSlow);
+
+  if (fast == null || mid == null || slow == null) return null;
+
+  const price = closes[closes.length - 1];
+
+  if (price > slow && fast > mid) {
+    const change24h = await fetch24hChange(asset.symbol, exchange, candles);
+    // Last 7 days of candles for sparkline (timeframe-aware)
+    const sparkline = closes.slice(-sparklineCandles);
+
+    // Get market data for this asset
+    const marketInfo = cgMarketData?.[asset.symbol] || {};
+
+    return {
+      ...asset,
+      price,
+      emaFast: fast,
+      emaMid: mid,
+      emaSlow: slow,
+      pricePct: (price - slow) / slow * 100,
+      emaPct: (fast - mid) / mid * 100,
+      change24h,
+      sparkline,
+      // Market data
+      volume24h: marketInfo.volume24h || 0,
+      marketCap: marketInfo.marketCap || 0,
+      marketCapRank: marketInfo.marketCapRank || 999999,
+    };
+  }
+  return null;
+}
+
+async function runWithPool(tasks, concurrency, onEach) {
+  let idx = 0;
+  async function worker() {
+    while (idx < tasks.length) {
+      const i = idx++;
+      const result = await tasks[i]();
+      onEach(i + 1, result);
+    }
+  }
+  await Promise.all(Array.from({ length: concurrency }, worker));
+}
+
+export async function runScan(settings, onProgress) {
+  const startTime = Date.now();
+  const results = [];
+  let scannedCount = 0;
+  let matchedCount = 0;
+
+  onProgress({ phase: 'fetching_universe', message: 'Fetching Top 300 (CoinGecko → CoinCap → Binance)…' });
+
+  const assets = await fetchTop300(settings.cgKey);
+  const totalAssets = assets.length;
+
+  // Fetch market data (volume and market cap) from CoinGecko
+  onProgress({ phase: 'fetching_market_data', message: 'Fetching market data (volume, market cap)…' });
+  const cgMarketData = await fetchCGMarketData(settings.cgKey);
+
+  onProgress({
+    phase: 'loading_exchange',
+    message: `Loading ${settings.exchange.toUpperCase()} instruments…`,
+    total: totalAssets
+  });
+
+  await preloadExchange(settings.exchange);
+
+  // Build filter info message
+  const filterParts = [];
+  if (settings.minVolume > 0) {
+    const volStr = settings.minVolume >= 1e6
+      ? `$${(settings.minVolume / 1e6).toFixed(0)}M`
+      : `$${(settings.minVolume / 1e3).toFixed(0)}K`;
+    filterParts.push(`Vol≥${volStr}`);
+  }
+  if (settings.minMarketCap > 0) {
+    const mcapStr = settings.minMarketCap >= 1e9
+      ? `$${(settings.minMarketCap / 1e9).toFixed(1)}B`
+      : `$${(settings.minMarketCap / 1e6).toFixed(0)}M`;
+    filterParts.push(`MCap≥${mcapStr}`);
+  }
+  const filterInfo = filterParts.length > 0 ? ` [${filterParts.join(', ')}]` : '';
+
+  onProgress({
+    phase: 'scanning',
+    message: `Scanning ${totalAssets} assets on ${settings.exchange.toUpperCase()} · ${settings.timeframe}${filterInfo}…`,
+    done: 0,
+    total: totalAssets,
+    matched: 0
+  });
+
+  const tasks = assets.map(asset => () => analyzeAsset(asset, settings, cgMarketData));
+
+  await runWithPool(tasks, settings.concurrency || 7, (done, match) => {
+    scannedCount = done;
+    if (match) {
+      results.push(match);
+      matchedCount++;
+    }
+    onProgress({
+      phase: 'scanning',
+      done: scannedCount,
+      total: totalAssets,
+      matched: matchedCount,
+      results: [...results]
+    });
+  });
+
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  onProgress({
+    phase: 'complete',
+    done: totalAssets,
+    total: totalAssets,
+    matched: matchedCount,
+    results,
+    duration,
+    updatedAt: new Date().toLocaleTimeString()
+  });
+
+  return { results, duration };
+}

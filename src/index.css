@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 20% 2.5%;
+    --foreground: 50 10% 82%;
+    --card: 240 15% 4.5%;
+    --card-foreground: 50 10% 82%;
+    --popover: 240 15% 4.5%;
+    --popover-foreground: 50 10% 82%;
+    --primary: 40 100% 47%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 240 12% 7%;
+    --secondary-foreground: 50 10% 82%;
+    --muted: 240 12% 7%;
+    --muted-foreground: 240 5% 43%;
+    --accent: 240 12% 9%;
+    --accent-foreground: 50 10% 82%;
+    --destructive: 0 80% 63%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 10% 11%;
+    --input: 240 10% 11%;
+    --ring: 40 100% 47%;
+    --chart-1: 40 100% 47%;
+    --chart-2: 152 100% 45%;
+    --chart-3: 213 100% 65%;
+    --chart-4: 0 100% 63%;
+    --chart-5: 280 65% 60%;
+    --radius: 0px;
+
+    --scanner-bg: #07070a;
+    --scanner-bg1: #0c0c10;
+    --scanner-bg2: #111118;
+    --scanner-bg3: #16161e;
+    --scanner-border: #18181f;
+    --scanner-border2: #22222d;
+    --scanner-border3: #2e2e3d;
+    --scanner-text: #d0d0c4;
+    --scanner-text2: #b0b0c4;
+    --scanner-text3: #7a7a90;
+    --scanner-accent: #f0a500;
+    --scanner-green: #00e676;
+    --scanner-red: #ff4444;
+    --scanner-blue: #4d9fff;
+
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  .dark {
+    --background: 240 20% 2.5%;
+    --foreground: 50 10% 82%;
+    --card: 240 15% 4.5%;
+    --card-foreground: 50 10% 82%;
+    --popover: 240 15% 4.5%;
+    --popover-foreground: 50 10% 82%;
+    --primary: 40 100% 47%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 240 12% 7%;
+    --secondary-foreground: 50 10% 82%;
+    --muted: 240 12% 7%;
+    --muted-foreground: 240 5% 43%;
+    --accent: 240 12% 9%;
+    --accent-foreground: 50 10% 82%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 10% 11%;
+    --input: 240 10% 11%;
+    --ring: 40 100% 47%;
+    --chart-1: 40 100% 47%;
+    --chart-2: 152 100% 45%;
+    --chart-3: 213 100% 65%;
+    --chart-4: 0 100% 63%;
+    --chart-5: 280 65% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes indeterminate {
+  0%   { left: -35%; right: 100%; }
+  60%  { left: 100%; right: -35%; }
+  100% { left: 100%; right: -35%; }
+}
+
+.animate-indeterminate {
+  animation: indeterminate 1.4s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
+}
+
+/* Scanner scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--scanner-bg1); }
+::-webkit-scrollbar-thumb { background: var(--scanner-border2); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--scanner-border3); }
