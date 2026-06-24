@@ -70,7 +70,7 @@ export default function FactorMonitor() {
         const marketData = await fetchMarketData([]);
         const topSymbols = Object.entries(marketData)
           .sort((a, b) => b[1].marketCap - a[1].marketCap)
-          .slice(0, 30)
+          .slice(0, 100)
           .map(([sym]) => sym);
 
         if (topSymbols.length < 10) {
@@ -80,13 +80,29 @@ export default function FactorMonitor() {
         // 2. Fetch 1 year of daily candles for each (via resolver)
         const candlesResult = await fetchCandlesBatch(topSymbols, { timeframe: '1D', limit: 365 }, 5);
 
-        // 3. Build universe with market cap
+        // 3. Build universe with market cap + 24h volume (for liquidity factor)
+        // CoinGecko OHLC endpoint returns vol=0, so we inject volume from /markets data
         const universe = topSymbols
-          .map(sym => ({
-            symbol: sym,
-            candles: candlesResult.get(sym)?.candles || [],
-            marketCap: marketData[sym]?.marketCap || 0,
-          }))
+          .map(sym => {
+            const candles = candlesResult.get(sym)?.candles || [];
+            const md = marketData[sym] || {};
+            // If candles have vol=0 (CoinGecko OHLC limitation), estimate daily vol from 24h vol
+            const dailyVolUsd = md.volume24h || 0;
+            if (dailyVolUsd > 0 && candles.length > 0) {
+              // Distribute 24h volume equally across the most recent candle
+              // (better than 0 — gives the liquidity factor something to work with)
+              const lastCandle = candles[candles.length - 1];
+              if (lastCandle && lastCandle.vol === 0) {
+                lastCandle.vol = dailyVolUsd / (lastCandle.close || 1);
+              }
+            }
+            return {
+              symbol: sym,
+              candles,
+              marketCap: md.marketCap || 0,
+              volume24h: dailyVolUsd,
+            };
+          })
           .filter(u => u.candles && u.candles.length >= 60);
 
         if (universe.length < 10) {
@@ -114,8 +130,26 @@ export default function FactorMonitor() {
         // 8. Compute rotation
         const rotation = detectFactorRotation(portfoliosByFactor, candlesBySymbol);
 
+        // Diagnostic: log Q5 composition per factor to console
+        console.log('[FactorMonitor] Universe size:', universe.length);
+        for (const factor of FACTORS) {
+          const q5 = portfoliosByFactor[factor].longOnly;
+          const q1 = portfoliosByFactor[factor].shortOnly;
+          console.log(`[FactorMonitor] ${factor}:`, {
+            q5Size: q5.length,
+            q5: q5.slice(0, 10),
+            q1Size: q1.length,
+            q1: q1.slice(0, 10),
+          });
+        }
+
         if (!cancelled) {
-          setData({ spreadMonitor: Object.values(spreadMonitor), rotation, universeSize: universe.length });
+          setData({
+            spreadMonitor: Object.values(spreadMonitor),
+            rotation,
+            universeSize: universe.length,
+            q5Size: Math.floor(universe.length / 5),
+          });
           setLoading(false);
         }
       } catch (e) {
@@ -136,7 +170,7 @@ export default function FactorMonitor() {
         <div className="text-3xl mb-4 animate-pulse opacity-30">◈</div>
         <div className="text-sm" style={{ color: 'var(--scanner-text2)' }}>Computing factor scores…</div>
         <div className="text-[11px] mt-2" style={{ color: 'var(--scanner-text3)' }}>
-          Fetching 1y of daily candles for top 30 crypto assets
+          Fetching 1y of daily candles for top 100 crypto assets
         </div>
       </div>
     );
@@ -171,7 +205,7 @@ export default function FactorMonitor() {
     );
   }
 
-  const { spreadMonitor, rotation, universeSize } = data;
+  const { spreadMonitor, rotation, universeSize, q5Size } = data;
 
   return (
     <div className="font-mono px-5 md:px-8 py-5 space-y-5">
@@ -182,7 +216,7 @@ export default function FactorMonitor() {
             Crypto Factor Monitor
           </div>
           <div className="text-[11px] mt-1" style={{ color: 'var(--scanner-text2)' }}>
-            Quintile portfolios · top {universeSize} by mcap · monthly rebalance
+            Quintile portfolios · top {universeSize} by mcap · Q5={q5Size} assets · monthly rebalance
           </div>
         </div>
         <div className="text-right">
