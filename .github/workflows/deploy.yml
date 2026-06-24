@@ -1,0 +1,51 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Extract ZIP file
+        run: |
+          # Find and extract the ZIP file
+          ZIP_FILE=$(find . -name "*.zip" -type f | head -1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No ZIP file found"
+            exit 1
+          fi
+          
+          echo "Found ZIP file: $ZIP_FILE"
+          
+          # Create a temporary directory for extraction
+          mkdir -p temp_extract
+          unzip -q "$ZIP_FILE" -d temp_extract/
+          
+          # Move extracted files to root (excluding the zip file itself)
+          # If there's a single root folder in the zip, promote its contents
+          if [ $(ls -1 temp_extract/ | wc -l) -eq 1 ] && [ -d "$(ls -1d temp_extract/*)" ]; then
+            cp -r temp_extract/*/. .
+          else
+            cp -r temp_extract/* .
+          fi
+          
+          # Clean up
+          rm -rf temp_extract
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "Deploy website from ZIP" || echo "No changes to commit"
+          git push
