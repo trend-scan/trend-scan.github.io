@@ -152,6 +152,55 @@ const SYMBOL_TO_ID = {
   STRK: 'starknet',              // Starknet
   ZK: 'zksync',                  // ZKsync
   // TOTAL is an index, not a coin — no CoinGecko ID. Resolver will use other sources.
+
+  // ─── Added for user's expanded universe (June 2026) ────────────────────
+  TAO: 'bittensor',               // Bittensor (AI)
+  VIRTUAL: 'virtual-protocol',    // Virtuals Protocol
+  WLD: 'worldcoin',               // Worldcoin
+  EIGEN: 'eigenlayer',            // EigenLayer (restaking)
+  IO: 'io-net',                   // io.net (depin GPU)
+  AKT: 'akash-network',           // Akash Network
+  VVV: 'venice-token',            // Venice Token
+  GRASS: 'grass',                 // Grass (data layer)
+  LIT: 'lit',                     // Lit Protocol
+  GRAM: 'toncoin',                // Gram (formerly Toncoin)
+  KAS: 'kaspa',                   // Kaspa
+  MET: 'meteora',                 // Meteora
+  BIO: 'bio-protocol',            // Bio Protocol
+  MNT: 'mantle',                  // Mantle
+  SKY: 'sky',                     // Sky (formerly MakerDAO)
+  MORPHO: 'morpho',               // Morpho
+  CAKE: 'pancakeswap-token',      // PancakeSwap
+  AERO: 'aerodrome-finance',      // Aerodrome Finance
+  JTO: 'jito-governance-token',   // Jito
+  ETHFI: 'ether-fi',              // ether.fi
+  SYRUP: 'maple',                 // Maple Finance (Syrup)
+  FLUID: 'fluid',                 // Fluid (formerly Instadapp)
+  STBL: 'stabl',                  // STBL (RWA Stablecoin)
+  DUST: 'dust-protocol',          // Dust Protocol
+  W: 'wormhole',                  // Wormhole
+  TRUMP: 'official-trump',        // OFFICIAL TRUMP
+  PUMP: 'pump-fun',               // Pump.fun
+  FARTCOIN: 'fartcoin',           // Fartcoin
+  SPX: 'spx6900',                 // SPX6900
+  MOG: 'mog-coin',                // Mog Coin
+  USELESS: 'useless',             // Useless Coin
+  PENGU: 'pudgy-penguins',        // Pudgy Penguins
+  BGB: 'bitget-token',            // Bitget Token
+  GT: 'gate',                     // GateToken
+  LEO: 'leo-token',               // UNUS SED LEO
+  HNT: 'helium',                  // Helium
+  IOT: 'helium-iot',              // Helium IOT
+  MOBILE: 'helium-mobile',        // Helium Mobile
+  USDT: 'tether',                 // Tether
+  USDC: 'usd-coin',               // USD Coin
+  DAI: 'dai',                     // Dai
+  USDS: 'sky',                    // USDS (Sky)
+  USDE: 'ethena-usde',            // Ethena USDe
+  PYUSD: 'paypal-usd',            // PayPal USD
+  FDUSD: 'first-digital-usd',     // First Digital USD
+  RLUSD: 'ripple-usd',            // Ripple USD
+  USD1: 'world-liberty-financial-usd', // World Liberty USD
 };
 
 let _idCache = null;
