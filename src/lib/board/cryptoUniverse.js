@@ -12,6 +12,11 @@ export const CRYPTO_UNIVERSE = [
   { symbol: 'GRT',    name: 'The Graph',          theme: 'AI & Compute',      tier: 'Core',    subtheme: 'Data Marketplace' },
   { symbol: 'TAO',    name: 'Bittensor',          theme: 'AI & Compute',      tier: 'Active',  subtheme: 'AI Protocol' },
   { symbol: 'VIRTUAL',name: 'Virtuals Protocol',  theme: 'AI & Compute',      tier: 'Active',  subtheme: 'AI Agent' },
+  { symbol: 'WLD',    name: 'Worldcoin',          theme: 'AI & Compute',      tier: 'Active',  subtheme: 'AI Identity' },
+  { symbol: 'EIGEN',  name: 'EigenCloud',         theme: 'AI & Compute',      tier: 'Active',  subtheme: 'AI Verification' },
+  { symbol: 'IO',     name: 'io.net',             theme: 'AI & Compute',      tier: 'Active',  subtheme: 'GPU/Compute' },
+  { symbol: 'AKT',    name: 'Akash Network',      theme: 'AI & Compute',      tier: 'Active',  subtheme: 'GPU/Compute' },
+  { symbol: 'VVV',    name: 'Venice Token',       theme: 'AI & Compute',      tier: 'Active',  subtheme: 'AI Agent' },
 
   // Layer 1s
   { symbol: 'BTC',    name: 'Bitcoin',            theme: 'Layer 1',           tier: 'Core',    subtheme: 'Bitcoin' },
@@ -67,6 +72,9 @@ export const CRYPTO_UNIVERSE = [
   { symbol: 'AERO',   name: 'Aerodrome Finance',  theme: 'DeFi',              tier: 'Active',  subtheme: 'DEX' },
   { symbol: 'JTO',    name: 'Jito',               theme: 'DeFi',              tier: 'Active',  subtheme: 'Liquid Staking' },
   { symbol: 'ETHFI',  name: 'ether.fi',           theme: 'DeFi',              tier: 'Active',  subtheme: 'Liquid Staking' },
+  { symbol: 'SYRUP',  name: 'Maple Finance (Syrup)', theme: 'DeFi',           tier: 'Active',  subtheme: 'Lending' },
+  { symbol: 'FLUID',  name: 'Fluid (prev. Instadapp)', theme: 'DeFi',         tier: 'Active',  subtheme: 'Lending' },
+  { symbol: 'STBL',   name: 'STBL (RWA Stablecoin)', theme: 'DeFi',            tier: 'Watch',   subtheme: 'RWA' },
 
   // Infrastructure / Oracles / Data
   { symbol: 'LINK',   name: 'Chainlink',          theme: 'Infrastructure',    tier: 'Core',    subtheme: 'Oracle' },
@@ -100,6 +108,10 @@ export const CRYPTO_UNIVERSE = [
   { symbol: 'POPCAT', name: 'Popcat',             theme: 'Meme',              tier: 'Active',  subtheme: 'Meme' },
   { symbol: 'TRUMP',  name: 'OFFICIAL TRUMP',     theme: 'Meme',              tier: 'Active',  subtheme: 'Meme' },
   { symbol: 'PUMP',   name: 'Pump.fun',           theme: 'Meme',              tier: 'Active',  subtheme: 'Meme' },
+  { symbol: 'FARTCOIN', name: 'Fartcoin',         theme: 'Meme',              tier: 'Active',  subtheme: 'Meme' },
+  { symbol: 'SPX',    name: 'SPX6900',            theme: 'Meme',              tier: 'Active',  subtheme: 'Meme' },
+  { symbol: 'MOG',    name: 'Mog Coin',           theme: 'Meme',              tier: 'Active',  subtheme: 'Meme' },
+  { symbol: 'USELESS', name: 'Useless Coin',      theme: 'Meme',              tier: 'Active',  subtheme: 'Meme' },
 
   // RWA & Payments
   { symbol: 'XLM',    name: 'Stellar',            theme: 'RWA & Payments',    tier: 'Core',    subtheme: 'Payments' },
