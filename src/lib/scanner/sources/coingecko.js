@@ -347,7 +347,7 @@ async function tryCoinGeckoMarkets() {
 
 async function trySnapshotMarkets() {
   try {
-    const res = await fetch('/snapshot.json');
+    const res = await fetch(`${import.meta.env.BASE_URL}snapshot.json`);
     if (!res.ok) return {};
     const snap = await res.json();
     const top = snap?.coingecko_top || {};

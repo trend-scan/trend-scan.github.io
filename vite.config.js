@@ -6,8 +6,15 @@ import path from 'path'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
+  // Base path: GitHub Pages serves this repo at /trendscan.github.io/
+  // (project page, not user page). Vite needs this so all asset URLs are prefixed.
+  // For local dev (`npm run dev`), Vite automatically ignores `base` — serves from /.
+  const isDev = mode === 'development';
+  const base = isDev ? '/' : '/trendscan.github.io/';
+
   return {
     logLevel: 'error',
+    base,
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
