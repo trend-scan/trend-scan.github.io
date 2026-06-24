@@ -182,6 +182,62 @@ async function fetchCoinGeckoTop() {
   }
 }
 
+// ─── Ken French data library (free, seasonality baselines) ───────────────────
+// Source: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html
+// Returns monthly factor returns (Mkt-RF, SMB, HML, RMW, RF) back to 1926.
+// Used to compute "June historically +1.0% mean / 70% hit rate" baselines.
+
+async function fetchKenFrench() {
+  console.log('── Ken French factor data ──');
+  try {
+    // Download + unzip the CSV server-side (CORS-blocked in browser)
+    const AdmZip = (await import('adm-zip')).default;
+    const res = await fetch('https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    const zip = new AdmZip(buf);
+    const entry = zip.getEntries().find(e => e.entryName.endsWith('.csv'));
+    if (!entry) throw new Error('CSV not found in zip');
+    const csv = entry.getData().toString('utf8');
+
+    // Parse: skip header (first line is ",Mkt-RF,SMB,HML,RF"), then parse monthly rows
+    // Format: "192607,   2.89,  -2.55,  -2.39,   0.22"
+    // Annual rows have format "  1926,  ..." (4-digit year with leading spaces)
+    const lines = csv.split('\n').map(l => l.trim()).filter(Boolean);
+    const monthly = [];
+    for (const line of lines) {
+      // Stop at footer
+      if (line.startsWith('Copyright') || line.startsWith('Source:')) break;
+      const parts = line.split(',').map(p => p.trim());
+      if (parts.length < 5) continue;
+      const dateStr = parts[0];
+      // Monthly: 6 digits (YYYYMM); Annual: 4 digits — skip annual
+      if (!/^\d{6}$/.test(dateStr)) continue;
+      const year = parseInt(dateStr.slice(0, 4));
+      const month = parseInt(dateStr.slice(4, 6));
+      const mktRf = parseFloat(parts[1]);
+      const smb = parseFloat(parts[2]);
+      const hml = parseFloat(parts[3]);
+      const rf = parseFloat(parts[4]);
+      if ([mktRf, smb, hml, rf].some(v => !Number.isFinite(v))) continue;
+      monthly.push({
+        year, month,
+        mktRf: mktRf / 100,   // Ken French returns percentages; convert to decimal
+        smb: smb / 100,
+        hml: hml / 100,
+        rf: rf / 100,
+        market: (mktRf + rf) / 100,  // total market return
+      });
+    }
+
+    console.log(`  ✓ ${monthly.length} monthly factor returns (since ${monthly[0]?.year}-${monthly[0]?.month})`);
+    return monthly;
+  } catch (e) {
+    console.warn(`  ✗ Ken French: ${e.message}`);
+    return [];
+  }
+}
+
 // ─── Fear & Greed (free) ─────────────────────────────────────────────────────
 
 async function fetchFearGreed() {
@@ -209,10 +265,11 @@ async function main() {
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
   console.log('');
 
-  const [fred, coingecko, fearGreed] = await Promise.all([
+  const [fred, coingecko, fearGreed, kenFrench] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
+    fetchKenFrench(),
   ]);
 
   const snapshot = {
@@ -220,6 +277,7 @@ async function main() {
     fred,
     coingecko_top: coingecko,
     fear_greed: fearGreed,
+    ken_french: kenFrench,
   };
 
   // Stats
@@ -229,6 +287,7 @@ async function main() {
   console.log(`  FRED series populated:  ${fredCount}/${Object.keys(FRED_SERIES).length}`);
   console.log(`  CoinGecko coins:        ${Object.keys(coingecko).length}`);
   console.log(`  Fear & Greed days:      ${fearGreed.length}`);
+  console.log(`  Ken French months:      ${kenFrench.length}`);
   console.log(`  Total size:             ${JSON.stringify(snapshot).length.toLocaleString()} bytes`);
 
   // Write to public/snapshot.json (gets committed to repo, served from /)

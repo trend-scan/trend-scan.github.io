@@ -8,10 +8,11 @@ import MomentumTab from '@/components/board/MomentumTab';
 import MomentumScanTab from '@/components/board/MomentumScanTab';
 import MacroTab from '@/components/board/MacroTab';
 import MassiveApiKeyInput from '@/components/scanner/MassiveApiKeyInput';
+import FactorMonitor from '@/components/board/FactorMonitor';
 import { runBoardAnalysis } from '@/lib/board/boardEngine';
 import { fetchTradMarketData } from '@/lib/board/traditionalMarkets';
 
-const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'Macro'];
+const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'Macro', 'Factor Monitor'];
 
 const DEFAULT_EXCHANGE = 'auto';
 
@@ -197,6 +198,7 @@ export default function Board() {
           {activeTab === 4 && <MomentumTab cleanMomentum={cleanMomentum} />}
           {activeTab === 5 && <ExtensionTab tooHot={tooHot} fading={fading} />}
           {activeTab === 6 && <MacroTab tradData={tradData} isLoading={tradLoading} />}
+          {activeTab === 7 && <FactorMonitor />}
         </>
       )}
 

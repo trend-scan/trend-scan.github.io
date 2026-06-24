@@ -10,6 +10,8 @@ import CompositeGauge from '../components/regime/CompositeGauge';
 import AllocationPanel from '../components/regime/AllocationPanel';
 import SignalTable from '../components/regime/SignalTable';
 import MacroCharts from '../components/regime/MacroCharts';
+import ChangeBanner from '../components/regime/ChangeBanner';
+import { computeSeasonality, getCurrentMonthBaseline, formatSeasonalityBaseline } from '../lib/regime/seasonality';
 import { fetchAllRegimeData } from '../lib/regime/regimeSources';
 import {
   computeGrowthSignals,
@@ -280,6 +282,12 @@ export default function MacroRegime() {
     };
   }, [rawData]);
 
+  // Seasonality (from Ken French data in snapshot)
+  const seasonality = useMemo(() => {
+    if (!rawData?.kenFrench) return null;
+    return computeSeasonality(rawData.kenFrench);
+  }, [rawData]);
+
   // Loading state
   if (isLoading) {
     return (
@@ -340,6 +348,9 @@ export default function MacroRegime() {
           </div>
           <SourceBadge sources={regime?.sources} />
         </div>
+
+        {/* Day-over-day change banner (shows what shifted since last visit) */}
+        <ChangeBanner regime={regime} />
 
         {/* Data coverage notice */}
         {!regime?.fredAvailable && (
@@ -418,6 +429,33 @@ export default function MacroRegime() {
         <div className="mb-6">
           <MacroCharts regime={regime} />
         </div>
+
+        {/* Seasonality Baselines (Ken French) */}
+        {seasonality && (
+          <div className="mb-6 rounded-lg p-5" style={{ background: 'var(--scanner-bg2)', border: '1px solid var(--scanner-border2)' }}>
+            <div className="text-[9px] font-bold tracking-[0.15em] uppercase mb-3" style={{ color: 'var(--scanner-text3)' }}>
+              Seasonality Baselines (Ken French, current month)
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {['market', 'smb', 'hml'].map(factor => {
+                const baseline = getCurrentMonthBaseline(seasonality, factor);
+                const factorName = { market: 'US Market', smb: 'Size (SMB)', hml: 'Value (HML)' }[factor];
+                return (
+                  <div key={factor} className="text-[10px]">
+                    <div className="text-[9px] uppercase tracking-wider mb-1" style={{ color: 'var(--scanner-text3)' }}>{factorName}</div>
+                    <div style={{ color: 'var(--scanner-text2)' }}>
+                      {formatSeasonalityBaseline(baseline, 'trailing_30y')}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-[8px] mt-3" style={{ color: 'var(--scanner-text3)', opacity: 0.6 }}>
+              Source: Ken French Data Library (F-F Research Data Factors). Trailing 30y window.
+              Definition differs from our crypto universe; for seasonal baseline context only.
+            </div>
+          </div>
+        )}
 
         {/* Signal Table */}
         <div className="mb-6">

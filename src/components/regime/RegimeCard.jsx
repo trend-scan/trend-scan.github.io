@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { detectRegimeRotation } from '@/lib/regime/regimeRotation';
 
 const SEASON_CONFIG = {
   SPRING: {
@@ -83,6 +84,18 @@ export default function RegimeCard({ regime }) {
 
   const seasonConfig = SEASON_CONFIG[quadrant] || SEASON_CONFIG.FLUX;
   const liqColor = LIQ_COLORS[liquidity] || LIQ_COLORS.NEUTRAL;
+
+  // Rotation: detect from localStorage history (if available)
+  let rotationInfo = null;
+  try {
+    const historyRaw = localStorage.getItem('trendscan_regime_history');
+    if (historyRaw) {
+      const history = JSON.parse(historyRaw);
+      if (Array.isArray(history) && history.length >= 4) {
+        rotationInfo = detectRegimeRotation(history);
+      }
+    }
+  } catch {}
 
   // Next execution: first Friday of next month
   const now = new Date();
