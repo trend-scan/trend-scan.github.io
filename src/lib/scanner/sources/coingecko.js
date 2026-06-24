@@ -112,6 +112,46 @@ const SYMBOL_TO_ID = {
   SNT: 'status',
   MANA: 'decentraland',
   OCEAN: 'ocean-protocol',
+
+  // ─── Added 2026-06: tokens missing from the original map ───────────────
+  // Without these, CoinGecko tries /coins/list (rate-limited) and picks the
+  // WRONG coin (e.g. HYPE → 'hype-3' instead of 'hyperliquid'). These IDs
+  // are the canonical CoinGecko IDs for each token.
+  HYPE: 'hyperliquid',           // Hyperliquid (native perp DEX token)
+  TON: 'the-open-network',       // Toncoin
+  TRX: 'tron',                   // TRON
+  XMR: 'monero',                 // Monero
+  AR: 'arweave',                 // Arweave
+  CELO: 'celo',                  // Celo
+  CRO: 'crypto-com-chain',       // Cronos
+  GALA: 'gala',                  // Gala Games
+  KCS: 'kucoin-shares',          // KuCoin Token
+  NMR: 'numeraire',              // Numeraire
+  OKB: 'okb',                    // OKB
+  RENDER: 'render-token',        // Render Network (RNDR also maps here)
+  SCRT: 'secret',                // Secret Network
+  STRAX: 'stratis',              // Stratis
+  FTT: 'ftx-token',              // FTX Token (delisted but still in universe)
+  XDC: 'xdce-currency',          // XDC Network
+  YGG: 'yield-guild-games',      // Yield Guild Games
+  AGIX: 'singularitynet',        // SingularityNET
+  BEAM: 'beam-2',                // Beam (privacy chain, not gaming)
+  BLAST: 'blast',                // Blast L2
+  ENA: 'ethena',                 // Ethena
+  FLOKI: 'floki',                // Floki
+  ILV: 'illuvium',               // Illuvium
+  MAGIC: 'treasure',             // Treasure DAO
+  MANTA: 'manta-network',        // Manta Network
+  ONDO: 'ondo-finance',          // Ondo Finance
+  PENDLE: 'pendle',              // Pendle
+  POL: 'polygon-ecosystem-token',// Polygon (new POL token)
+  POPCAT: 'popcat-2',            // Popcat (Solana meme)
+  RON: 'ronin',                  // Ronin
+  ROSE: 'oasis-network',         // Oasis Network
+  SCROLL: 'scroll',              // Scroll
+  STRK: 'starknet',              // Starknet
+  ZK: 'zksync',                  // ZKsync
+  // TOTAL is an index, not a coin — no CoinGecko ID. Resolver will use other sources.
 };
 
 let _idCache = null;
