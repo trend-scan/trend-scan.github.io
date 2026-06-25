@@ -1,25 +1,23 @@
 import { calcEMA, calcVWAP } from './calculations';
 import { fetchCandles, fetch24hChange, preloadExchange, fetchTop300, CANDLES_PER_DAY } from './exchanges';
+import { fetchAllTickers as fetchHyperliquidTickers } from './sources/hyperliquid';
 
 // ── CoinGecko Market Data Cache ─────────────────────────────────────────────────
-// Fetch market data from CoinGecko to get volume and market cap
 let _cgMarketCache = null;
 let _cgMarketCacheTime = 0;
-const CG_CACHE_TTL = 60 * 1000; // 1 minute cache
+const CG_CACHE_TTL = 60 * 1000;
 
 async function fetchCGMarketData(cgKey) {
   const now = Date.now();
   if (_cgMarketCache && (now - _cgMarketCacheTime) < CG_CACHE_TTL) {
     return _cgMarketCache;
   }
-
   try {
     const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=250&page=1&sparkline=false`;
     const headers = cgKey ? { 'x-cg-demo-api-key': cgKey } : {};
     const res = await fetch(url, { headers });
     if (!res.ok) throw new Error(`CoinGecko markets HTTP ${res.status}`);
     const data = await res.json();
-
     _cgMarketCache = {};
     for (const coin of data) {
       _cgMarketCache[coin.symbol.toUpperCase()] = {
@@ -36,14 +34,27 @@ async function fetchCGMarketData(cgKey) {
   }
 }
 
-async function analyzeAsset(asset, settings, cgMarketData) {
+// ── Relative Volume (rVol) ─────────────────────────────────────────────────────
+// rVol = current candle volume / 20-period SMA of volume
+// rVol > 1 = volume surge, rVol < 1 = below-average volume
+function computeRVol(candles, period = 20) {
+  if (!candles || candles.length < period + 1) return null;
+  const vols = candles.map(c => c.vol || 0);
+  const recentSlice = vols.slice(-period - 1, -1);  // exclude current candle
+  if (recentSlice.length < period) return null;
+  const sma = recentSlice.reduce((s, v) => s + v, 0) / period;
+  if (sma <= 0) return null;
+  return vols[vols.length - 1] / sma;
+}
+
+async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
   const { fastType, emaFast, vwapFastDays, midType, emaMid, vwapMidDays, slowType, emaSlow, vwapDays, exchange, timeframe, minVolume, minMarketCap } = settings;
 
   // Apply volume filter if specified
   if (minVolume > 0 && cgMarketData) {
     const marketInfo = cgMarketData[asset.symbol];
     if (!marketInfo || marketInfo.volume24h < minVolume) {
-      return null; // Filter out low volume assets
+      return null;
     }
   }
 
@@ -51,12 +62,11 @@ async function analyzeAsset(asset, settings, cgMarketData) {
   if (minMarketCap > 0 && cgMarketData) {
     const marketInfo = cgMarketData[asset.symbol];
     if (!marketInfo || marketInfo.marketCap < minMarketCap) {
-      return null; // Filter out low market cap assets
+      return null;
     }
   }
 
-  const cpd = CANDLES_PER_DAY[timeframe] || 6; // candles per day for this timeframe
-  // 7 days of sparkline candles regardless of timeframe
+  const cpd = CANDLES_PER_DAY[timeframe] || 6;
   const sparklineCandles = 7 * cpd;
 
   const required = Math.max(
@@ -71,7 +81,6 @@ async function analyzeAsset(asset, settings, cgMarketData) {
 
   const closes = candles.map(c => c.close);
 
-  // Pass candlesPerDay to VWAP so it respects the selected timeframe
   const fast = fastType === 'vwap' ? calcVWAP(candles, vwapFastDays || 3, cpd)  : calcEMA(closes, emaFast);
   const mid  = midType  === 'vwap' ? calcVWAP(candles, vwapMidDays  || 14, cpd) : calcEMA(closes, emaMid);
   const slow = slowType === 'vwap' ? calcVWAP(candles, vwapDays     || 30, cpd) : calcEMA(closes, emaSlow);
@@ -82,11 +91,16 @@ async function analyzeAsset(asset, settings, cgMarketData) {
 
   if (price > slow && fast > mid) {
     const change24h = await fetch24hChange(asset.symbol, exchange, candles);
-    // Last 7 days of candles for sparkline (timeframe-aware)
     const sparkline = closes.slice(-sparklineCandles);
 
-    // Get market data for this asset
+    // Market data
     const marketInfo = cgMarketData?.[asset.symbol] || {};
+
+    // Relative volume (current vol / 20-period SMA vol)
+    const rVol = computeRVol(candles, 20);
+
+    // Hyperliquid per-asset data (funding, open interest) — only if available
+    const hlData = hlTickers?.[asset.symbol] || null;
 
     return {
       ...asset,
@@ -102,6 +116,12 @@ async function analyzeAsset(asset, settings, cgMarketData) {
       volume24h: marketInfo.volume24h || 0,
       marketCap: marketInfo.marketCap || 0,
       marketCapRank: marketInfo.marketCapRank || 999999,
+      // Hyperliquid-specific (null if not on Hyperliquid)
+      fundingRate: hlData?.fundingRate ?? null,
+      openInterest: hlData?.openInterest ?? null,
+      openInterestUsd: hlData?.volume24hUsd ?? null,  // 24h USD volume as OI proxy
+      // Relative volume
+      rVol,
     };
   }
   return null;
@@ -133,6 +153,18 @@ export async function runScan(settings, onProgress) {
   // Fetch market data (volume and market cap) from CoinGecko
   onProgress({ phase: 'fetching_market_data', message: 'Fetching market data (volume, market cap)…' });
   const cgMarketData = await fetchCGMarketData(settings.cgKey);
+
+  // Fetch Hyperliquid bulk tickers (funding, OI, volume) in ONE call
+  // This gives us per-asset funding rate + open interest for all 230+ perps
+  let hlTickers = null;
+  if (settings.exchange === 'hyperliquid') {
+    onProgress({ phase: 'fetching_market_data', message: 'Fetching Hyperliquid funding + open interest…' });
+    try {
+      hlTickers = await fetchHyperliquidTickers();
+    } catch (e) {
+      console.warn('Hyperliquid ticker fetch failed:', e.message);
+    }
+  }
 
   onProgress({
     phase: 'loading_exchange',
@@ -166,7 +198,7 @@ export async function runScan(settings, onProgress) {
     matched: 0
   });
 
-  const tasks = assets.map(asset => () => analyzeAsset(asset, settings, cgMarketData));
+  const tasks = assets.map(asset => () => analyzeAsset(asset, settings, cgMarketData, hlTickers));
 
   await runWithPool(tasks, settings.concurrency || 7, (done, match) => {
     scannedCount = done;

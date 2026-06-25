@@ -21,6 +21,29 @@ function fmtMarketCap(v) {
   return '$' + v.toFixed(0);
 }
 
+function fmtFunding(v) {
+  if (v == null || !Number.isFinite(v)) return '—';
+  // Funding rate is typically a small decimal (0.0001 = 0.01%)
+  // Display as basis points (bps): 0.0001 → 1.0bps, or as % with 4 decimals
+  const pct = v * 100;
+  return (v >= 0 ? '+' : '') + pct.toFixed(4) + '%';
+}
+
+function fmtOI(v) {
+  if (v == null || !Number.isFinite(v) || v === 0) return '—';
+  // Open interest in USD
+  if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+  return '$' + v.toFixed(0);
+}
+
+function fmtRVol(v) {
+  if (v == null || !Number.isFinite(v)) return '—';
+  // rVol = ratio (1.0 = average). Display as "2.3x" or "0.8x"
+  return v.toFixed(2) + 'x';
+}
+
 function indicatorLabel(type, emaVal, vwapVal) {
   return type === 'vwap' ? `VWAP(${vwapVal}d)` : `EMA(${emaVal})`;
 }
@@ -67,6 +90,9 @@ const SORT_OPTIONS = [
   { key: 'emaPct', label: 'Δ MA Spread' },
   { key: 'volume24h', label: 'VOL 24H' },
   { key: 'marketCap', label: 'MKTCAP' },
+  { key: 'fundingRate', label: 'Funding' },
+  { key: 'openInterest', label: 'Open Interest' },
+  { key: 'rVol', label: 'rVol' },
 ];
 
 export default function ResultsTable({ results, settings, isScanning }) {
@@ -79,6 +105,9 @@ export default function ResultsTable({ results, settings, isScanning }) {
     if (sortKey === 'change24h') return (b.change24h ?? -999) - (a.change24h ?? -999);
     if (sortKey === 'volume24h') return (b.volume24h ?? 0) - (a.volume24h ?? 0);
     if (sortKey === 'marketCap') return (b.marketCap ?? 0) - (a.marketCap ?? 0);
+    if (sortKey === 'fundingRate') return (b.fundingRate ?? -999) - (a.fundingRate ?? -999);
+    if (sortKey === 'openInterest') return (b.openInterest ?? 0) - (a.openInterest ?? 0);
+    if (sortKey === 'rVol') return (b.rVol ?? 0) - (a.rVol ?? 0);
     return 0;
   });
 
@@ -130,7 +159,7 @@ export default function ResultsTable({ results, settings, isScanning }) {
         <EmptyState isScanning={isScanning} />
       ) : (
         <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--scanner-border2)' }}>
-          <table className="w-full min-w-[1000px] border-collapse">
+          <table className="w-full min-w-[1400px] border-collapse">
             <thead>
               <tr style={{ background: 'var(--scanner-bg2)', borderBottom: '1px solid var(--scanner-border2)' }}>
                 {[
@@ -145,6 +174,9 @@ export default function ResultsTable({ results, settings, isScanning }) {
                   { key: 'emaPct', label: 'Δ Spread', right: true },
                   { key: 'volume24h', label: 'VOL 24H', right: true },
                   { key: 'marketCap', label: 'MKTCAP', right: true },
+                  { key: 'fundingRate', label: 'FUND', right: true },
+                  { key: 'openInterest', label: 'OI', right: true },
+                  { key: 'rVol', label: 'rVOL', right: true },
                 ].map((col, i) => (
                   <th
                     key={i}
@@ -251,6 +283,36 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct }) {
       <td className="py-3 px-4 text-right">
         <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
           {row.marketCap > 0 ? fmtMarketCap(row.marketCap) : '—'}
+        </span>
+      </td>
+
+      {/* FUNDING RATE (Hyperliquid) */}
+      <td className="py-3 px-4 text-right">
+        <span className="text-[11px] font-semibold tabular-nums" style={{
+          color: row.fundingRate == null ? 'var(--scanner-text3)' :
+                 row.fundingRate > 0 ? 'var(--scanner-green)' :
+                 row.fundingRate < 0 ? 'var(--scanner-red)' : 'var(--scanner-text2)'
+        }}>
+          {fmtFunding(row.fundingRate)}
+        </span>
+      </td>
+
+      {/* OPEN INTEREST (Hyperliquid) */}
+      <td className="py-3 px-4 text-right">
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+          {fmtOI(row.openInterest)}
+        </span>
+      </td>
+
+      {/* RELATIVE VOLUME (rVol = current / 20d SMA) */}
+      <td className="py-3 px-4 text-right">
+        <span className="text-[11px] font-semibold tabular-nums" style={{
+          color: row.rVol == null ? 'var(--scanner-text3)' :
+                 row.rVol >= 2 ? 'var(--scanner-accent)' :
+                 row.rVol >= 1.5 ? 'var(--scanner-green)' :
+                 row.rVol < 0.5 ? 'var(--scanner-text3)' : 'var(--scanner-text2)'
+        }}>
+          {fmtRVol(row.rVol)}
         </span>
       </td>
     </tr>
