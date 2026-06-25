@@ -120,7 +120,12 @@ export async function fetchAllTickers() {
     });
     if (!res.ok) return _tickerCache || new Map();
     const d = await res.json();
-    const [universe, ctxs] = Array.isArray(d) ? d : [d.universe || [], d.assetCtxs || []];
+    // Response shape: [{ universe: [...], marginTables, collateralToken }, [...assetCtxs]]
+    // d[0] is the meta object (NOT the universe array directly)
+    // d[1] is the array of per-asset contexts
+    const meta = Array.isArray(d) ? d[0] : d;
+    const ctxs = Array.isArray(d) && d.length > 1 ? d[1] : (d.assetCtxs || []);
+    const universe = meta?.universe || [];
 
     _tickerCache = new Map();
     for (let i = 0; i < universe.length; i++) {
@@ -134,7 +139,8 @@ export async function fetchAllTickers() {
           : 0,
         volume24hUsd: parseFloat(ctx.dayNtlVlm || '0'),
         volume24hBase: parseFloat(ctx.dayBaseVlm || '0'),
-        openInterest: parseFloat(ctx.openInterest || '0'),
+        openInterest: parseFloat(ctx.openInterest || '0'),  // base currency (e.g. 33017 BTC)
+        openInterestUsd: parseFloat(ctx.openInterest || '0') * parseFloat(ctx.markPx || '0'),  // USD value
         fundingRate: parseFloat(ctx.funding || '0'),
       });
     }

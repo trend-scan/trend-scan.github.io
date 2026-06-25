@@ -100,7 +100,8 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
     const rVol = computeRVol(candles, 20);
 
     // Hyperliquid per-asset data (funding, open interest) — only if available
-    const hlData = hlTickers?.[asset.symbol] || null;
+    // hlTickers is a Map (from fetchAllTickers) — use .get()
+    const hlData = hlTickers?.get(asset.symbol) || null;
 
     return {
       ...asset,
@@ -118,8 +119,8 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
       marketCapRank: marketInfo.marketCapRank || 999999,
       // Hyperliquid-specific (null if not on Hyperliquid)
       fundingRate: hlData?.fundingRate ?? null,
-      openInterest: hlData?.openInterest ?? null,
-      openInterestUsd: hlData?.volume24hUsd ?? null,  // 24h USD volume as OI proxy
+      openInterest: hlData?.openInterestUsd ?? null,  // USD value (base OI × mark price)
+      openInterestRaw: hlData?.openInterest ?? null,  // base currency (for reference)
       // Relative volume
       rVol,
     };

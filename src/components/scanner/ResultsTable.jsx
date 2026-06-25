@@ -159,28 +159,28 @@ export default function ResultsTable({ results, settings, isScanning }) {
         <EmptyState isScanning={isScanning} />
       ) : (
         <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--scanner-border2)' }}>
-          <table className="w-full min-w-[1400px] border-collapse">
+          <table className="w-full min-w-[1100px] border-collapse">
             <thead>
               <tr style={{ background: 'var(--scanner-bg2)', borderBottom: '1px solid var(--scanner-border2)' }}>
                 {[
                   { key: 'rank', label: '#', right: true },
                   { key: null, label: 'Asset' },
                   { key: null, label: 'Price', right: true },
-                  { key: 'change24h', label: '7D / 24h Δ', right: true },
-                  { key: null, label: `Fast ${fastLabel}`, right: true },
-                  { key: null, label: `Slow ${midLabel}`, right: true },
-                  { key: null, label: `Base ${slowLabel}`, right: true },
+                  { key: 'change24h', label: '24h Δ', right: true },
+                  { key: null, label: fastLabel, right: true },
+                  { key: null, label: midLabel, right: true },
+                  { key: null, label: slowLabel, right: true },
                   { key: 'pricePct', label: 'Δ Base', right: true },
                   { key: 'emaPct', label: 'Δ Spread', right: true },
-                  { key: 'volume24h', label: 'VOL 24H', right: true },
-                  { key: 'marketCap', label: 'MKTCAP', right: true },
+                  { key: 'volume24h', label: 'VOL', right: true },
+                  { key: 'marketCap', label: 'MCAP', right: true },
                   { key: 'fundingRate', label: 'FUND', right: true },
                   { key: 'openInterest', label: 'OI', right: true },
                   { key: 'rVol', label: 'rVOL', right: true },
                 ].map((col, i) => (
                   <th
                     key={i}
-                    className={`text-[8.5px] font-semibold tracking-[0.12em] uppercase whitespace-nowrap py-2.5 px-4 ${col.right ? 'text-right' : 'text-left'}`}
+                    className={`text-[8.5px] font-semibold tracking-[0.08em] uppercase whitespace-nowrap py-2 px-2.5 ${col.right ? 'text-right' : 'text-left'}`}
                     style={{
                       color: sortKey === col.key ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
                       cursor: col.key ? 'pointer' : 'default',
@@ -228,21 +228,21 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct }) {
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
     >
       {/* Rank */}
-      <td className="py-3 px-4 text-right text-[10px]" style={{ color: 'var(--scanner-text3)' }}>{row.rank}</td>
+      <td className="py-2 px-2.5 text-right text-[10px]" style={{ color: 'var(--scanner-text3)' }}>{row.rank}</td>
 
       {/* Asset */}
-      <td className="py-3 px-4">
-        <div className="text-[12px] font-bold leading-tight" style={{ color: 'var(--scanner-text)' }}>{row.symbol}</div>
+      <td className="py-2 px-2.5">
+        <div className="text-[11px] font-bold leading-tight" style={{ color: 'var(--scanner-text)' }}>{row.symbol}</div>
         <div className="text-[9px] leading-tight max-w-[80px] overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: 'var(--scanner-text3)' }}>{row.name}</div>
       </td>
 
       {/* Price */}
-      <td className="py-3 px-4 text-right">
-        <span className="text-[12px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text)' }}>{fmtPrice(row.price)}</span>
+      <td className="py-2 px-2.5 text-right">
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text)' }}>{fmtPrice(row.price)}</span>
       </td>
 
       {/* 7D Sparkline + 24h Change */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <div className="flex items-center justify-end gap-2">
           <MiniSparkline data={row.sparkline} positive={isPositive} />
           <span className="text-[11px] font-semibold tabular-nums min-w-[52px] text-right" style={{
@@ -254,40 +254,40 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct }) {
       </td>
 
       {/* Fast EMA/VWAP */}
-      <td className="py-3 px-4 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaFast)}</td>
+      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaFast)}</td>
 
       {/* Mid EMA/VWAP */}
-      <td className="py-3 px-4 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaMid)}</td>
+      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaMid)}</td>
 
       {/* Base (slow) */}
-      <td className="py-3 px-4 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaSlow)}</td>
+      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaSlow)}</td>
 
       {/* Δ Base Trend */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <PctBarCell value={row.pricePct} barWidth={pBarW} color="var(--scanner-green)" />
       </td>
 
       {/* Δ Spread */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <PctBarCell value={row.emaPct} barWidth={eBarW} color="var(--scanner-blue)" />
       </td>
 
       {/* VOL 24H */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
           {row.volume24h > 0 ? fmtVolume(row.volume24h) : '—'}
         </span>
       </td>
 
       {/* MKTCAP */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
           {row.marketCap > 0 ? fmtMarketCap(row.marketCap) : '—'}
         </span>
       </td>
 
       {/* FUNDING RATE (Hyperliquid) */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <span className="text-[11px] font-semibold tabular-nums" style={{
           color: row.fundingRate == null ? 'var(--scanner-text3)' :
                  row.fundingRate > 0 ? 'var(--scanner-green)' :
@@ -298,14 +298,14 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct }) {
       </td>
 
       {/* OPEN INTEREST (Hyperliquid) */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
           {fmtOI(row.openInterest)}
         </span>
       </td>
 
       {/* RELATIVE VOLUME (rVol = current / 20d SMA) */}
-      <td className="py-3 px-4 text-right">
+      <td className="py-2 px-2.5 text-right">
         <span className="text-[11px] font-semibold tabular-nums" style={{
           color: row.rVol == null ? 'var(--scanner-text3)' :
                  row.rVol >= 2 ? 'var(--scanner-accent)' :
