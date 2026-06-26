@@ -101,7 +101,7 @@ export function horizonReturn(prices, horizonDays) {
 export function horizonReturnWithStats(prices, horizonDays, lookback = 252) {
   if (!prices || prices.length < horizonDays + 1) return null;
 
-  const currentRet = horizonReturn(prices, horizonDays);
+  const currentRet = Math.max(-0.95, Math.min(10.0, horizonReturn(prices, horizonDays)));
   if (currentRet == null) return null;
 
   // Build baseline of overlapping h-day returns

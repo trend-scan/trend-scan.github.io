@@ -54,13 +54,13 @@ export function computeFactorScores(universe) {
     const scores = {};
 
     // 1. Momentum 12-1mo: P(t-21d) / P(t-252d) - 1
+    // Clamp to [-0.95, 5.0] to prevent extreme outliers from skewing quintiles
     if (closes.length >= 252) {
       const p21 = closes[closes.length - 22];
       const p252 = closes[closes.length - 253];
-      scores.momentum = (p21 / p252) - 1;
+      scores.momentum = Math.max(-0.95, Math.min(5.0, (p21 / p252) - 1));
     } else if (closes.length >= 30) {
-      // Fallback: 30d return
-      scores.momentum = (closes[closes.length - 1] / closes[0]) - 1;
+      scores.momentum = Math.max(-0.95, Math.min(5.0, (closes[closes.length - 1] / closes[0]) - 1));
     }
 
     // 2. Size: -log(market cap) — small cap = high score
@@ -82,9 +82,11 @@ export function computeFactorScores(universe) {
     }
 
     // 5. Liquidity: log(30d volume / market cap)
+    // Clamp to [-10, 5] to prevent extreme values from near-zero or huge volume/mcap ratios
     if (asset.marketCap > 0 && asset.candles.length >= 30) {
       const recentVol = asset.candles.slice(-30).reduce((s, c) => s + (c.vol * c.close), 0);
-      scores.liquidity = Math.log(recentVol / asset.marketCap);
+      const ratio = recentVol / asset.marketCap;
+      scores.liquidity = Math.max(-10, Math.min(5, Math.log(Math.max(ratio, 1e-10))));
     }
 
     return { symbol: asset.symbol, scores };
@@ -246,7 +248,6 @@ export function computeSpreadMonitor(portfoliosByFactor, candlesBySymbol, benchm
     result[factor] = factorData;
   }
 
-  detectIdenticalQuintiles(portfoliosByFactor);
   return result;
 }
 
@@ -294,10 +295,16 @@ function buildEqualWeightSeries(symbols, candlesBySymbol) {
   const minLen = Math.min(...seriesBySymbol.map(s => s.length));
 
   // Normalize each series to start at 1.0
+  // Clamp values to [0.01, 50] to prevent extreme outliers from dominating the average
+  // (a coin that pumped 5000x would otherwise make the equal-weight average meaningless)
   const normalized = seriesBySymbol.map(s => {
     const start = s[s.length - minLen].close;
-    return s.slice(s.length - minLen).map(c => ({ ts: c.ts, value: c.close / start }));
-  });
+    if (!start || start <= 0) return null;
+    return s.slice(s.length - minLen).map(c => ({
+      ts: c.ts,
+      value: Math.max(0.01, Math.min(50, c.close / start))
+    }));
+  }).filter(Boolean);
 
   // Average across symbols
   const out = [];

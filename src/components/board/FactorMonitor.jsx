@@ -288,15 +288,16 @@ export default function FactorMonitor() {
             .sort((a, b) => b[1] - a[1])
             .map(([factor, ret]) => {
               const maxAbs = Math.max(...Object.values(rotation.trailing_20d_returns).map(v => Math.abs(v))) || 1;
-              const widthPct = (Math.abs(ret) / maxAbs) * 100;
+              // Clamp width to max 48% so bars never overlap the percentage text
+              const widthPct = Math.min(48, (Math.abs(ret) / maxAbs) * 48);
               const isLeader = factor === rotation.leader_20d;
               const color = ret >= 0 ? 'var(--scanner-green)' : 'var(--scanner-red)';
               return (
-                <div key={factor} className="flex items-center gap-3">
-                  <span className="text-[10px] w-24 capitalize" style={{ color: isLeader ? 'var(--scanner-accent)' : 'var(--scanner-text2)', fontWeight: isLeader ? 600 : 400 }}>
+                <div key={factor} className="flex items-center gap-2">
+                  <span className="text-[10px] w-20 capitalize flex-shrink-0" style={{ color: isLeader ? 'var(--scanner-accent)' : 'var(--scanner-text2)', fontWeight: isLeader ? 600 : 400 }}>
                     {factor}
                   </span>
-                  <div className="flex-1 relative h-4" style={{ background: 'var(--scanner-bg)' }}>
+                  <div className="flex-1 relative h-4 overflow-hidden" style={{ background: 'var(--scanner-bg)', border: '1px solid var(--scanner-border)' }}>
                     <div
                       className="absolute inset-y-0"
                       style={{
@@ -308,7 +309,7 @@ export default function FactorMonitor() {
                     />
                     <div className="absolute inset-y-0 left-1/2 w-px" style={{ background: 'var(--scanner-border2)' }} />
                   </div>
-                  <span className="text-[10px] tabular-nums w-16 text-right" style={{ color }}>
+                  <span className="text-[10px] tabular-nums w-16 text-right flex-shrink-0" style={{ color }}>
                     {fmtPct(ret)}
                   </span>
                 </div>

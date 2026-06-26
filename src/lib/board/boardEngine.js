@@ -1,9 +1,8 @@
 // Market Board computation engine
 // Uses the same exchange candle data as the Trend Strength Screener
 
-import { fetchCandles, preloadExchange, fetchXStocksCandlesExport } from '../scanner/exchanges';
+import { fetchCandles, preloadExchange } from '../scanner/exchanges';
 import { CRYPTO_UNIVERSE, BENCHMARKS, ROTATION_PAIRS } from './cryptoUniverse';
-import { TRAD_UNIVERSE, TRAD_CATEGORIES, RS_BENCHMARK, STYLE_ROTATION_PAIRS, RISK_PULSE_PAIRS, SECTOR_ROTATION_TICKERS } from './tradUniverse';
 
 const TIMEFRAME = '1D';
 
@@ -496,137 +495,6 @@ function computeTradMetrics(candles) {
     atr14, atrExt50ma, volRatio,
     distMa20, distMa50, distMa200,
     sparkline,
-  };
-}
-
-export async function runTradAnalysis(onProgress) {
-  onProgress({ phase: 'loading_trad', message: 'Loading traditional market data…' });
-
-  // Fetch all traditional market assets in parallel batches
-  const allAssets = TRAD_UNIVERSE;
-  const BATCH_SIZE = 8;
-  const results = [];
-
-  for (let i = 0; i < allAssets.length; i += BATCH_SIZE) {
-    const batch = allAssets.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map(async (asset) => {
-        const candles = await fetchXStocksCandlesExport(asset.symbol, '1D', 300);
-        if (!candles || candles.length < 20) return { asset, metrics: null };
-        const metrics = computeTradMetrics(candles);
-        return { asset, metrics, candles };
-      })
-    );
-    results.push(...batchResults);
-    onProgress({
-      phase: 'loading_trad',
-      done: Math.min(i + BATCH_SIZE, allAssets.length),
-      total: allAssets.length,
-      message: `Traditional: ${Math.min(i + BATCH_SIZE, allAssets.length)}/${allAssets.length}…`
-    });
-  }
-
-  // Compute RS vs QQQ benchmark
-  const qqqResult = results.find(r => r.asset.symbol === 'QQQ');
-  const qqqRet20d = qqqResult?.metrics?.ret20d ?? 0;
-
-  for (const r of results) {
-    if (r.metrics) {
-      r.metrics.rs_qqq_20d = r.metrics.ret20d != null
-        ? r.metrics.ret20d - qqqRet20d
-        : null;
-    }
-  }
-
-  // Build regime metrics
-  const allMetrics = results.filter(r => r.metrics != null);
-  const total = allMetrics.length;
-
-  const tradRegime = {
-    total,
-    pctAbove20:  total ? Math.round(allMetrics.filter(r => r.metrics.above20  === 1).length / total * 100) : 0,
-    pctAbove50:  total ? Math.round(allMetrics.filter(r => r.metrics.above50  === 1).length / total * 100) : 0,
-    pctAbove200: total ? Math.round(allMetrics.filter(r => r.metrics.above200 === 1).length / total * 100) : 0,
-  };
-
-  // Build assets list with all metrics
-  const assets = results
-    .filter(r => r.metrics != null)
-    .map(r => ({
-      symbol: r.asset.symbol,
-      name: r.asset.name,
-      category: r.asset.category,
-      type: r.asset.type,
-      ...r.metrics,
-    }));
-
-  // Build categories summary
-  const categories = TRAD_CATEGORIES.map(cat => {
-    const catAssets = assets.filter(a => a.category === cat.name);
-    if (catAssets.length === 0) return null;
-    const avgRet20d = catAssets.reduce((s, a) => s + (a.ret20d ?? 0), 0) / catAssets.length;
-    const pctAbove20 = catAssets.filter(a => a.above20 === 1).length / catAssets.length * 100;
-    const pctAbove50 = catAssets.filter(a => a.above50 === 1).length / catAssets.length * 100;
-    return {
-      name: cat.name,
-      count: catAssets.length,
-      avgRet20d,
-      pctAbove20,
-      pctAbove50,
-    };
-  }).filter(Boolean);
-
-  // Build style rotation (QQQ/SPY, IWM/SPY, etc.)
-  const styleRotation = STYLE_ROTATION_PAIRS.map(p => {
-    const am = assets.find(a => a.symbol === p.a);
-    const bm = assets.find(a => a.symbol === p.b);
-    const diff = (a, b) => (a != null && b != null) ? a - b : null;
-    return {
-      label: p.label,
-      desc: p.desc,
-      ret5d:  diff(am?.ret5d,  bm?.ret5d),
-      ret20d: diff(am?.ret20d, bm?.ret20d),
-    };
-  });
-
-  // Build risk pulse
-  const riskPulse = RISK_PULSE_PAIRS.map(p => {
-    const am = assets.find(a => a.symbol === p.a);
-    const bm = p.b ? assets.find(a => a.symbol === p.b) : null;
-    const diff = (a, b) => (a != null && b != null) ? a - b : a ?? null;
-    return {
-      label: p.label,
-      context: p.context,
-      ret5d: bm ? diff(am?.ret5d, bm?.ret5d) : am?.ret5d ?? null,
-      ret20d: bm ? diff(am?.ret20d, bm?.ret20d) : am?.ret20d ?? null,
-    };
-  });
-
-  // Build sector rotation (RS vs SPY)
-  const spyResult = assets.find(a => a.symbol === 'SPY');
-  const spyRet20d = spyResult?.ret20d ?? 0;
-  const sectorRotation = SECTOR_ROTATION_TICKERS
-    .map(ticker => {
-      const asset = assets.find(a => a.symbol === ticker);
-      if (!asset) return null;
-      return {
-        ticker: asset.symbol,
-        name: asset.name,
-        rs_spy_20d: asset.ret20d != null ? asset.ret20d - spyRet20d : null,
-        ret20d: asset.ret20d,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => (b.rs_spy_20d ?? -99) - (a.rs_spy_20d ?? -99));
-
-  return {
-    assets,
-    categories,
-    tradRegime,
-    styleRotation,
-    riskPulse,
-    sectorRotation,
-    updatedAt: new Date().toLocaleTimeString(),
   };
 }
 

@@ -76,7 +76,12 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
     sparklineCandles
   );
 
-  const candles = await fetchCandles(asset.symbol, exchange, timeframe);
+  // Try the selected exchange first; if it fails, fall back to 'auto' resolver once
+  let candles = await fetchCandles(asset.symbol, exchange, timeframe);
+  if ((!candles || candles.length < required) && exchange !== 'auto') {
+    // Retry once via the auto resolver (tries all sources in priority order)
+    candles = await fetchCandles(asset.symbol, 'auto', timeframe);
+  }
   if (!candles || candles.length < required) return null;
 
   const closes = candles.map(c => c.close);
@@ -102,9 +107,6 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
     // Hyperliquid per-asset data (funding, open interest) — only if available
     // hlTickers is a Map (from fetchAllTickers) — use .get()
     const hlData = hlTickers instanceof Map ? hlTickers.get(asset.symbol) : null;
-    if (asset.symbol === 'BTC') {
-      console.log('[scanEngine] BTC hlData:', hlData, '| hlTickers type:', typeof hlTickers, 'isMap:', hlTickers instanceof Map);
-    }
 
     return {
       ...asset,
@@ -165,13 +167,6 @@ export async function runScan(settings, onProgress) {
     onProgress({ phase: 'fetching_market_data', message: 'Fetching Hyperliquid funding + open interest…' });
     try {
       hlTickers = await fetchHyperliquidTickers();
-      console.log('[scanEngine] Hyperliquid tickers fetched:', {
-        type: typeof hlTickers,
-        isMap: hlTickers instanceof Map,
-        size: hlTickers?.size ?? 'n/a',
-        btcEntry: hlTickers?.get?.('BTC') || 'no BTC',
-        sampleKeys: hlTickers instanceof Map ? [...hlTickers.keys()].slice(0, 5) : 'not a Map',
-      });
     } catch (e) {
       console.warn('[scanEngine] Hyperliquid ticker fetch failed:', e.message);
     }
@@ -211,13 +206,16 @@ export async function runScan(settings, onProgress) {
     matched: 0
   });
 
+  const failedAssets = [];
   const tasks = assets.map(asset => () => analyzeAsset(asset, settings, cgMarketData, hlTickers));
 
-  await runWithPool(tasks, settings.concurrency || 7, (done, match) => {
+  await runWithPool(tasks, settings.concurrency || 5, (done, match) => {
     scannedCount = done;
     if (match) {
       results.push(match);
       matchedCount++;
+    } else {
+      failedAssets.push(assets[done - 1]);
     }
     onProgress({
       phase: 'scanning',
@@ -227,6 +225,26 @@ export async function runScan(settings, onProgress) {
       results: [...results]
     });
   });
+
+  // Retry pass: re-attempt failed assets via 'auto' resolver with lower concurrency
+  if (failedAssets.length > 0) {
+    onProgress({
+      phase: 'scanning',
+      done: totalAssets,
+      total: totalAssets,
+      matched: matchedCount,
+      message: `Retrying ${failedAssets.length} failed assets…`,
+      results: [...results]
+    });
+    const retrySettings = { ...settings, exchange: 'auto' };
+    const retryTasks = failedAssets.map(asset => () => analyzeAsset(asset, retrySettings, cgMarketData, hlTickers));
+    await runWithPool(retryTasks, 3, (_, match) => {
+      if (match) {
+        results.push(match);
+        matchedCount++;
+      }
+    });
+  }
 
   const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 

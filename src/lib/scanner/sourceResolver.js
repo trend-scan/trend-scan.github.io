@@ -151,15 +151,23 @@ export async function fetchCandles(symbol, opts = {}) {
 
   for (const src of candidates) {
     try {
-      const candles = await src.fetch(symbol, timeframe, limit);
-      if (candles && candles.length >= Math.min(30, limit * 0.3)) {
+      // Add 8-second timeout per source to prevent hanging
+      const fetchPromise = src.fetch(symbol, timeframe, limit);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 8000)
+      );
+      const candles = await Promise.race([fetchPromise, timeoutPromise]);
+      if (candles && candles.length >= Math.min(20, limit * 0.1)) {
         recordSuccess(src.id, symbol);
         return { source: src.id, candles };
       }
       recordFailure(src.id, symbol);
     } catch (e) {
       recordFailure(src.id, symbol);
-      console.warn(`[resolver] ${src.id} failed for ${symbol}: ${e.message}`);
+      // Don't log timeouts — they're expected when sources are slow
+      if (!e.message.includes('timeout')) {
+        console.warn(`[resolver] ${src.id} failed for ${symbol}: ${e.message}`);
+      }
     }
   }
 
