@@ -27,9 +27,6 @@ export default function NavBar() {
         <span className="text-[11px] md:text-[12px] font-bold tracking-[0.15em] uppercase" style={{ color: 'var(--scanner-text)' }}>
           Trend<span style={{ color: 'var(--scanner-accent)' }}>Scan</span>
         </span>
-        <span className="text-[9px] font-semibold tracking-[0.2em] uppercase hidden lg:block ml-2 pl-2" style={{ color: 'var(--scanner-text3)', borderLeft: '1px solid var(--scanner-border2)' }}>
-          Crypto · Market Structure
-        </span>
       </div>
 
       {/* Nav tabs */}

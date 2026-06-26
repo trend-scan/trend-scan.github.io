@@ -35,14 +35,6 @@ export default function ScannerHeader({ settings, scanMeta }) {
     }}>
       <div className="flex items-start justify-between gap-6 px-5 md:px-8 pt-5 pb-4 flex-wrap">
         <div>
-          {/* Eyebrow */}
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--scanner-accent)', boxShadow: '0 0 6px var(--scanner-accent)' }} />
-            <span className="text-[9px] font-semibold tracking-[0.2em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
-              Crypto · Market Structure
-            </span>
-          </div>
-
           {/* Title */}
           <h1 className="text-xl md:text-2xl font-bold tracking-tight leading-none" style={{ color: 'var(--scanner-text)' }}>
             Trend{' '}
@@ -64,8 +56,13 @@ export default function ScannerHeader({ settings, scanMeta }) {
             <span style={{ color: 'var(--scanner-text2)' }}> market cap</span> filters to screen out illiquid or micro-cap assets.
           </p>
 
+          {/* Current Scan Settings label */}
+          <div className="mt-3 mb-1 text-[9px] font-bold tracking-[0.18em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+            Current Scan Settings
+          </div>
+
           {/* Live condition summary — each item on its own line */}
-          <div className="mt-3 flex flex-col gap-1 text-[10px]" style={{ color: 'var(--scanner-text2)' }}>
+          <div className="flex flex-col gap-1 text-[10px]" style={{ color: 'var(--scanner-text2)' }}>
             <div className="flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--scanner-text3)' }} />
               <span>Price above</span>
