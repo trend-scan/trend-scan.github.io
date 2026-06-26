@@ -8,26 +8,23 @@ export const CRYPTO_UNIVERSE = [
   { symbol: 'NMR',    name: 'Numeraire',          theme: 'AI & Compute',      tier: 'Active',  subtheme: 'Data Marketplace' },
   { symbol: 'OCEAN',  name: 'Ocean Protocol',     theme: 'AI & Compute',      tier: 'Active',  subtheme: 'Data Marketplace' },
   { symbol: 'GRT',    name: 'The Graph',          theme: 'AI & Compute',      tier: 'Core',    subtheme: 'Data Marketplace' },
-  { symbol: 'RNDR',   name: 'Render',             theme: 'AI & Compute',      tier: 'Active',  subtheme: 'GPU/Compute' },
-
   // Layer 1s
   { symbol: 'BTC',    name: 'Bitcoin',            theme: 'Layer 1',           tier: 'Core',    subtheme: 'Bitcoin' },
   { symbol: 'ETH',    name: 'Ethereum',           theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'SOL',    name: 'Solana',             theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'BNB',    name: 'BNB',                theme: 'Layer 1',           tier: 'Core',    subtheme: 'Exchange L1' },
   { symbol: 'HYPE',   name: 'Hyperliquid',        theme: 'Layer 1',           tier: 'Core',    subtheme: 'Perpetuals L1' },
+  { symbol: 'GRAM',   name: 'Gram (Toncoin)',      theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'ADA',    name: 'Cardano',            theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'AVAX',   name: 'Avalanche',          theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'DOT',    name: 'Polkadot',           theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'NEAR',   name: 'NEAR Protocol',      theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'APT',    name: 'Aptos',              theme: 'Layer 1',           tier: 'Active',  subtheme: 'Smart Contract L1' },
   { symbol: 'SUI',    name: 'Sui',                theme: 'Layer 1',           tier: 'Active',  subtheme: 'Smart Contract L1' },
-  { symbol: 'TON',    name: 'Toncoin',            theme: 'Layer 1',           tier: 'Core',    subtheme: 'Smart Contract L1' },
   { symbol: 'TRX',    name: 'TRON',               theme: 'Layer 1',           tier: 'Active',  subtheme: 'Smart Contract L1' },
   { symbol: 'XRP',    name: 'XRP',                theme: 'Layer 1',           tier: 'Core',    subtheme: 'Payments L1' },
 
   // Layer 2 / Scaling
-  { symbol: 'MATIC',  name: 'Polygon',            theme: 'Layer 2',           tier: 'Core',    subtheme: 'Rollup' },
   { symbol: 'POL',    name: 'Polygon (POL)',       theme: 'Layer 2',           tier: 'Active',  subtheme: 'Rollup' },
   { symbol: 'ARB',    name: 'Arbitrum',           theme: 'Layer 2',           tier: 'Core',    subtheme: 'Rollup' },
   { symbol: 'OP',     name: 'Optimism',           theme: 'Layer 2',           tier: 'Core',    subtheme: 'Rollup' },

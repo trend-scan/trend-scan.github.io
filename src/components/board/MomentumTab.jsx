@@ -39,6 +39,22 @@ export default function MomentumTab({ cleanMomentum }) {
         <span className="text-[9px] font-bold tracking-[0.18em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
           Clean Momentum — {cleanMomentum.length} assets
         </span>
+      </div>
+
+      {/* Calculation criteria description */}
+      <div className="mb-4 p-3 rounded text-[10px] leading-relaxed" style={{
+        background: 'var(--scanner-bg2)',
+        border: '1px solid var(--scanner-border2)',
+        color: 'var(--scanner-text3)',
+      }}>
+        <span style={{ color: 'var(--scanner-text2)', fontWeight: 600 }}>Criteria:</span>{' '}
+        Price above <span style={{ color: 'var(--scanner-accent)' }}>20MA</span> and{' '}
+        <span style={{ color: 'var(--scanner-accent)' }}>50MA</span> ·{' '}
+        Positive <span style={{ color: 'var(--scanner-green)' }}>5D return</span> ·{' '}
+        ATR extension <span style={{ color: 'var(--scanner-accent)' }}>1.0–5.0</span> (not overextended) ·{' '}
+        Volume ratio <span style={{ color: 'var(--scanner-accent)' }}>&gt;1.0</span> (above 20d avg) ·{' '}
+        Ranked by <span style={{ color: 'var(--scanner-text2)' }}>relative strength vs BTC (20D)</span> ·{' '}
+        Top 25 from Core/Active tier assets only.
 
         {/* Sort controls */}
         <div className="ml-auto flex items-center gap-2">
