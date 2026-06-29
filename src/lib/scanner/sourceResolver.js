@@ -71,8 +71,9 @@ const TRADFI_SOURCES = [
   { id: 'okx_swap',        tier: 1, fetch: okxTradfi.fetchCandles,
     supports: (s) => OKX_TRADFI.has(s.toUpperCase()) },
   // Lighter for everything else (214-market universe — stocks, ETFs, FX, commodities)
-  { id: 'lighter',         tier: 1, fetch: lighter.fetchCandles,
-    supports: async (s) => lighter.isSupported(s) },
+  // No supports() check — try for ALL tradfi symbols. fetchCandles returns null
+  // if the symbol isn't found, and the resolver falls through to the next source.
+  { id: 'lighter',         tier: 1, fetch: lighter.fetchCandles },
   // Binance xStocks (NVDA/TSLA backup)
   { id: 'binance_xstocks', tier: 2, fetch: binanceXStocks.fetchCandles,
     supports: (s) => binanceXStocks.isTradfi?.(s) ?? false },

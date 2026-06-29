@@ -63,7 +63,11 @@ async function loadMarketMap() {
 
 export async function getMarketId(symbol) {
   const map = await loadMarketMap();
-  return map[symbol.toUpperCase()];
+  const s = symbol.toUpperCase();
+  // Check API-fetched map first, then fall back to hardcoded known IDs
+  if (map[s]) return map[s];
+  if (KNOWN_MARKET_IDS[s]) return KNOWN_MARKET_IDS[s];
+  return null;
 }
 
 export async function isSupported(symbol) {
@@ -165,6 +169,28 @@ export const KNOWN_MARKET_IDS = {
   EURUSD: 96, GBPUSD: 97, USDJPY: 98, USDCHF: 99, USDCAD: 100,
   USDKRW: 101, AUDUSD: 102, NZDUSD: 103, USDHKD: 104,
   PAXG: 48,  // tokenized gold
+  // ─── Additional tradfi symbols (verified June 2026) ──────────────────
+  BRENTOIL: 159, NATGAS: 158, WHEAT: 170,
+  XCU: 136, XPD: 146, XPT: 147, XPL: 71,
+  EURUSD: 96, GBPUSD: 97, USDJPY: 98, USDCHF: 99, USDCAD: 100,
+  AUDUSD: 102, NZDUSD: 103, USDKRW: 101, USDHKD: 104,
+  US500: 180, US100: 181,
+  DIA: 152, IWM: 153, EWY: 166, MAGS: 155, BOTZ: 154,
+  ROBO: 149, URA: 150, SOXL: 197, SOXX: 169,
+  CRWV: 167, NBIS: 189, ARM: 206, DELL: 187,
+  ORCL: 165, IBM: 188, NOW: 191, S: 40,
+  CRCL: 121, MU: 164, SNDK: 139, LITE: 178, AAOI: 207,
+  MRVL: 174, QCOM: 209, AVGO: 210, NOK: 208,
+  RKLB: 186, GME: 176, TTWO: 179, IP: 34,
+  BABA: 177, TENCENT: 201, XIAOMI: 203, POPMART: 204,
+  SAMSUNG: 140, SAMSUNGUSD: 162, SKHYNIX: 143, SKHYNIXUSD: 161,
+  HYUNDAI: 141, HYUNDAIUSD: 160, KRCOMP: 142, BYD: 205,
+  OPENAI: 192, ANTHROPIC: 193, SPACEX: 173, MINIMAX: 199,
+  CTR: 183, H100: 182, AVNT: 82, RESOLV: 51,
+  QNT: 190, NMR: 74, CRO: 73, SKY: 79,
+  STABLE: 118, PIPPIN: 135, LAUNCHCOIN: 54,
+  WIF: 5, POPCAT: 23, GRAM: 12, ICP: 102,
+  MNT: 63, MORPHO: 68, DOLO: 184,
   OPENAI: 192, ANTHROPIC: 193, SPACEX: 173,  // pre-IPO
 };
 
