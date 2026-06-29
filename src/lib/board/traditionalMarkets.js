@@ -237,16 +237,13 @@ export async function fetchTradMarketData(onProgress) {
 
   const tasks = assets.map(asset => async () => {
     try {
-      const { source, candles } = await fetchCandles(asset.symbol, {
-        timeframe: '1D',
-        limit: 300,
-        type: 'tradfi',
-      });
+      const candles = await fetchTradfiCandles(asset.symbol, 300);
+      const source = candles ? 'lighter' : 'none';
       done++;
       onProgress?.({ done, total: assets.length });
       if (source) sourceTracker[asset.symbol] = source;
-      if (!candles || candles.length < 5) return { asset, metrics: null, source: source || 'none' };
-      return { asset, metrics: computeTradMetrics(candles), source: source || 'none' };
+      if (!candles || candles.length < 5) return { asset, metrics: null, source: 'none' };
+      return { asset, metrics: computeTradMetrics(candles), source };
     } catch (e) {
       done++;
       onProgress?.({ done, total: assets.length });
