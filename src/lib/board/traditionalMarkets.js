@@ -1,3 +1,93 @@
+// Direct Lighter API access (bypasses resolver for reliability)
+const LIGHTER_API = 'https://mainnet.zklighter.elliot.ai/api/v1';
+const LIGHTER_EXPLORER = 'https://explorer.elliot.ai/api';
+
+// Known market IDs — used directly without API lookup
+const LIGHTER_MARKET_IDS = {
+  SPY:128, QQQ:129, DIA:152, IWM:153, US500:180, US100:181,
+  NVDA:110, AAPL:113, MSFT:115, GOOGL:116, META:117, AMZN:114,
+  AMD:138, AVGO:210, MRVL:174, DELL:187, ARM:206, TSM:168, CRWV:167, NBIS:189,
+  ASML:151, INTC:137, QCOM:209, SOXL:197, SOXX:169,
+  MU:164, SNDK:139, LITE:178, AAOI:207,
+  S:40, NOW:191, ORCL:165, IBM:188,
+  COIN:109, MSTR:122, HOOD:108, CRCL:121,
+  TSLA:112, ROBO:149, RKLB:186, URA:150,
+  WTI:145, BRENTOIL:159, NATGAS:158,
+  XAU:92, XAG:93, XCU:136, XPD:146, XPT:147, XPL:71, PAXG:48,
+  BABA:177, TENCENT:201, XIAOMI:203, POPMART:204,
+  SAMSUNG:140, SAMSUNGUSD:162, SKHYNIX:143, SKHYNIXUSD:161,
+  HYUNDAI:141, HYUNDAIUSD:160, KRCOMP:142, BYD:205, EWY:166,
+  OPENAI:192, ANTHROPIC:193, SPACEX:173, MINIMAX:199,
+  GME:176, TTWO:179, IP:34, NOK:208,
+  WHEAT:170, MAGS:155, BOTZ:154,
+  EURUSD:96, GBPUSD:97, USDJPY:98, USDCHF:99, USDCAD:100,
+  AUDUSD:102, NZDUSD:103, USDKRW:101, USDHKD:104,
+};
+
+let _lighterMarketMap = null;
+async function getLighterMarketId(symbol) {
+  const s = symbol.toUpperCase();
+  if (LIGHTER_MARKET_IDS[s]) return LIGHTER_MARKET_IDS[s];
+  if (!_lighterMarketMap) {
+    try {
+      const res = await fetch(`${LIGHTER_EXPLORER}/markets`);
+      if (res.ok) {
+        const arr = await res.json();
+        _lighterMarketMap = {};
+        for (const m of arr) {
+          const sym = (m.symbol || '').toUpperCase();
+          if (sym) _lighterMarketMap[sym] = m.market_index;
+        }
+      }
+    } catch {}
+  }
+  return _lighterMarketMap?.[s] || null;
+}
+
+async function fetchLighterCandles(symbol, limit = 300) {
+  const marketId = await getLighterMarketId(symbol);
+  if (marketId == null) return null;
+  const now = Date.now();
+  const start = now - limit * 86400000;
+  const url = `${LIGHTER_API}/candles?market_id=${marketId}&resolution=1d` +
+              `&start_timestamp=${start}&end_timestamp=${now}` +
+              `&count_back=${limit}&set_timestamp_to_end=true`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.code !== 200 || !Array.isArray(d.c)) return null;
+    return d.c.map(c => ({
+      ts: c.t, open: c.o, high: c.h, low: c.l, close: c.c, vol: c.v,
+    }));
+  } catch { return null; }
+}
+
+const OKX_TRADFI = new Set(['SPY','QQQ','NVDA','TSLA','AAPL','XAU','XAG']);
+async function fetchOkxTradfiCandles(symbol, limit = 300) {
+  if (!OKX_TRADFI.has(symbol.toUpperCase())) return null;
+  const instId = `${symbol.toUpperCase()}-USDT-SWAP`;
+  const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=1D&limit=${Math.min(limit, 300)}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.code !== '0' || !Array.isArray(d.data)) return null;
+    return d.data.slice().reverse().map(c => ({
+      ts: parseInt(c[0]), open: parseFloat(c[1]), high: parseFloat(c[2]),
+      low: parseFloat(c[3]), close: parseFloat(c[4]), vol: parseFloat(c[5]),
+    }));
+  } catch { return null; }
+}
+
+async function fetchTradfiCandles(symbol, limit = 300) {
+  let candles = await fetchLighterCandles(symbol, limit);
+  if (!candles || candles.length < 5) {
+    candles = await fetchOkxTradfiCandles(symbol, limit);
+  }
+  return candles;
+}
+
 // Comprehensive tradfi universe — ALL available tickers from Lighter + OKX SWAP perps
 // Sources: Lighter (221 markets, ~97 tradfi) + OKX SWAP perps (7 tradfi)
 // Updated: June 2026 — 82 assets across 19 sector baskets
