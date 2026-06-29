@@ -27,54 +27,7 @@ const LIGHTER_MARKET_IDS = {
 let _lighterMarketMap = null;
 async function getLighterMarketId(symbol) {
   const s = symbol.toUpperCase();
-  if (LIGHTER_MARKET_IDS[s]) return LIGHTER_MARKET_IDS[s
-  // ─── Additional tickers (fetched via Massive /prev — price only) ───
-  // AI Applications (Massive /prev)
-  { symbol: 'AI', name: 'C3.ai', category: 'AI Applications', subtheme: 'Enterprise AI', tier: 'Active', type: 'Stock', source: 'massive' },
-  // AI Infrastructure (Massive /prev)
-  { symbol: 'SMCI', name: 'Super Micro Computer', category: 'AI Infrastructure', subtheme: 'Servers', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'ANET', name: 'Arista Networks', category: 'AI Infrastructure', subtheme: 'Networking', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'ALAB', name: 'Astera Labs', category: 'AI Infrastructure', subtheme: 'Connectivity', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'CDNS', name: 'Cadence Design', category: 'AI Infrastructure', subtheme: 'EDA Tools', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'SNPS', name: 'Synopsys', category: 'AI Infrastructure', subtheme: 'EDA Tools', tier: 'Active', type: 'Stock', source: 'massive' },
-  // Benchmark (Massive /prev)
-  { symbol: 'VUG', name: 'Vanguard Growth ETF', category: 'Benchmark', subtheme: 'Growth ETF', tier: 'Active', type: 'ETF', source: 'massive' },
-  { symbol: 'VTV', name: 'Vanguard Value ETF', category: 'Benchmark', subtheme: 'Value ETF', tier: 'Active', type: 'ETF', source: 'massive' },
-  // Biotech (Massive /prev)
-  { symbol: 'LLY', name: 'Eli Lilly', category: 'Biotech', subtheme: 'GLP-1 Leader', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'MRNA', name: 'Moderna', category: 'Biotech', subtheme: 'mRNA/Vaccine', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'CRSP', name: 'CRISPR Therapeutics', category: 'Biotech', subtheme: 'Gene Editing', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'XBI', name: 'SPDR S&P Biotech ETF', category: 'Biotech', subtheme: 'ETF', tier: 'Core', type: 'ETF', source: 'massive' },
-  { symbol: 'IBB', name: 'iShares Biotechnology ETF', category: 'Biotech', subtheme: 'ETF', tier: 'Active', type: 'ETF', source: 'massive' },
-  { symbol: 'REGN', name: 'Regeneron', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'GILD', name: 'Gilead Sciences', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Watch', type: 'Stock', source: 'massive' },
-  { symbol: 'AMGN', name: 'Amgen', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Watch', type: 'Stock', source: 'massive' },
-  { symbol: 'VRTX', name: 'Vertex Pharmaceuticals', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'NVO', name: 'Novo Nordisk', category: 'Biotech', subtheme: 'GLP-1 Leader', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'VKTX', name: 'Viking Therapeutics', category: 'Biotech', subtheme: 'Obesity/GLP', tier: 'Active', type: 'Stock', source: 'massive' },
-  // Defense (Massive /prev)
-  { symbol: 'PL', name: 'Planet Labs', category: 'Defense', subtheme: 'Space', tier: 'Active', type: 'Stock', source: 'massive' },
-  // Optics (Massive /prev)
-  { symbol: 'CIEN', name: 'Ciena', category: 'Optics', subtheme: 'Optical Networking', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'COHR', name: 'Coherent', category: 'Optics', subtheme: 'Optical/Photonics', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'FN', name: 'Fabrinet', category: 'Optics', subtheme: 'Optical Manufacturing', tier: 'Core', type: 'Stock', source: 'massive' },
-  // Power/Grid (Massive /prev)
-  { symbol: 'VRT', name: 'Vertiv Holdings', category: 'Power/Grid', subtheme: 'Datacenter Power/Cooling', tier: 'Core', type: 'Stock', source: 'massive' },
-  // Quantum (Massive /prev)
-  { symbol: 'QTUM', name: 'Defiance Quantum ETF', category: 'Quantum', subtheme: 'ETF', tier: 'Active', type: 'ETF', source: 'massive' },
-  // Robotics (Massive /prev)
-  { symbol: 'TER', name: 'Teradyne', category: 'Robotics', subtheme: 'Test/Cobots', tier: 'Active', type: 'Stock', source: 'massive' },
-  // Semiconductors (Massive /prev)
-  { symbol: 'AMAT', name: 'Applied Materials', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'LRCX', name: 'Lam Research', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'KLAC', name: 'KLA Corporation', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
-  { symbol: 'TXN', name: 'Texas Instruments', category: 'Semiconductors', subtheme: 'Analog', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'MCHP', name: 'Microchip Technology', category: 'Semiconductors', subtheme: 'Analog/MCU', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'ON', name: 'ON Semiconductor', category: 'Semiconductors', subtheme: 'Power/Auto', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'NXPI', name: 'NXP Semiconductors', category: 'Semiconductors', subtheme: 'Auto/Industrial', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'MPWR', name: 'Monolithic Power', category: 'Semiconductors', subtheme: 'Power', tier: 'Active', type: 'Stock', source: 'massive' },
-  { symbol: 'ADI', name: 'Analog Devices', category: 'Semiconductors', subtheme: 'Analog', tier: 'Active', type: 'Stock', source: 'massive' },
-];
+  if (LIGHTER_MARKET_IDS[s]) return LIGHTER_MARKET_IDS[s];
   if (!_lighterMarketMap) {
     try {
       const res = await fetch(`${LIGHTER_EXPLORER}/markets`);
@@ -282,7 +235,54 @@ export const TRAD_UNIVERSE = [
   { symbol: 'NZDUSD',   name: 'NZD/USD',                                category: 'Forex',                        subtheme: 'NZD/USD',                  tier: 'Watch',        type: 'Forex' },
   { symbol: 'USDKRW',   name: 'USD/KRW',                                category: 'Forex',                        subtheme: 'USD/KRW',                  tier: 'Watch',        type: 'Forex' },
   { symbol: 'USDHKD',   name: 'USD/HKD',                                category: 'Forex',                        subtheme: 'USD/HKD',                  tier: 'Watch',        type: 'Forex' },
-];
+
+  // ─── Additional tickers (fetched via Massive /prev — price only) ───
+  // AI Applications (Massive /prev)
+  { symbol: 'AI', name: 'C3.ai', category: 'AI Applications', subtheme: 'Enterprise AI', tier: 'Active', type: 'Stock', source: 'massive' },
+  // AI Infrastructure (Massive /prev)
+  { symbol: 'SMCI', name: 'Super Micro Computer', category: 'AI Infrastructure', subtheme: 'Servers', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'ANET', name: 'Arista Networks', category: 'AI Infrastructure', subtheme: 'Networking', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'ALAB', name: 'Astera Labs', category: 'AI Infrastructure', subtheme: 'Connectivity', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'CDNS', name: 'Cadence Design', category: 'AI Infrastructure', subtheme: 'EDA Tools', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'SNPS', name: 'Synopsys', category: 'AI Infrastructure', subtheme: 'EDA Tools', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Benchmark (Massive /prev)
+  { symbol: 'VUG', name: 'Vanguard Growth ETF', category: 'Benchmark', subtheme: 'Growth ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  { symbol: 'VTV', name: 'Vanguard Value ETF', category: 'Benchmark', subtheme: 'Value ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  // Biotech (Massive /prev)
+  { symbol: 'LLY', name: 'Eli Lilly', category: 'Biotech', subtheme: 'GLP-1 Leader', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'MRNA', name: 'Moderna', category: 'Biotech', subtheme: 'mRNA/Vaccine', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'CRSP', name: 'CRISPR Therapeutics', category: 'Biotech', subtheme: 'Gene Editing', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'XBI', name: 'SPDR S&P Biotech ETF', category: 'Biotech', subtheme: 'ETF', tier: 'Core', type: 'ETF', source: 'massive' },
+  { symbol: 'IBB', name: 'iShares Biotechnology ETF', category: 'Biotech', subtheme: 'ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  { symbol: 'REGN', name: 'Regeneron', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'GILD', name: 'Gilead Sciences', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Watch', type: 'Stock', source: 'massive' },
+  { symbol: 'AMGN', name: 'Amgen', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Watch', type: 'Stock', source: 'massive' },
+  { symbol: 'VRTX', name: 'Vertex Pharmaceuticals', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'NVO', name: 'Novo Nordisk', category: 'Biotech', subtheme: 'GLP-1 Leader', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'VKTX', name: 'Viking Therapeutics', category: 'Biotech', subtheme: 'Obesity/GLP', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Defense (Massive /prev)
+  { symbol: 'PL', name: 'Planet Labs', category: 'Defense', subtheme: 'Space', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Optics (Massive /prev)
+  { symbol: 'CIEN', name: 'Ciena', category: 'Optics', subtheme: 'Optical Networking', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'COHR', name: 'Coherent', category: 'Optics', subtheme: 'Optical/Photonics', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'FN', name: 'Fabrinet', category: 'Optics', subtheme: 'Optical Manufacturing', tier: 'Core', type: 'Stock', source: 'massive' },
+  // Power/Grid (Massive /prev)
+  { symbol: 'VRT', name: 'Vertiv Holdings', category: 'Power/Grid', subtheme: 'Datacenter Power/Cooling', tier: 'Core', type: 'Stock', source: 'massive' },
+  // Quantum (Massive /prev)
+  { symbol: 'QTUM', name: 'Defiance Quantum ETF', category: 'Quantum', subtheme: 'ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  // Robotics (Massive /prev)
+  { symbol: 'TER', name: 'Teradyne', category: 'Robotics', subtheme: 'Test/Cobots', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Semiconductors (Massive /prev)
+  { symbol: 'AMAT', name: 'Applied Materials', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'LRCX', name: 'Lam Research', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'KLAC', name: 'KLA Corporation', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'TXN', name: 'Texas Instruments', category: 'Semiconductors', subtheme: 'Analog', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'MCHP', name: 'Microchip Technology', category: 'Semiconductors', subtheme: 'Analog/MCU', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'ON', name: 'ON Semiconductor', category: 'Semiconductors', subtheme: 'Power/Auto', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'NXPI', name: 'NXP Semiconductors', category: 'Semiconductors', subtheme: 'Auto/Industrial', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'MPWR', name: 'Monolithic Power', category: 'Semiconductors', subtheme: 'Power', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'ADI', name: 'Analog Devices', category: 'Semiconductors', subtheme: 'Analog', tier: 'Active', type: 'Stock', source: 'massive' },
+]];
 
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
