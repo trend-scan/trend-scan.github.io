@@ -34,12 +34,15 @@ export default function Board() {
   }, []);
 
   const runTradAnalysis = useCallback(async () => {
+    // Independent of board isLoading — uses its own tradLoading state
     setTradLoading(true);
     try {
       const result = await fetchTradMarketData();
       setTradData(result);
     } catch (err) {
       console.warn('Trad market fetch failed:', err.message);
+      // Set empty data so Macro tab shows "no data" instead of infinite loading
+      setTradData(null);
     } finally {
       setTradLoading(false);
     }
@@ -69,6 +72,8 @@ export default function Board() {
     if (!hasLoaded.current) {
       hasLoaded.current = true;
       runAnalysis(DEFAULT_EXCHANGE);
+      // Also fetch tradfi data independently (for Macro tab)
+      runTradAnalysis();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -15,7 +15,7 @@ function sma(arr, period) {
 }
 
 function computeMetrics(candles) {
-  if (!candles || candles.length < 20) return null;
+  if (!candles || candles.length < 10) return null;
   const closes = candles.map(c => c.close);
   const highs   = candles.map(c => c.high);
   const lows    = candles.map(c => c.low);
@@ -506,16 +506,43 @@ export async function runBoardAnalysis(exchange, onProgress) {
   onProgress({ phase: 'fetching', message: `Fetching candles for ${allAssets.length} assets…`, done: 0, total: allAssets.length });
 
   let done = 0;
+  const failedAssets = [];
   const tasks = allAssets.map(asset => async () => {
-    const candles = await fetchCandles(asset.symbol, exchange, TIMEFRAME);
+    let candles = await fetchCandles(asset.symbol, exchange, TIMEFRAME);
+    // Retry via 'auto' resolver if the primary exchange failed
+    if ((!candles || candles.length < 10) && exchange !== 'auto') {
+      candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
+    }
     done++;
     onProgress({ phase: 'fetching', done, total: allAssets.length, message: `${done}/${allAssets.length} fetched…` });
-    if (!candles || candles.length < 20) return { asset, metrics: null, candles: null };
+    if (!candles || candles.length < 10) {
+      failedAssets.push(asset);
+      return { asset, metrics: null, candles: null };
+    }
     const metrics = computeMetrics(candles);
     return { asset, metrics, candles };
   });
 
-  const rawResults = await fetchWithPool(tasks, 8);
+  const rawResults = await fetchWithPool(tasks, 6);
+
+  // Retry pass for failed assets
+  if (failedAssets.length > 0) {
+    onProgress({ phase: 'fetching', done: allAssets.length, total: allAssets.length, message: `Retrying ${failedAssets.length} failed assets…` });
+    const retryTasks = failedAssets.map(asset => async () => {
+      const candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
+      if (!candles || candles.length < 10) return { asset, metrics: null, candles: null };
+      const metrics = computeMetrics(candles);
+      return { asset, metrics, candles };
+    });
+    const retryResults = await fetchWithPool(retryTasks, 3);
+    // Merge retry results back into rawResults
+    for (const rr of retryResults) {
+      if (rr.metrics) {
+        const idx = rawResults.findIndex(r => r.asset.symbol === rr.asset.symbol);
+        if (idx >= 0) rawResults[idx] = rr;
+      }
+    }
+  }
 
   onProgress({ phase: 'computing', message: 'Computing metrics & scores…' });
 

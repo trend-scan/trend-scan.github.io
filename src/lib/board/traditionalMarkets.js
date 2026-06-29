@@ -143,7 +143,7 @@ function computeRsi(closes, period = 14) {
 }
 
 function computeTradMetrics(candles) {
-  if (!candles || candles.length < 10) return null;
+  if (!candles || candles.length < 5) return null;
   const closes = candles.map(c => c.close);
   const highs   = candles.map(c => c.high);
   const lows    = candles.map(c => c.low);
@@ -245,7 +245,7 @@ export async function fetchTradMarketData(onProgress) {
       done++;
       onProgress?.({ done, total: assets.length });
       if (source) sourceTracker[asset.symbol] = source;
-      if (!candles || candles.length < 10) return { asset, metrics: null, source: source || 'none' };
+      if (!candles || candles.length < 5) return { asset, metrics: null, source: source || 'none' };
       return { asset, metrics: computeTradMetrics(candles), source: source || 'none' };
     } catch (e) {
       done++;
@@ -255,7 +255,7 @@ export async function fetchTradMarketData(onProgress) {
     }
   });
 
-  const rawResults = await fetchWithPool(tasks, 5);
+  const rawResults = await fetchWithPool(tasks, 3);
 
   // Compute RS vs QQQ for each asset
   const qqqResult = rawResults.find(r => r.asset.symbol === 'QQQ');
