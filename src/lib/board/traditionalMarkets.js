@@ -27,7 +27,54 @@ const LIGHTER_MARKET_IDS = {
 let _lighterMarketMap = null;
 async function getLighterMarketId(symbol) {
   const s = symbol.toUpperCase();
-  if (LIGHTER_MARKET_IDS[s]) return LIGHTER_MARKET_IDS[s];
+  if (LIGHTER_MARKET_IDS[s]) return LIGHTER_MARKET_IDS[s
+  // ─── Additional tickers (fetched via Massive /prev — price only) ───
+  // AI Applications (Massive /prev)
+  { symbol: 'AI', name: 'C3.ai', category: 'AI Applications', subtheme: 'Enterprise AI', tier: 'Active', type: 'Stock', source: 'massive' },
+  // AI Infrastructure (Massive /prev)
+  { symbol: 'SMCI', name: 'Super Micro Computer', category: 'AI Infrastructure', subtheme: 'Servers', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'ANET', name: 'Arista Networks', category: 'AI Infrastructure', subtheme: 'Networking', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'ALAB', name: 'Astera Labs', category: 'AI Infrastructure', subtheme: 'Connectivity', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'CDNS', name: 'Cadence Design', category: 'AI Infrastructure', subtheme: 'EDA Tools', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'SNPS', name: 'Synopsys', category: 'AI Infrastructure', subtheme: 'EDA Tools', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Benchmark (Massive /prev)
+  { symbol: 'VUG', name: 'Vanguard Growth ETF', category: 'Benchmark', subtheme: 'Growth ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  { symbol: 'VTV', name: 'Vanguard Value ETF', category: 'Benchmark', subtheme: 'Value ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  // Biotech (Massive /prev)
+  { symbol: 'LLY', name: 'Eli Lilly', category: 'Biotech', subtheme: 'GLP-1 Leader', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'MRNA', name: 'Moderna', category: 'Biotech', subtheme: 'mRNA/Vaccine', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'CRSP', name: 'CRISPR Therapeutics', category: 'Biotech', subtheme: 'Gene Editing', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'XBI', name: 'SPDR S&P Biotech ETF', category: 'Biotech', subtheme: 'ETF', tier: 'Core', type: 'ETF', source: 'massive' },
+  { symbol: 'IBB', name: 'iShares Biotechnology ETF', category: 'Biotech', subtheme: 'ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  { symbol: 'REGN', name: 'Regeneron', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'GILD', name: 'Gilead Sciences', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Watch', type: 'Stock', source: 'massive' },
+  { symbol: 'AMGN', name: 'Amgen', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Watch', type: 'Stock', source: 'massive' },
+  { symbol: 'VRTX', name: 'Vertex Pharmaceuticals', category: 'Biotech', subtheme: 'Large Cap Biotech', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'NVO', name: 'Novo Nordisk', category: 'Biotech', subtheme: 'GLP-1 Leader', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'VKTX', name: 'Viking Therapeutics', category: 'Biotech', subtheme: 'Obesity/GLP', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Defense (Massive /prev)
+  { symbol: 'PL', name: 'Planet Labs', category: 'Defense', subtheme: 'Space', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Optics (Massive /prev)
+  { symbol: 'CIEN', name: 'Ciena', category: 'Optics', subtheme: 'Optical Networking', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'COHR', name: 'Coherent', category: 'Optics', subtheme: 'Optical/Photonics', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'FN', name: 'Fabrinet', category: 'Optics', subtheme: 'Optical Manufacturing', tier: 'Core', type: 'Stock', source: 'massive' },
+  // Power/Grid (Massive /prev)
+  { symbol: 'VRT', name: 'Vertiv Holdings', category: 'Power/Grid', subtheme: 'Datacenter Power/Cooling', tier: 'Core', type: 'Stock', source: 'massive' },
+  // Quantum (Massive /prev)
+  { symbol: 'QTUM', name: 'Defiance Quantum ETF', category: 'Quantum', subtheme: 'ETF', tier: 'Active', type: 'ETF', source: 'massive' },
+  // Robotics (Massive /prev)
+  { symbol: 'TER', name: 'Teradyne', category: 'Robotics', subtheme: 'Test/Cobots', tier: 'Active', type: 'Stock', source: 'massive' },
+  // Semiconductors (Massive /prev)
+  { symbol: 'AMAT', name: 'Applied Materials', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'LRCX', name: 'Lam Research', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'KLAC', name: 'KLA Corporation', category: 'Semiconductors', subtheme: 'Equipment', tier: 'Core', type: 'Stock', source: 'massive' },
+  { symbol: 'TXN', name: 'Texas Instruments', category: 'Semiconductors', subtheme: 'Analog', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'MCHP', name: 'Microchip Technology', category: 'Semiconductors', subtheme: 'Analog/MCU', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'ON', name: 'ON Semiconductor', category: 'Semiconductors', subtheme: 'Power/Auto', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'NXPI', name: 'NXP Semiconductors', category: 'Semiconductors', subtheme: 'Auto/Industrial', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'MPWR', name: 'Monolithic Power', category: 'Semiconductors', subtheme: 'Power', tier: 'Active', type: 'Stock', source: 'massive' },
+  { symbol: 'ADI', name: 'Analog Devices', category: 'Semiconductors', subtheme: 'Analog', tier: 'Active', type: 'Stock', source: 'massive' },
+];
   if (!_lighterMarketMap) {
     try {
       const res = await fetch(`${LIGHTER_EXPLORER}/markets`);
@@ -81,12 +128,48 @@ async function fetchOkxTradfiCandles(symbol, limit = 300) {
 }
 
 async function fetchTradfiCandles(symbol, limit = 300) {
+  // Try Lighter first (full OHLC history)
   let candles = await fetchLighterCandles(symbol, limit);
-  if (!candles || candles.length < 5) {
-    candles = await fetchOkxTradfiCandles(symbol, limit);
-  }
-  return candles;
+  if (candles && candles.length >= 5) return candles;
+  
+  // Try OKX SWAP perps for 7 major tickers
+  candles = await fetchOkxTradfiCandles(symbol, limit);
+  if (candles && candles.length >= 5) return candles;
+  
+  // Try Massive /prev (price only — single candle, no history)
+  // This gives us at least a price for tickers not on any exchange
+  candles = await fetchMassivePrev(symbol);
+  return candles;  // May be null or single-candle
 }
+
+// ── Massive/Polygon /prev — price-only for tickers not on Lighter ─────────────
+// Free tier allows /prev (previous close) but NOT /range (historical OHLC)
+// Rate limit: ~5 req/min on free tier
+const MASSIVE_KEY = import.meta.env?.VITE_MASSIVE_API_KEY || '';
+const MASSIVE_BASE = 'https://api.polygon.io';
+
+async function fetchMassivePrev(symbol) {
+  if (!MASSIVE_KEY) return null;
+  try {
+    const url = `${MASSIVE_BASE}/v2/aggs/ticker/${encodeURIComponent(symbol)}/prev?apiKey=${MASSIVE_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.status !== 'OK' || !d.results?.length) return null;
+    const r = d.results[0];
+    // Return a single-candle "OHLC" from the prev close data
+    // c = close, o = open, h = high, l = low, v = volume
+    return [{
+      ts: r.t || Date.now(),
+      open: r.o || r.c,
+      high: r.h || r.c,
+      low: r.l || r.c,
+      close: r.c,
+      vol: r.v || 0,
+    }];
+  } catch { return null; }
+}
+
 
 // Comprehensive tradfi universe — ALL available tickers from Lighter + OKX SWAP perps
 // Sources: Lighter (221 markets, ~97 tradfi) + OKX SWAP perps (7 tradfi)
@@ -233,7 +316,21 @@ function computeRsi(closes, period = 14) {
 }
 
 function computeTradMetrics(candles) {
-  if (!candles || candles.length < 5) return null;
+  if (!candles || candles.length < 1) return null;
+  // If only 1 candle (from Massive /prev), return limited metrics
+  if (candles.length < 5) {
+    const price = candles[candles.length - 1].close;
+    return {
+      price, ma20: null, ma50: null, ma200: null,
+      ret1d: null, ret5d: null, ret20d: null, ret60d: null,
+      above20: null, above50: null, above200: null,
+      distMa20: null, distMa50: null, distMa200: null,
+      atr14: null, atrExt50ma: null, volRatio: null,
+      high52w: null, low52w: null, pctFrom52wHigh: null,
+      rsi14: null,
+      sparkline: [price],
+    };
+  }
   const closes = candles.map(c => c.close);
   const highs   = candles.map(c => c.high);
   const lows    = candles.map(c => c.low);
