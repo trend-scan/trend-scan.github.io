@@ -75,6 +75,7 @@ jobs:
           # resolver uses free sources). Optional secret.
           VITE_MASSIVE_API_KEY: ${{ secrets.VITE_MASSIVE_API_KEY }}
           VITE_ALPHAVANTAGE_KEY: ${{ secrets.VITE_ALPHAVANTAGE_KEY }}
+          VITE_TWELVEDATA_KEY: ${{ secrets.VITE_TWELVEDATA_KEY }}
         run: npm run build
 
       - name: Copy snapshot.json into build output
