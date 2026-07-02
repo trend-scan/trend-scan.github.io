@@ -81,7 +81,7 @@ async function fetchOkxTradfiCandles(symbol, limit = 300) {
 }
 
 async function fetchTradfiCandles(symbol, limit = 300) {
-  // Try Lighter first (full OHLC history)
+  // Try Lighter first (full OHLC history — 300 daily candles)
   let candles = await fetchLighterCandles(symbol, limit);
   if (candles && candles.length >= 5) return candles;
   
@@ -89,37 +89,48 @@ async function fetchTradfiCandles(symbol, limit = 300) {
   candles = await fetchOkxTradfiCandles(symbol, limit);
   if (candles && candles.length >= 5) return candles;
   
-  // Try Massive /prev (price only — single candle, no history)
-  // This gives us at least a price for tickers not on any exchange
-  candles = await fetchMassivePrev(symbol);
-  return candles;  // May be null or single-candle
+  // Try Twelve Data (full OHLC history — up to 365 daily candles)
+  // 800 req/day free tier — covers stocks, ETFs, forex
+  candles = await fetchTwelveDataCandles(symbol, limit);
+  return candles;  // May be null if all sources failed
 }
 
-// ── Massive/Polygon /prev — price-only for tickers not on Lighter ─────────────
-// Free tier allows /prev (previous close) but NOT /range (historical OHLC)
-// Rate limit: ~5 req/min on free tier
-const MASSIVE_KEY = import.meta.env?.VITE_MASSIVE_API_KEY || '';
-const MASSIVE_BASE = 'https://api.polygon.io';
+// ── Twelve Data — full OHLC history for tickers not on Lighter ────────────────
+// Free tier: 800 req/day, 8 req/min, 1 year daily history
+// Covers US stocks, ETFs, forex, crypto — broader than Massive /prev
+const TWELVEDATA_KEY = import.meta.env?.VITE_TWELVEDATA_KEY || '';
+const TWELVEDATA_BASE = 'https://api.twelvedata.com';
 
-async function fetchMassivePrev(symbol) {
-  if (!MASSIVE_KEY) return null;
+// Twelve Data symbol formatting
+const TD_FOREX = new Set(['EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD','USDKRW','USDHKD']);
+function formatTdSymbol(symbol) {
+  const s = symbol.toUpperCase();
+  if (s.includes('/')) return s;
+  if (TD_FOREX.has(s)) return `${s.slice(0,3)}/${s.slice(3)}`;
+  // Metals
+  if (['XAU','XAG','XCU','XPD','XPT'].includes(s)) return `${s}/USD`;
+  // Default: US stock/ETF (no suffix needed)
+  return s;
+}
+
+async function fetchTwelveDataCandles(symbol, limit = 300) {
+  if (!TWELVEDATA_KEY) return null;
+  const tdSymbol = formatTdSymbol(symbol);
+  const outputsize = Math.min(limit, 365);  // Free tier: 1 year max
+  const url = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=${outputsize}&apikey=${TWELVEDATA_KEY}&format=JSON`;
   try {
-    const url = `${MASSIVE_BASE}/v2/aggs/ticker/${encodeURIComponent(symbol)}/prev?apiKey=${MASSIVE_KEY}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const d = await res.json();
-    if (d.status !== 'OK' || !d.results?.length) return null;
-    const r = d.results[0];
-    // Return a single-candle "OHLC" from the prev close data
-    // c = close, o = open, h = high, l = low, v = volume
-    return [{
-      ts: r.t || Date.now(),
-      open: r.o || r.c,
-      high: r.h || r.c,
-      low: r.l || r.c,
-      close: r.c,
-      vol: r.v || 0,
-    }];
+    if (d.status === 'error' || !d.values) return null;
+    return d.values.slice().reverse().map(c => ({
+      ts: new Date(c.datetime).getTime(),
+      open: parseFloat(c.open),
+      high: parseFloat(c.high),
+      low: parseFloat(c.low),
+      close: parseFloat(c.close),
+      vol: parseFloat(c.volume) || 0,
+    }));
   } catch { return null; }
 }
 
@@ -316,21 +327,7 @@ function computeRsi(closes, period = 14) {
 }
 
 function computeTradMetrics(candles) {
-  if (!candles || candles.length < 1) return null;
-  // If only 1 candle (from Massive /prev), return limited metrics
-  if (candles.length < 5) {
-    const price = candles[candles.length - 1].close;
-    return {
-      price, ma20: null, ma50: null, ma200: null,
-      ret1d: null, ret5d: null, ret20d: null, ret60d: null,
-      above20: null, above50: null, above200: null,
-      distMa20: null, distMa50: null, distMa200: null,
-      atr14: null, atrExt50ma: null, volRatio: null,
-      high52w: null, low52w: null, pctFrom52wHigh: null,
-      rsi14: null,
-      sparkline: [price],
-    };
-  }
+  if (!candles || candles.length < 5) return null;
   const closes = candles.map(c => c.close);
   const highs   = candles.map(c => c.high);
   const lows    = candles.map(c => c.low);
