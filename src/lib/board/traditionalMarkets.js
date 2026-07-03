@@ -89,10 +89,13 @@ async function fetchTradfiCandles(symbol, limit = 300) {
   candles = await fetchOkxTradfiCandles(symbol, limit);
   if (candles && candles.length >= 5) return candles;
   
-  // Try Twelve Data (full OHLC history — up to 365 daily candles)
-  // 800 req/day free tier — covers stocks, ETFs, forex
-  candles = await fetchTwelveDataCandles(symbol, limit);
-  return candles;  // May be null if all sources failed
+  // Try Twelve Data ONLY for tickers not on Lighter (saves API credits)
+  // Lighter covers 85 tickers; Twelve Data handles the remaining ~35
+  if (!LIGHTER_MARKET_IDS[symbol.toUpperCase()]) {
+    candles = await fetchTwelveDataCandles(symbol, limit);
+    if (candles && candles.length >= 5) return candles;
+  }
+  return null;  // All sources failed
 }
 
 // ── Twelve Data — full OHLC history for tickers not on Lighter ────────────────
@@ -113,8 +116,20 @@ function formatTdSymbol(symbol) {
   return s;
 }
 
+// Twelve Data cache — 1 hour TTL (reduces API credit usage dramatically)
+const _tdCache = new Map();
+const TD_CACHE_TTL = 60 * 60 * 1000;  // 1 hour
+
 async function fetchTwelveDataCandles(symbol, limit = 300) {
   if (!TWELVEDATA_KEY) return null;
+  
+  // Check cache first
+  const cacheKey = symbol.toUpperCase();
+  const cached = _tdCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < TD_CACHE_TTL) {
+    return cached.data;
+  }
+  
   const tdSymbol = formatTdSymbol(symbol);
   const outputsize = Math.min(limit, 365);  // Free tier: 1 year max
   const url = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=${outputsize}&apikey=${TWELVEDATA_KEY}&format=JSON`;
@@ -123,7 +138,7 @@ async function fetchTwelveDataCandles(symbol, limit = 300) {
     if (!res.ok) return null;
     const d = await res.json();
     if (d.status === 'error' || !d.values) return null;
-    return d.values.slice().reverse().map(c => ({
+    const candles = d.values.slice().reverse().map(c => ({
       ts: new Date(c.datetime).getTime(),
       open: parseFloat(c.open),
       high: parseFloat(c.high),
@@ -131,6 +146,9 @@ async function fetchTwelveDataCandles(symbol, limit = 300) {
       close: parseFloat(c.close),
       vol: parseFloat(c.volume) || 0,
     }));
+    // Cache the result
+    _tdCache.set(cacheKey, { ts: Date.now(), data: candles });
+    return candles;
   } catch { return null; }
 }
 
