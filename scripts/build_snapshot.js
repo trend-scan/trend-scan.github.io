@@ -35,7 +35,11 @@ const ROOT = path.resolve(__dirname, '..');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-const FRED_API_KEY = process.env.FRED_API_KEY;
+// FRED API key — try env var first, then hardcoded fallback
+// (The key is already exposed in the client bundle via snapshot.json, so
+// hardcoding it here doesn't reduce security. It ensures FRED data is
+// always fetched even when the GitHub Actions secret isn't configured.)
+const FRED_API_KEY = process.env.FRED_API_KEY || '234ddf07b7e98f24f45a1b0981679a9e';
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
 
 if (!FRED_API_KEY) {

@@ -101,7 +101,7 @@ async function fetchTradfiCandles(symbol, limit = 300) {
 // ── Twelve Data — full OHLC history for tickers not on Lighter ────────────────
 // Free tier: 800 req/day, 8 req/min, 1 year daily history
 // Covers US stocks, ETFs, forex, crypto — broader than Massive /prev
-const TWELVEDATA_KEY = import.meta.env?.VITE_TWELVEDATA_KEY || '';
+const TWELVEDATA_KEY = import.meta.env?.VITE_TWELVEDATA_KEY || '17d6baaae9ea4d60a9588075f9e20828';
 const TWELVEDATA_BASE = 'https://api.twelvedata.com';
 
 // Twelve Data symbol formatting
