@@ -102,5 +102,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Snapshot size:** $(du -h dist/snapshot.json | cut -f1)" >> $GITHUB_STEP_SUMMARY
           echo "- **Bundle size:** $(du -sh dist/assets | cut -f1)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployed to:** https://drewnotcarey.github.io/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed to:** https://trend-scan.github.io/" >> $GITHUB_STEP_SUMMARY
           echo "- **Build time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
