@@ -58,10 +58,10 @@ export default function FactorMonitor() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [h[hasLoaded, setH[h[hasLoaded] = useState(false);
 
   useEffect(() => {
-    if (!hasLoaded) return;  // Wait for manual trigger
+    if (!h[hasLoaded) return;  // Wait for manual trigger
     let cancelled = false;
 
     async function load() {
@@ -152,9 +152,9 @@ export default function FactorMonitor() {
       }
     }
 
-    if (hasLoaded) load();
+    if (h[hasLoaded) load();
     return () => { cancelled = true; };
-  }, [hasLoaded]);
+  }, [h[h[hasLoaded]);
 
   if (loading) {
     return (
@@ -168,7 +168,7 @@ export default function FactorMonitor() {
     );
   }
 
-  if (!hasLoaded && !loading && !data) {
+  if (!h[hasLoaded && !loading && !data) {
     return (
       <div className="font-mono text-center py-12 px-5">
         <div className="text-3xl mb-4 opacity-30">◈</div>
@@ -177,7 +177,7 @@ export default function FactorMonitor() {
           Click below to fetch top 100 crypto assets and compute factor quintile portfolios
         </div>
         <button
-          onClick={() => { setHasLoaded(true); setLoading(true); }}
+          onClick={() => { setH[hasLoaded(true); setLoading(true); }}
           className="font-mono text-[10px] font-bold tracking-wide px-4 py-2 rounded"
           style={{ background: 'var(--scanner-accent)', color: '#000', border: 'none', cursor: 'pointer' }}
         >
@@ -200,7 +200,7 @@ export default function FactorMonitor() {
             setError(null);
             setLoading(true);
             // Force re-render by toggling state; the useEffect will re-run
-            setHasLoaded(true); setLoading(true);
+            setH[hasLoaded(true); setLoading(true);
           }}
           className="font-mono text-[10px] font-bold tracking-wide px-4 py-2 rounded"
           style={{
