@@ -70,6 +70,12 @@ jobs:
       - name: Typecheck (non-blocking)
         run: npm run typecheck || echo "⚠ Typecheck warnings (non-blocking)"
 
+      - name: CSP verification (non-blocking)
+        # Verifies every external URL referenced in src/ is allowed by the
+        # Content-Security-Policy in index.html. Catches the regression where
+        # someone adds a new API endpoint but forgets to update the CSP.
+        run: python3 scripts/verify-csp.py || echo "⚠ CSP verification warnings (non-blocking)"
+
       - name: Build FRED snapshot
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
@@ -101,6 +107,40 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+
+      - name: Post-deploy smoke test
+        # Wait for the Pages CDN to propagate, then verify the live site
+        # responds with HTTP 200 and serves the expected HTML. Catches
+        # silent deployment failures (the kind that caused the July 4
+        # incident where CI was "passing" but no deploy actually shipped).
+        run: |
+          sleep 15
+          echo "Polling https://trend-scan.github.io/ ..."
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://trend-scan.github.io/ || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✓ Live site returned HTTP 200 (attempt $i)"
+              break
+            fi
+            echo "  attempt $i: HTTP $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          if [ "$STATUS" != "200" ]; then
+            echo "⚠ Live site did not return HTTP 200 after 5 attempts (last: $STATUS)"
+            echo "  This may indicate a deployment propagation delay or a real failure."
+            echo "  Manual verification recommended: https://trend-scan.github.io/"
+            # Non-blocking: don't fail the workflow, just warn. The deploy
+            # step itself already passed, so the artifact is uploaded; the
+            # smoke test is purely informational.
+          fi
+          # Also verify snapshot.json is served (FRED data is critical for
+          # the macro regime tab to work).
+          SNAP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://trend-scan.github.io/snapshot.json || echo "000")
+          if [ "$SNAP_STATUS" = "200" ]; then
+            echo "✓ Live snapshot.json returned HTTP 200"
+          else
+            echo "⚠ Live snapshot.json returned HTTP $SNAP_STATUS (expected 200)"
+          fi
 
       - name: Summary
         run: |

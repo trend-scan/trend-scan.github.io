@@ -18,6 +18,55 @@
     <meta name="theme-color" content="#06090f" />
     <meta name="description" content="Multi-source crypto + tradfi market scanner with macro regime monitoring. Real-time data from 8+ exchanges, no API key required." />
 
+    <!--
+      Content-Security-Policy: restricts what the browser is allowed to load
+      and execute. Defends against XSS injection by whitelisting origins.
+
+      Directives:
+        default-src 'self'                       — fallback for any directive not listed
+        script-src                               — JS sources (Vite bundle + Cloudflare Insights beacon)
+        style-src                                — CSS sources (Vite bundle + Google Fonts CSS @import + unsafe-inline for runtime styles)
+        font-src                                 — Google Fonts static files
+        img-src                                  — images: self, data: URIs, https: for OG/twitter card images
+        connect-src                              — runtime fetch() / XHR endpoints (all exchange + macro + treasury APIs)
+        worker-src                               — Web Workers (none currently, but allowed from self for future use)
+        frame-ancestors 'none'                   — prevent clickjacking (no embedding)
+        base-uri 'self'                          — prevent <base> tag injection
+        form-action 'self'                       — prevent form submissions to external origins
+        object-src 'none'                        — no Flash/Java/plugins
+    -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' https://static.cloudflareinsights.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: https:;
+      connect-src 'self'
+        https://api.hyperliquid.xyz
+        https://api.bybit.com
+        https://api.coingecko.com
+        https://api.coincap.io
+        https://api.binance.com
+        https://fapi.binance.com
+        https://www.okx.com
+        https://mainnet.zklighter.elliot.ai
+        https://api.polygon.io
+        https://api.massive.com
+        https://api.twelvedata.com
+        https://api.kraken.com
+        https://api.alternative.me
+        https://api.fiscaldata.treasury.gov
+        https://fiscaldata.treasury.gov
+        https://www.alphavantage.co
+        https://cloudflareinsights.com
+        https://static.cloudflareinsights.com;
+      worker-src 'self';
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+      object-src 'none';
+    " />
+
     <!-- Open Graph / social media cards -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="TrendScan" />
