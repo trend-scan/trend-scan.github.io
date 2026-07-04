@@ -13,7 +13,6 @@
     "build:snapshot": "node scripts/build_snapshot.js"
   },
   "dependencies": {
-    "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -48,7 +47,6 @@
     "lucide-react": "^0.475.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-hook-form": "^7.54.2",
     "react-markdown": "^9.0.1",
     "react-router-dom": "^6.26.0",
     "recharts": "^2.15.4",

@@ -64,6 +64,12 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Lint (non-blocking)
+        run: npm run lint || echo "⚠ Lint warnings (non-blocking)"
+
+      - name: Typecheck (non-blocking)
+        run: npm run typecheck || echo "⚠ Typecheck warnings (non-blocking)"
+
       - name: Build FRED snapshot
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}

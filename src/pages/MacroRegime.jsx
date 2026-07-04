@@ -247,6 +247,28 @@ export default function MacroRegime() {
     // When FRED is unavailable, count only signals that don't require FRED data
     const fredSignals = fredAvailable ? totalSignals : growthSignals.filter(s => !s.requiresFred).length;
 
+    // Persist regime quadrant history to localStorage for rotation detection
+    // (RegimeCard reads 'trendscan_regime_history' for flip-flag logic)
+    // MUST be above the return — otherwise it's unreachable dead code
+    try {
+      const historyKey = 'trendscan_regime_history';
+      const existing = JSON.parse(localStorage.getItem(historyKey) || '[]');
+      const today = new Date().toISOString().split('T')[0];
+      if (!existing.find(h => h.date === today)) {
+        existing.push({
+          date: today,
+          quadrant,
+          growth: growthLabel,
+          inflation: inflationLabel,
+          liquidity: liquidityLabel,
+        });
+        const pruned = existing.slice(-90);
+        localStorage.setItem(historyKey, JSON.stringify(pruned));
+      }
+    } catch (e) {
+      console.warn('[MacroRegime] history persist failed:', e.message);
+    }
+
     return {
       quadrant,
       liquidity,
@@ -281,27 +303,6 @@ export default function MacroRegime() {
       btcPrice,
       lastUpdated: new Date().toISOString(),
     };
-
-  // Persist regime quadrant history to localStorage for rotation detection
-  // (RegimeCard reads 'trendscan_regime_history' for flip-flag logic)
-  try {
-    const historyKey = 'trendscan_regime_history';
-    const existing = JSON.parse(localStorage.getItem(historyKey) || '[]');
-    const today = new Date().toISOString().split('T')[0];
-    if (!existing.find(h => h.date === today)) {
-      existing.push({
-        date: today,
-        quadrant: regime.quadrant,
-        growth: regime.growth?.label,
-        inflation: regime.inflation?.label,
-        liquidity: regime.liquidityData?.label,
-      });
-      const pruned = existing.slice(-90);
-      localStorage.setItem(historyKey, JSON.stringify(pruned));
-    }
-  } catch (e) {
-    console.warn('[MacroRegime] history persist failed:', e.message);
-  }
   }, [rawData]);
 
   // Seasonality (from Ken French data in snapshot)
