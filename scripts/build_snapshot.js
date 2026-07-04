@@ -28,6 +28,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +48,7 @@ const path = require("path");
 // Load previous snapshot for stale-data fallback
 let _prevSnapshot = null;
 try {
-  _prevSnapshot = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "public", "snapshot.json"), "utf8"));
+  _prevSnapshot = JSON.parse(fs.readFileSync(path.join(ROOT, "public", "snapshot.json"), "utf8"));
 } catch {}
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
 
