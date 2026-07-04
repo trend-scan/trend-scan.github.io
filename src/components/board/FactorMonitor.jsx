@@ -55,7 +55,7 @@ function ZCell({ ret, z, pctile }) {
 
 export default function FactorMonitor() {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -154,7 +154,7 @@ export default function FactorMonitor() {
 
     if (hasLoaded) load();
     return () => { cancelled = true; };
-  }, []);
+  }, [hasLoaded]);
 
   if (loading) {
     return (
