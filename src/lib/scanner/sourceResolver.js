@@ -100,6 +100,14 @@ function recordFailure(sourceId, symbol) {
   f.count++;
   f.lastFail = Date.now();
   _failures.set(k, f);
+
+  // LRU cap: if Map grows too large, delete oldest entries
+  if (_failures.size > 500) {
+    const oldest = [..._failures.entries()]
+      .sort((a, b) => a[1].lastFail - b[1].lastFail)
+      .slice(0, 100);
+    for (const [key] of oldest) _failures.delete(key);
+  }
 }
 
 function recordSuccess(sourceId, symbol) {
