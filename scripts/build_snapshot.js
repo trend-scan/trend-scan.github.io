@@ -318,7 +318,7 @@ async function main() {
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
   console.log('');
 
-  const [fred, coingecko, fearGreed, kenFrench, cboe] = await Promise.all([
+  let [fred, coingecko, fearGreed, kenFrench, cboe] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
