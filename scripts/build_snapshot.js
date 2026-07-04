@@ -28,8 +28,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
-import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,8 +40,6 @@ const ROOT = path.resolve(__dirname, '..');
 // hardcoding it here doesn't reduce security. It ensures FRED data is
 // always fetched even when the GitHub Actions secret isn't configured.)
 const FRED_API_KEY = process.env.FRED_API_KEY;
-const fs = require("fs");
-const path = require("path");
 
 // Load previous snapshot for stale-data fallback
 let _prevSnapshot = null;
