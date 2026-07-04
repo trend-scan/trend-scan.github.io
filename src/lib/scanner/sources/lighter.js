@@ -157,41 +157,43 @@ export async function fetchTicker(symbol) {
 
 // Pre-known market IDs for common tradfi tickers (saves a /markets call at startup)
 export const KNOWN_MARKET_IDS = {
-  BTC: 1, ETH: 0, SOL: 2,
-  SPY: 128, QQQ: 129, DIA: 152, IWM: 153,
-  TSLA: 112, NVDA: 110, AAPL: 113, AMZN: 114, MSFT: 115, GOOGL: 116, META: 117,
-  HOOD: 108, COIN: 109, MSTR: 122, PLTR: 137, AMD: 138, MU: 164,  // INTC removed (duplicate market_id — resolved via API)
-  ORCL: 165, GME: 176, BABA: 177, TSM: 168, RKLB: 186, DELL: 187,
-  US500: 180, US100: 181,  // S&P 500 + Nasdaq 100 indices
-  XAU: 92, XAG: 93, XCU: 136, XPT: 147, XPD: 146,  // gold, silver, copper, platinum, palladium
-  WTI: 145, BRENTOIL: 159, NATGAS: 158,  // energy
-  WHEAT: 170,  // agriculture
-  EURUSD: 96, GBPUSD: 97, USDJPY: 98, USDCHF: 99, USDCAD: 100,
-  USDKRW: 101, AUDUSD: 102, NZDUSD: 103, USDHKD: 104,
-  PAXG: 48,  // tokenized gold
-  // ─── Additional tradfi symbols (verified June 2026) ──────────────────
-  BRENTOIL: 159, NATGAS: 158, WHEAT: 170,
-  XCU: 136, XPD: 146, XPT: 147, XPL: 71,
-  EURUSD: 96, GBPUSD: 97, USDJPY: 98, USDCHF: 99, USDCAD: 100,
-  AUDUSD: 102, NZDUSD: 103, USDKRW: 101, USDHKD: 104,
-  US500: 180, US100: 181,
-  DIA: 152, IWM: 153, EWY: 166, MAGS: 155, BOTZ: 154,
-  ROBO: 149, URA: 150, SOXL: 197, SOXX: 169,
-  CRWV: 167, NBIS: 189, ARM: 206, DELL: 187,
-  ORCL: 165, IBM: 188, NOW: 191, S: 40,
-  CRCL: 121, MU: 164, SNDK: 139, LITE: 178, AAOI: 207,
-  MRVL: 174, QCOM: 209, AVGO: 210, NOK: 208,
-  RKLB: 186, GME: 176, TTWO: 179, IP: 34,
+  // Crypto
+  BTC: 1, ETH: 0, SOL: 2, GRAM: 12, ICP: 102, MNT: 63, MORPHO: 68,
+  WIF: 5, POPCAT: 23, DOLO: 184,
+  // Benchmark ETFs & Indices
+  SPY: 128, QQQ: 129, DIA: 152, IWM: 153, US500: 180, US100: 181,
+  // AI Infrastructure
+  NVDA: 110, AAPL: 113, MSFT: 115, GOOGL: 116, META: 117, AMZN: 114,
+  AMD: 138, AVGO: 210, MRVL: 174, DELL: 187, ARM: 206, TSM: 168,
+  CRWV: 167, NBIS: 189, ORCL: 165, IBM: 188, NOW: 191, S: 40,
+  // Semiconductors
+  ASML: 151, INTC: 137, QCOM: 209, SOXL: 197, SOXX: 169,
+  // Memory & Optics
+  MU: 164, SNDK: 139, LITE: 178, AAOI: 207,
+  // Crypto Equities
+  COIN: 109, MSTR: 122, HOOD: 108, CRCL: 121,
+  // Robotics & Defense
+  TSLA: 112, ROBO: 149, RKLB: 186, URA: 150,
+  // Energy
+  WTI: 145, BRENTOIL: 159, NATGAS: 158,
+  // Metals
+  XAU: 92, XAG: 93, XCU: 136, XPD: 146, XPT: 147, XPL: 71, PAXG: 48,
+  // Agriculture
+  WHEAT: 170, MAGS: 155,
+  // ETFs
+  EWY: 166, BOTZ: 154,
+  // International
   BABA: 177, TENCENT: 201, XIAOMI: 203, POPMART: 204,
   SAMSUNG: 140, SAMSUNGUSD: 162, SKHYNIX: 143, SKHYNIXUSD: 161,
   HYUNDAI: 141, HYUNDAIUSD: 160, KRCOMP: 142, BYD: 205,
+  // Pre-IPO
   OPENAI: 192, ANTHROPIC: 193, SPACEX: 173, MINIMAX: 199,
+  // Consumer
+  GME: 176, TTWO: 179, IP: 34, NOK: 208,
+  // Other
   CTR: 183, H100: 182, AVNT: 82, RESOLV: 51,
   QNT: 190, NMR: 74, CRO: 73, SKY: 79,
   STABLE: 118, PIPPIN: 135, LAUNCHCOIN: 54,
-  WIF: 5, POPCAT: 23, GRAM: 12, ICP: 102,
-  MNT: 63, MORPHO: 68, DOLO: 184,
-  OPENAI: 192, ANTHROPIC: 193, SPACEX: 173,  // pre-IPO
 };
 
 export const sourceMeta = {
