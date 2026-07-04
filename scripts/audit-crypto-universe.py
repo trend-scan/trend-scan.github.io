@@ -130,26 +130,36 @@ def fetch_binance_perps_universe():
     We normalize these so the audit can match against the bare symbol,
     but we keep the actual baseAsset so the source file knows what to
     pass to the API.
+
+    Falls back to /tmp/binance_perps.json cache if live fetch fails
+    (Binance returns HTTP 418 when rate-limited).
     """
+    cache_path = Path('/tmp/binance_perps.json')
+    d = None
     try:
         d = fetch_json('https://fapi.binance.com/fapi/v1/exchangeInfo')
-        coins = {}  # normalized -> actual
-        for inst in d.get('symbols', []):
-            if inst.get('contractType') == 'PERPETUAL':
-                base = inst.get('baseAsset', '')
-                quote = inst.get('quoteAsset', '')
-                if base and quote == 'USDT':
-                    # Add the bare symbol as-is
-                    coins[base] = base
-                    # Strip common Binance prefixes for low-priced tokens
-                    if base.startswith('1000000'):
-                        coins[base[7:]] = base
-                    elif base.startswith('1000'):
-                        coins[base[4:]] = base
-        return coins
     except Exception as e:
-        print(f"  ! Binance perps fetch failed: {e}", file=sys.stderr)
+        print(f"  ! Binance perps live fetch failed: {e}", file=sys.stderr)
+        if cache_path.exists():
+            try:
+                d = json.loads(cache_path.read_text())
+                print(f"  (Binance: loaded from cache at {cache_path})", file=sys.stderr)
+            except Exception as e2:
+                print(f"  ! Binance cache load failed: {e2}", file=sys.stderr)
+    if d is None:
         return {}
+    coins = {}  # normalized -> actual
+    for inst in d.get('symbols', []):
+        if inst.get('contractType') == 'PERPETUAL':
+            base = inst.get('baseAsset', '')
+            quote = inst.get('quoteAsset', '')
+            if base and quote == 'USDT':
+                coins[base] = base
+                if base.startswith('1000000'):
+                    coins[base[7:]] = base
+                elif base.startswith('1000'):
+                    coins[base[4:]] = base
+    return coins
 
 
 def fetch_coingecko_snapshot():
