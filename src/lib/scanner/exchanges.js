@@ -426,7 +426,7 @@ export async function fetch24hChange(symbol, exchange, candles) {
   try {
     // For 'auto' or resolver-based sources, derive 24h change from fetched candles
     if (!exchange || exchange === 'auto' || exchange === 'massive' ||
-        ['hyperliquid', 'bybit', 'coingecko', 'lighter'].includes(exchange)) {
+        ['hyperliquid', 'bybit', 'coingecko', 'lighter', 'binance_perps'].includes(exchange)) {
       if (candles && candles.length >= 2) {
         const now = Date.now();
         const target = now - 24 * 60 * 60 * 1000;
@@ -528,11 +528,15 @@ export async function fetchCandles(symbol, exchange, timeframe = '4H') {
   if (exchange === 'okx_perps') return await fetchOKXPerpsCandles(symbol, timeframe);
   if (exchange === 'kraken') return await fetchKrakenCandles(symbol, timeframe);
   if (exchange === 'binance') return await fetchBinanceCandles(symbol, timeframe);
-  if (exchange === 'binance_perps') return await fetchBinancePerpsCandles(symbol, timeframe);
+  // binance_perps now routes through the resolver — the new binancePerps.js
+  // source handles 1000x/1000000x prefix normalization (XEC→1000XEC, etc.)
+  // which the legacy fetchBinancePerpsCandles didn't, causing silent failures
+  // for low-priced tokens. Legacy function kept for fallback in case the
+  // resolver is unavailable, but not used in the normal flow.
   // New resolver-based sources — route through resolver with preferredSource
   // (gate and kucoin were removed: their public APIs are CORS-blocked for
   // browser-side fetches. The sourceResolver no longer imports them.)
-  if (['hyperliquid', 'bybit', 'coingecko'].includes(exchange)) {
+  if (['hyperliquid', 'bybit', 'coingecko', 'binance_perps'].includes(exchange)) {
     const { candles } = await resolveCandles(symbol, { timeframe, preferredSource: exchange });
     return candles;
   }

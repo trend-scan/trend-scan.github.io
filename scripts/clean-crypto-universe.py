@@ -27,7 +27,7 @@ UNIVERSE_PATH = ROOT / "src/lib/board/cryptoUniverse.js"
 
 
 def fetch_json(url, method='GET', body=None):
-    headers = {'User-Agent': 'TrendScan-Audit/1.0'}
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
     if body:
         headers['Content-Type'] = 'application/json'
         body = json.dumps(body).encode()

@@ -1,6 +1,9 @@
 /**
  * Bybit v5 — free, no API key, CORS-enabled
- * Strong crypto OHLC source with high liquidity. Spot + perps.
+ * Strong crypto OHLC source with deep liquidity. Spot + linear perps.
+ *
+ * Strategy: try linear perps first (higher liquidity for major tokens),
+ * fall back to spot for tokens not listed as perps.
  *
  * Docs: https://bybit-exchange.github.io/docs/v5/market/kline
  */
@@ -18,34 +21,72 @@ const TIMEFRAME_INTERVAL = {
 };
 
 /**
- * Fetch OHLC candles.
- * @returns {Promise<Array<{ts,open,high,low,close,vol}>>} or null
+ * Internal: fetch candles from Bybit for a specific category.
+ * @param {string} symbol
+ * @param {string} interval
+ * @param {number} limit
+ * @param {string} category  'linear' (perps) or 'spot'
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>|null>}
  */
-export async function fetchCandles(symbol, timeframe = '4H', limit = 300, category = 'spot') {
-  const interval = TIMEFRAME_INTERVAL[timeframe] || '240';
-  // Bybit uses USDT suffix; spot vs linear perps differ in category
+async function _fetchCandlesForCategory(symbol, interval, limit, category) {
   const sym = `${symbol.toUpperCase()}USDT`;
   const url = `${BASE}/kline?category=${category}&symbol=${sym}&interval=${interval}&limit=${Math.min(limit, 1000)}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const d = await res.json();
+  if (d.retCode !== 0 || !d.result?.list?.length) return null;
+  // Bybit returns newest-first strings; reverse + convert
+  return d.result.list.slice().reverse().map(c => ({
+    ts: parseInt(c[0]),
+    open: parseFloat(c[1]),
+    high: parseFloat(c[2]),
+    low: parseFloat(c[3]),
+    close: parseFloat(c[4]),
+    vol: parseFloat(c[5]),
+  }));
+}
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const d = await res.json();
-    if (d.retCode !== 0 || !d.result?.list?.length) return null;
+/**
+ * Fetch OHLC candles. Tries linear perps first, then spot.
+ *
+ * @param {string} symbol
+ * @param {string} [timeframe='4H']
+ * @param {number} [limit=300]
+ * @param {string} [category]  Optional: force 'linear' or 'spot'. If
+ *                              omitted, tries linear first then spot.
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>|null>}
+ */
+export async function fetchCandles(symbol, timeframe = '4H', limit = 300, category) {
+  const interval = TIMEFRAME_INTERVAL[timeframe] || '240';
 
-    // Bybit returns newest-first strings; reverse + convert
-    return d.result.list.slice().reverse().map(c => ({
-      ts: parseInt(c[0]),
-      open: parseFloat(c[1]),
-      high: parseFloat(c[2]),
-      low: parseFloat(c[3]),
-      close: parseFloat(c[4]),
-      vol: parseFloat(c[5]),
-    }));
-  } catch (e) {
-    console.warn(`[bybit] ${symbol} failed: ${e.message}`);
+  // If caller specified a category, use only that
+  if (category) {
+    try {
+      const result = await _fetchCandlesForCategory(symbol, interval, limit, category);
+      if (result && result.length > 0) return result;
+    } catch (e) {
+      console.warn(`[bybit] ${symbol} (${category}) failed: ${e.message}`);
+    }
     return null;
   }
+
+  // Try linear (perps) first — higher liquidity for major tokens
+  try {
+    const perps = await _fetchCandlesForCategory(symbol, interval, limit, 'linear');
+    if (perps && perps.length > 0) return perps;
+  } catch {
+    // Fall through to spot
+  }
+
+  // Fall back to spot for tokens not listed as perps
+  try {
+    const spot = await _fetchCandlesForCategory(symbol, interval, limit, 'spot');
+    if (spot && spot.length > 0) return spot;
+  } catch (e) {
+    console.warn(`[bybit] ${symbol} failed on both linear and spot: ${e.message}`);
+  }
+
+  return null;
 }
 
 export const sourceMeta = {
@@ -55,4 +96,5 @@ export const sourceMeta = {
   rateLimitPerMin: 120,
   requiresApiKey: false,
   maxCandlesPerCall: 1000,
+  notes: 'Tries linear perps first, falls back to spot for tokens not listed as perps.',
 };

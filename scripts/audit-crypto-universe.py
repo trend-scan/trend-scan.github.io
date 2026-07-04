@@ -39,7 +39,9 @@ def extract_symbols():
 
 def fetch_json(url, method='GET', body=None):
     """Fetch JSON from a URL."""
-    headers = {'User-Agent': 'TrendScan-Audit/1.0'}
+    # Binance blocks the default Python urllib User-Agent with HTTP 403.
+    # Use a browser-like UA to be safe across all exchanges.
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
     if body:
         headers['Content-Type'] = 'application/json'
         body = json.dumps(body).encode()
@@ -63,40 +65,91 @@ def fetch_hyperliquid_universe():
 
 
 def fetch_okx_universe():
-    """Returns a set of base coins listed on OKX SWAP (perpetuals)."""
+    """Returns a set of base coins listed on OKX (SWAP perps + SPOT)."""
+    coins = set()
+    # SWAP perps
     try:
         d = fetch_json(
             'https://www.okx.com/api/v5/public/instruments?instType=SWAP'
         )
-        coins = set()
         for inst in d.get('data', []):
             inst_id = inst.get('instId', '')
-            # instId is like "BTC-USDT-SWAP"
             parts = inst_id.split('-')
             if parts:
                 coins.add(parts[0])
-        return coins
     except Exception as e:
-        print(f"  ! OKX fetch failed: {e}", file=sys.stderr)
-        return set()
+        print(f"  ! OKX SWAP fetch failed: {e}", file=sys.stderr)
+    # Spot
+    try:
+        d = fetch_json(
+            'https://www.okx.com/api/v5/public/instruments?instType=SPOT'
+        )
+        for inst in d.get('data', []):
+            inst_id = inst.get('instId', '')
+            parts = inst_id.split('-')
+            if parts:
+                coins.add(parts[0])
+    except Exception as e:
+        print(f"  ! OKX SPOT fetch failed: {e}", file=sys.stderr)
+    return coins
 
 
 def fetch_bybit_universe():
-    """Returns a set of base coins listed on Bybit linear perps."""
+    """Returns a set of base coins listed on Bybit (linear perps + spot)."""
+    coins = set()
+    # Linear perps
     try:
         d = fetch_json(
             'https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000'
         )
-        coins = set()
         for inst in d.get('result', {}).get('list', []):
             sym = inst.get('symbol', '')
-            # Symbol is like "BTCUSDT"
             if sym.endswith('USDT'):
                 coins.add(sym[:-4])
+    except Exception as e:
+        print(f"  ! Bybit linear fetch failed: {e}", file=sys.stderr)
+    # Spot
+    try:
+        d = fetch_json(
+            'https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000'
+        )
+        for inst in d.get('result', {}).get('list', []):
+            sym = inst.get('symbol', '')
+            if sym.endswith('USDT'):
+                coins.add(sym[:-4])
+    except Exception as e:
+        print(f"  ! Bybit spot fetch failed: {e}", file=sys.stderr)
+    return coins
+
+
+def fetch_binance_perps_universe():
+    """Returns a dict mapping normalized_symbol -> actual_baseAsset.
+
+    Binance lists low-priced tokens with a '1000' or '1000000' prefix
+    (e.g. '1000XEC' instead of 'XEC', '1000000MOG' instead of 'MOG').
+    We normalize these so the audit can match against the bare symbol,
+    but we keep the actual baseAsset so the source file knows what to
+    pass to the API.
+    """
+    try:
+        d = fetch_json('https://fapi.binance.com/fapi/v1/exchangeInfo')
+        coins = {}  # normalized -> actual
+        for inst in d.get('symbols', []):
+            if inst.get('contractType') == 'PERPETUAL':
+                base = inst.get('baseAsset', '')
+                quote = inst.get('quoteAsset', '')
+                if base and quote == 'USDT':
+                    # Add the bare symbol as-is
+                    coins[base] = base
+                    # Strip common Binance prefixes for low-priced tokens
+                    if base.startswith('1000000'):
+                        coins[base[7:]] = base
+                    elif base.startswith('1000'):
+                        coins[base[4:]] = base
         return coins
     except Exception as e:
-        print(f"  ! Bybit fetch failed: {e}", file=sys.stderr)
-        return set()
+        print(f"  ! Binance perps fetch failed: {e}", file=sys.stderr)
+        return {}
 
 
 def fetch_coingecko_snapshot():
@@ -125,13 +178,15 @@ def main():
 
     print("Fetching live universes from each source...")
     hl = fetch_hyperliquid_universe()
-    print(f"  Hyperliquid: {len(hl)} perps listed")
+    print(f"  Hyperliquid:     {len(hl)} perps listed")
     okx = fetch_okx_universe()
-    print(f"  OKX SWAP:    {len(okx)} instruments ({len(okx)} unique base coins)")
+    print(f"  OKX SWAP:        {len(okx)} instruments ({len(okx)} unique base coins)")
     bybit = fetch_bybit_universe()
-    print(f"  Bybit:       {len(bybit)} linear perps")
+    print(f"  Bybit:           {len(bybit)} linear perps")
+    binance = fetch_binance_perps_universe()  # dict: normalized -> actual
+    print(f"  Binance perps:   {len(binance)} USDT-quoted perpetuals (with 1000x/1000000x normalization)")
     cg = fetch_coingecko_snapshot()
-    print(f"  CoinGecko:   {len(cg)} coins in local snapshot (top 100)")
+    print(f"  CoinGecko:       {len(cg)} coins in local snapshot (top 100)")
     print()
 
     # Per-symbol coverage
@@ -141,6 +196,7 @@ def main():
         if sym in hl: sources.append('HL')
         if sym in okx: sources.append('OKX')
         if sym in bybit: sources.append('Bybit')
+        if sym in binance: sources.append('Binance')  # dict 'in' check works on keys
         if sym in cg: sources.append('CG')
         coverage.append((sym, sources))
 
@@ -175,15 +231,21 @@ def main():
     print()
     print("━" * 70)
     print("RECOMMENDATIONS:")
-    print("  1. Remove orphan symbols from CRYPTO_UNIVERSE (or find an")
-    print("     alternative source for them).")
-    print("  2. For partial-coverage symbols, consider whether they should")
-    print("     remain in the universe — if the single source fails, the")
-    print("     asset silently disappears from the board.")
-    print("  3. The CRYPTO_UNIVERSE list appears to have been curated from")
-    print("     CoinGecko's top 350 by mcap. Many of these are not listed")
-    print("     on Hyperliquid/OKX/Bybit perps, which is what the board's")
-    print("     fetchCandles() call uses.")
+    print("  1. With 4 perps exchanges (Hyperliquid + OKX + Bybit + Binance)")
+    print("     + CoinGecko, true orphans should be near-zero for the top 300.")
+    print("  2. If orphans remain, they are likely:")
+    print("     - Tokens delisted from major exchanges (re-listed under")
+    print("       different tickers, or only on DEXes)")
+    print("     - Stablecoins or wrapped tokens not on perps exchanges")
+    print("     - Index products (e.g. MAG7.SSI) unique to one exchange")
+    print("  3. For partial-coverage symbols (only 1 source), the asset will")
+    print("     silently disappear if that single source fails. Consider")
+    print("     whether they should remain in the universe.")
+    print("  4. If Binance perps is in the coverage list but NOT in the")
+    print("     active sourceResolver chain, add a Binance perps source")
+    print("     file to src/lib/scanner/sources/ and import it from")
+    print("     sourceResolver.js — otherwise the coverage audit shows")
+    print("     Binance support that the app can't actually use.")
 
     return 0 if orphan_count == 0 else 1
 

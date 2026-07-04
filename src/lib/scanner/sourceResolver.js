@@ -23,6 +23,7 @@ import * as okxCrypto        from './sources/okxCrypto';
 import * as okxTradfi        from './sources/okxTradfi';
 import * as lighter          from './sources/lighter';
 import * as binanceXStocks   from './sources/binanceXStocks';
+import * as binancePerps     from './sources/binancePerps';   // Binance USDⓈ-M futures (perps)
 
 // OKX SWAP perps tradfi tickers (high liquidity, preferred for these names)
 const OKX_TRADFI = new Set(['SPY','QQQ','NVDA','TSLA','AAPL','XAU','XAG']);
@@ -46,14 +47,20 @@ function classifySymbol(symbol) {
 // Massive is tier 0 only when VITE_MASSIVE_API_KEY is configured; otherwise
 // it's filtered out by the `supports` check (returns false if no key).
 const CRYPTO_SOURCES = [
-  { id: 'okx_perps',   tier: 1, fetch: okxCrypto.fetchCandles,   bestFor: ['all'] },
-  { id: 'hyperliquid', tier: 1, fetch: hyperliquid.fetchCandles, bestFor: ['15m','30m','1H','4H','1w'] },
-  { id: 'bybit',       tier: 2, fetch: bybit.fetchCandles,       bestFor: ['all'] },
-  { id: 'coingecko',   tier: 4, fetch: coingecko.fetchCandles,   bestFor: ['1D','1w'] },
+  { id: 'okx_perps',     tier: 1, fetch: okxCrypto.fetchCandles,     bestFor: ['all'] },
+  { id: 'hyperliquid',   tier: 1, fetch: hyperliquid.fetchCandles,   bestFor: ['15m','30m','1H','4H','1w'] },
+  { id: 'bybit',         tier: 2, fetch: bybit.fetchCandles,         bestFor: ['all'] },
+  // Binance perps — broad coverage incl. 1000x-prefixed low-priced tokens
+  // (XEC→1000XEC, MOG→1000000MOG, SHIB→1000SHIB, PEPE→1000PEPE).
+  // Tier 2 (same as Bybit) — high liquidity but geo-restricted in some regions.
+  { id: 'binance_perps', tier: 2, fetch: binancePerps.fetchCandles,
+    supports: async (s) => binancePerps.isSupported(s),
+    bestFor: ['all'] },
+  { id: 'coingecko',     tier: 4, fetch: coingecko.fetchCandles,     bestFor: ['1D','1w'] },
   // Massive/Polygon free tier: only /prev works for crypto (NOT /range).
   // Keep as absolute last resort — fetchCandles will return null for /range calls,
   // and the resolver will move on. Useful only for the fetchPrevClose() helper.
-  { id: 'massive',     tier: 5, fetch: massive.fetchCandles,     bestFor: ['1D'],
+  { id: 'massive',       tier: 5, fetch: massive.fetchCandles,       bestFor: ['1D'],
     supports: () => massive.isConfigured() },
 ];
 

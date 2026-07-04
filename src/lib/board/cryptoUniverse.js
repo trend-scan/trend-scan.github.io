@@ -1,5 +1,5 @@
-// Crypto universe — 173 assets with verified source coverage
-// (173 assets across multiple themes; orphans removed 100 symbols with no exchange listing)
+// Crypto universe — 190 assets with verified source coverage
+// (190 assets across multiple themes; orphans removed 78 symbols with no exchange listing)
 
 export const CRYPTO_UNIVERSE = [
   // Layer 1
@@ -184,6 +184,35 @@ export const CRYPTO_UNIVERSE = [
   { symbol: 'ASTR', name: 'Astar', theme: 'Other', tier: 'Active', subtheme: 'Other' },
   { symbol: 'ESP', name: 'Espresso', theme: 'Other', tier: 'Active', subtheme: 'Other' },
   { symbol: 'BLUR', name: 'Blur', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  // ── Re-added: covered by Binance perps (with 1000x normalization) ──
+  // Layer 1
+  { symbol: 'XEC', name: 'eCash', theme: 'Layer 1', tier: 'Active', subtheme: 'Payments' },
+  { symbol: 'ELF', name: 'aelf', theme: 'Layer 1', tier: 'Active', subtheme: 'Smart Contract L1' },
+  { symbol: 'DGB', name: 'DigiByte', theme: 'Layer 1', tier: 'Active', subtheme: 'Multi-algo Security' },
+  // Gaming
+  { symbol: 'RON', name: 'Ronin', theme: 'Gaming', tier: 'Active', subtheme: 'Gaming' },
+  // Meme
+  { symbol: 'SFP', name: 'SafePal', theme: 'Meme', tier: 'Active', subtheme: 'Meme' },
+  { symbol: 'CHEEMS', name: 'Cheems Token', theme: 'Meme', tier: 'Active', subtheme: 'Meme' },
+  { symbol: 'DEGEN', name: 'Degen', theme: 'Meme', tier: 'Active', subtheme: 'Meme' },
+  { symbol: 'BABYDOGE', name: 'Baby Doge Coin', theme: 'Meme', tier: 'Active', subtheme: 'Meme' },
+  { symbol: 'TOSHI', name: 'Toshi', theme: 'Meme', tier: 'Active', subtheme: 'Meme' },
+  { symbol: 'MOG', name: 'Mog Coin', theme: 'Meme', tier: 'Active', subtheme: 'Meme' },
+  // Exchange Tokens
+  { symbol: 'LEO', name: 'LEO Token', theme: 'Exchange Tokens', tier: 'Active', subtheme: 'CEX Token' },
+  { symbol: 'KCS', name: 'KuCoin', theme: 'Exchange Tokens', tier: 'Active', subtheme: 'CEX Token' },
+  // Other
+  { symbol: 'HTX', name: 'HTX DAO', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'NEXO', name: 'NEXO', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: '币安人生', name: '币安人生 (BinanceLife)', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'TAG', name: 'TAGGER', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'ZIG', name: 'ZIGChain', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'CARDS', name: 'Collector Crypt', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'HOT', name: 'Holo', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'KUB', name: 'KUB Coin', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'OMI', name: 'ECOMI', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+  { symbol: 'IDOL', name: 'MEET48', theme: 'Other', tier: 'Active', subtheme: 'Other' },
+
 ];
 
 export const BENCHMARKS = [
