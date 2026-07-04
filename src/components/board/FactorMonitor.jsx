@@ -154,7 +154,7 @@ export default function FactorMonitor() {
 
     if (hasLoaded) load();
     return () => { cancelled = true; };
-  }, [h[hasLoaded]);
+  }, [h[h[hasLoaded]);
 
   if (loading) {
     return (
