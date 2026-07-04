@@ -205,7 +205,7 @@ function IndicatorControl({ label, type, emaValue, vwapValue, onTypeChange, onEm
             key={t}
             className="font-mono text-[9px] font-bold tracking-wide px-2 py-1.5 transition-colors"
             style={{
-              background: type === t ? label === 'Fast' ? 'rgba(255,230,0,0.15)' : label === 'Slow' ? 'rgba(255,45,255,0.12)' : 'rgba(0,229,255,0.12)' : 'transparent',
+              background: type === t ? label === 'Fast' ? 'rgba(255,255,0,0.15)' : label === 'Slow' ? 'rgba(255,45,255,0.12)' : 'rgba(0,229,255,0.12)' : 'transparent',
               color: type === t ? label === 'Fast' ? 'var(--scanner-fast)' : label === 'Slow' ? 'var(--scanner-slow)' : 'var(--scanner-base)' : 'var(--scanner-text3)',
               border: 'none',
               cursor: 'pointer',

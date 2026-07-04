@@ -43,7 +43,7 @@
     --scanner-text2: #b0b0c4;
     --scanner-text3: #7a7a90;
     --scanner-accent: #f0a500;     /* amber — general accent (nav, buttons) */
-    --scanner-fast: #FFE600;        /* bright yellow — Fast indicator (from logo) */
+    --scanner-fast: #FFFF00;        /* bright yellow — Fast indicator (from logo) */
     --scanner-slow: #FF2DFF;        /* pink/magenta — Slow indicator (from logo) */
     --scanner-base: #00E5FF;        /* cyan — Base indicator (from logo) */
     --scanner-green: #00e676;       /* green — positive returns */
