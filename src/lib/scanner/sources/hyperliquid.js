@@ -54,7 +54,7 @@ async function loadUniverse() {
 /**
  * Fetch OHLC candles.
  * @param {string} symbol — e.g. "BTC", "ETH", "SOL"
- * @returns {Array<{ts,open,high,low,close,vol}>} or null
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>>} or null
  */
 export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
   const interval = TIMEFRAME_INTERVAL[timeframe] || '4h';

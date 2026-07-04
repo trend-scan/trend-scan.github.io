@@ -243,11 +243,17 @@ export default function MacroRegime() {
 
     // Total signal count
     const totalSignals = growthSignals.length + inflationSignals.length + liquiditySignals.length;
-    // When FRED is unavailable, count only signals that don't require FRED data
-    const fredSignals = fredAvailable ? totalSignals : growthSignals.filter(s => !s.requiresFred).length;
+    // When FRED is unavailable, count only signals that don't require FRED data.
+    // The optional `requiresFred` flag is set on signals that depend on FRED
+    // series (M2, Fed balance sheet, etc.). Signals without the flag are
+    // counted as FRED-independent.
+    const fredSignals = fredAvailable
+      ? totalSignals
+      : growthSignals.filter(s => !s.requiresFred).length;
 
     // Persist regime quadrant history to localStorage for rotation detection
     // (RegimeCard reads 'trendscan_regime_history' for flip-flag logic)
+    // MacroCharts also reads this to render the Nowcast History graph.
     // MUST be above the return — otherwise it's unreachable dead code
     try {
       const historyKey = 'trendscan_regime_history';
@@ -260,6 +266,13 @@ export default function MacroRegime() {
           growth: growthLabel,
           inflation: inflationLabel,
           liquidity: liquidityLabel,
+          // Persist numeric nowcast scores (0-100) so MacroCharts can
+          // plot a real history instead of an empty graph. Older entries
+          // (before this field was added) will be missing these and
+          // MacroCharts falls back to 50 (neutral) for those days.
+          growthNowcast: Math.round(growthNowcast.nowcast * 10) / 10,
+          inflationNowcast: Math.round(inflationNowcast.nowcast * 10) / 10,
+          liquidityNowcast: Math.round(liquidityNowcast.nowcast * 10) / 10,
         });
         const pruned = existing.slice(-90);
         localStorage.setItem(historyKey, JSON.stringify(pruned));

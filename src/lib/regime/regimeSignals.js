@@ -69,13 +69,13 @@ export function computeGrowthSignals(data) {
   // G8: HY Spread (FRED, inverse)
   if (fredAvailable && fred.BAMLH0A0HYM2?.length > 30) {
     const hyZ = adaptiveZ(fred.BAMLH0A0HYM2.map(d => d.value), 52, 104);
-    signals.push({ name: 'HY Spread (inv)', value: hyZ * -1, weight: 1.50, raw: fred.BAMLH0A0HYM2.at(-1)?.value });
+    signals.push({ name: 'HY Spread (inv)', value: hyZ * -1, weight: 1.50, raw: fred.BAMLH0A0HYM2.at(-1)?.value , requiresFred: true });
   }
 
   // G9: Initial Jobless Claims (FRED, inverse)
   if (fredAvailable && fred.ICSA?.length > 13) {
     const claimsZ = adaptiveZ(fred.ICSA.map(d => d.value), 13, 52);
-    signals.push({ name: 'Claims (inv)', value: claimsZ * -1, weight: 1.50, raw: pctROC(fred.ICSA.map(d => d.value), 13) });
+    signals.push({ name: 'Claims (inv)', value: claimsZ * -1, weight: 1.50, raw: pctROC(fred.ICSA.map(d => d.value), 13) , requiresFred: true });
   }
 
   return signals;
@@ -137,20 +137,20 @@ export function computeInflationSignals(data) {
   // I6: 10Y Breakeven Inflation (FRED)
   if (fredAvailable && fred.T10YIE?.length > 30) {
     const t10yZ = adaptiveZ(fred.T10YIE.map(d => d.value), 52, 104);
-    signals.push({ name: '10Y Breakeven', value: t10yZ, weight: 1.75, raw: fred.T10YIE.at(-1)?.value });
+    signals.push({ name: '10Y Breakeven', value: t10yZ, weight: 1.75, raw: fred.T10YIE.at(-1)?.value , requiresFred: true });
   }
 
   // I7: 5Y5Y Forward Inflation (FRED)
   if (fredAvailable && fred.T5YIFR?.length > 30) {
     const t5yZ = adaptiveZ(fred.T5YIFR.map(d => d.value), 52, 104);
-    signals.push({ name: '5Y5Y Fwd', value: t5yZ, weight: 1.50, raw: fred.T5YIFR.at(-1)?.value });
+    signals.push({ name: '5Y5Y Fwd', value: t5yZ, weight: 1.50, raw: fred.T5YIFR.at(-1)?.value , requiresFred: true });
   }
 
   // I8: CPI YoY Point Change (FRED)
   if (fredAvailable && fred.CPIAUCSL?.length > 13) {
     const cpiSeries = fred.CPIAUCSL.map(d => d.value);
     const cpiChange = pointChange(cpiSeries, 12); // 12 months
-    signals.push({ name: 'CPI Change', value: adaptiveZ(cpiSeries, 13, 52) * (cpiChange > 0 ? 1 : -1), weight: 1.00, raw: cpiChange });
+    signals.push({ name: 'CPI Change', value: adaptiveZ(cpiSeries, 13, 52) * (cpiChange > 0 ? 1 : -1), weight: 1.00, raw: cpiChange , requiresFred: true });
   }
 
   return signals;
@@ -217,20 +217,20 @@ export function computeLiquiditySignals(data) {
   if (fredAvailable && fred.FED_NET_LIQ?.length > 365) {
     const fedNetLiqSeries = fred.FED_NET_LIQ.map(d => d.value);
     const fedZ = adaptiveZ(fedNetLiqSeries, 52, 104);
-    signals.push({ name: 'Fed Net Liq', value: fedZ, weight: 2.00, raw: yoyROC(fedNetLiqSeries, 52) });
+    signals.push({ name: 'Fed Net Liq', value: fedZ, weight: 2.00, raw: yoyROC(fedNetLiqSeries, 52) , requiresFred: true });
   }
 
   // L8: US M2 ROC (FRED)
   if (fredAvailable && fred.M2SL?.length > 13) {
     const m2Series = fred.M2SL.map(d => d.value);
     const m2Z = adaptiveZ(m2Series, 13, 52);
-    signals.push({ name: 'M2 ROC', value: m2Z, weight: 1.75, raw: pctROC(m2Series, 13) });
+    signals.push({ name: 'M2 ROC', value: m2Z, weight: 1.75, raw: pctROC(m2Series, 13) , requiresFred: true });
   }
 
   // L9: NFCI (inverse)
   if (fredAvailable && fred.NFCI?.length > 13) {
     const nfciZ = adaptiveZ(fred.NFCI.map(d => d.value), 13, 52);
-    signals.push({ name: 'NFCI (inv)', value: nfciZ * -1, weight: 1.50, raw: fred.NFCI.at(-1)?.value });
+    signals.push({ name: 'NFCI (inv)', value: nfciZ * -1, weight: 1.50, raw: fred.NFCI.at(-1)?.value , requiresFred: true });
   }
 
   return signals;

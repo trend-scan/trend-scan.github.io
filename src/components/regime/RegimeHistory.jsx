@@ -90,7 +90,7 @@ export default function RegimeHistory({ history = [] }) {
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
               formatter={(value, name, props) => [
-                `${Math.round((value - 50) / 50 * 100)}%`,
+                `${Math.round((Number(value) - 50) / 50 * 100)}%`,
                 `Score`,
               ]}
               labelFormatter={(label, payload) => {

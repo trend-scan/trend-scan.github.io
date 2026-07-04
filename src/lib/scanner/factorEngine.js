@@ -196,7 +196,7 @@ export function buildQuintilePortfolios(scoredUniverse, factorName) {
  *
  * @param {object} portfoliosByFactor  - { momentum: {longOnly, shortOnly}, size: {...}, ... }
  * @param {object} candlesBySymbol     - { BTC: [{ts,close},...], ETH: [...], ... }
- * @param {Array<{symbol}>} benchmarkUniverse  - full universe (for benchmark)
+ * @param {Array<string>} benchmarkUniverse  - array of symbol strings (e.g. ['BTC','ETH','SOL'])
  * @returns {object} spread monitor data
  */
 export function computeSpreadMonitor(portfoliosByFactor, candlesBySymbol, benchmarkUniverse) {
@@ -342,6 +342,11 @@ function subtractSeries(a, b) {
 /**
  * Detect factor rotation based on trailing-20d returns of long-only portfolios.
  *
+ * Snapshot-only implementation: returns the current leader and trailing
+ * 20-day returns per factor. Full rotation detection (with held-days
+ * count, flip detection, etc.) requires daily history persistence and
+ * is not yet implemented.
+ *
  * @param {object} portfoliosByFactor
  * @param {object} candlesBySymbol
  * @returns {{
@@ -373,9 +378,13 @@ export function detectFactorRotation(portfoliosByFactor, candlesBySymbol) {
 
   return {
     leader_20d: leader,
+    // Snapshot-only fields — full rotation detection (with held-days count,
+    // flip detection) requires daily history persistence not yet implemented.
+    // These defaults match the documented return type so callers don't break.
+    leader_held_days: 0,
+    flipped_from: null,
+    flip_flag: false,
     trailing_20d_returns: trailingReturns,
-    // Note: full rotation detection requires daily history; this is a snapshot.
-    // For full flip-flag logic, persist leader history to localStorage.
   };
 }
 

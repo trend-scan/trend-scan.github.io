@@ -38,6 +38,12 @@ function getRegimeBand(value, bands) {
   return { index: 3, label: bands[3] };
 }
 
+/**
+ * @param {object} props
+ * @param {string} [props.label='GROWTH']
+ * @param {object} [props.data={}] Nowcast data with meZ, impulseZ, nowcast, score, signals, topDrivers
+ * @param {Array} [props.regimeBand=[]]
+ */
 export default function CompositeGauge({ label = 'GROWTH', data = {}, regimeBand = [] }) {
   const config = COMPOSITE_CONFIG[label] || COMPOSITE_CONFIG.GROWTH;
   const bands = regimeBand.length > 0 ? regimeBand : config.bands;

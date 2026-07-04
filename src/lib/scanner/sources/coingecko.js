@@ -230,7 +230,7 @@ async function loadIdMap() {
 
 /**
  * Fetch OHLC candles for a crypto symbol.
- * @returns {Array<{ts,open,high,low,close,vol}>} or null on failure
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>>} or null on failure
  */
 export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const idMap = await loadIdMap();

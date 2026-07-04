@@ -77,7 +77,7 @@ export async function isSupported(symbol) {
 
 /**
  * Fetch OHLC candles from Lighter.
- * @returns {Array<{ts,open,high,low,close,vol}>} or null
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>>} or null
  */
 export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const marketId = await getMarketId(symbol);

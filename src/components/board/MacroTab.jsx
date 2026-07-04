@@ -52,6 +52,11 @@ function MiniSparkline({ data }) {
   );
 }
 
+/**
+ * @param {object} props
+ * @param {any} props.children
+ * @param {any} [props.right]
+ */
 function SectionLabel({ children, right }) {
   return (
     <div className="flex items-center gap-2 mb-3">

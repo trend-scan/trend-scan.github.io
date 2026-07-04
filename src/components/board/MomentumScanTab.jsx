@@ -19,7 +19,15 @@ function SectionLabel({ children }) {
   );
 }
 
-function MomentumTable({ items, absKey, relKey }) {
+/**
+ * @param {object} props
+ * @param {Array} props.items
+ * @param {string} props.absKey
+ * @param {string} props.relKey
+ * @param {string} [props.absLabel] Display label for absolute column
+ * @param {string} [props.relLabel] Display label for relative column
+ */
+function MomentumTable({ items, absKey, relKey, absLabel, relLabel }) {
   if (!items?.length) {
     return (
       <div className="text-center py-8 text-[11px]" style={{ color: 'var(--scanner-text3)', border: '1px solid var(--scanner-border2)' }}>

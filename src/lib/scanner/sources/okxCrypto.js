@@ -30,7 +30,7 @@ export function isCryptoSymbol(symbol) {
 
 /**
  * Fetch OHLC candles for a crypto perp on OKX.
- * @returns {Array<{ts,open,high,low,close,vol}>} or null
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>>} or null
  */
 export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
   const s = symbol.toUpperCase();

@@ -16,6 +16,12 @@ function SignalDot({ isOn }) {
   );
 }
 
+/**
+ * @param {object} props
+ * @param {any} props.name
+ * @param {boolean} props.isOn
+ * @param {number} [props.score] Optional score (not always used at call sites)
+ */
 function SignalRow({ name, isOn, score }) {
   return (
     <div className="flex items-center justify-between py-1 px-2 rounded text-[9px]"

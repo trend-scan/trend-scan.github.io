@@ -189,7 +189,10 @@ export async function fetchCandles(symbol, opts = {}) {
 /**
  * Fetch candles for many symbols in parallel (with concurrency control).
  *
- * @returns {Promise<Map<symbol, {source, candles}>>}
+ * @param {Array<string>} symbols - array of symbol strings, e.g. ['BTC','ETH','SOL']
+ * @param {object} [opts] - options passed to fetchCandles (timeframe, limit, etc.)
+ * @param {number} [concurrency=7] - max parallel requests
+ * @returns {Promise<Map<string, {source: string|null, candles: Array|null}>>}
  */
 export async function fetchCandlesBatch(symbols, opts = {}, concurrency = 7) {
   const results = new Map();

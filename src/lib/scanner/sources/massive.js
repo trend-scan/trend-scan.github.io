@@ -118,7 +118,7 @@ function toPolygonTicker(symbol) {
 
 /**
  * Fetch OHLC candles from Polygon/Massive.
- * @returns {Array<{ts,open,high,low,close,vol,vwap}>} or null
+ * @returns {Promise<Array<{ts,open,high,low,close,vol,vwap}>>} or null
  */
 export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const apiKey = getApiKey();

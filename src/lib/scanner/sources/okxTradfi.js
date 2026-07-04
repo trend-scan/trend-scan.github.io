@@ -33,7 +33,7 @@ export function isTradfi(symbol) {
 /**
  * Fetch OHLC candles for an OKX SWAP perp.
  * @param {string} symbol — base ticker, e.g. "SPY", "BTC"
- * @returns {Array<{ts,open,high,low,close,vol}>} or null
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>>} or null
  */
 export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const instId = `${symbol.toUpperCase()}-USDT-SWAP`;

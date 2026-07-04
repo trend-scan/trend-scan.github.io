@@ -31,7 +31,7 @@ export default function Board() {
     try { localStorage.setItem('trendscan_board_exchange', exchange); } catch {}
   }, [exchange]);
   const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState({ phase: 'idle', message: 'Press Refresh to load data' });
+  const [progress, setProgress] = useState({ phase: 'idle', message: 'Press Refresh to load data', done: undefined, total: undefined });
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [tradData, setTradData] = useState(null);
@@ -63,7 +63,7 @@ export default function Board() {
     if (isLoading) return;
     setIsLoading(true);
     setError(null);
-    setProgress({ phase: 'loading', message: 'Starting…' });
+    setProgress({ phase: 'loading', message: 'Starting…', done: undefined, total: undefined });
     try {
       const [result] = await Promise.all([
         runBoardAnalysis(exch, handleProgress),

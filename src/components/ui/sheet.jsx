@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored shadcn/ui component, not type-checked
 "use client";
 import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"

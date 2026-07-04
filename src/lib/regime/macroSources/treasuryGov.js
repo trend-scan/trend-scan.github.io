@@ -14,7 +14,7 @@ const BASE = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service';
  * Treasury General Account (TGA) — replaces FRED WTREGEN.
  * Daily, ~104 most recent records.
  *
- * @returns {Array<{date, time, value}>} value in millions USD (matches FRED scale)
+ * @returns {Promise<Array<{date, time, value}>>} value in millions USD (matches FRED scale)
  */
 export async function fetchTGA(limit = 104) {
   // Use today minus 1 year as filter; page[size] enforces return count

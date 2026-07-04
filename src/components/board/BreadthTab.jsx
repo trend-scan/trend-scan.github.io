@@ -145,7 +145,7 @@ export default function BreadthTab({ breadthSeries }) {
               <XAxis dataKey="day" tick={false} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: 'var(--scanner-text3)', fontFamily: 'IBM Plex Mono' }} axisLine={false} tickLine={false} width={40} />
               <ReferenceLine y={0} stroke="var(--scanner-border2)" strokeWidth={1} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [v?.toFixed(0), 'Cum A/D']} labelFormatter={l => `Day ${l}`} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={v => [Number(v)?.toFixed(0), 'Cum A/D']} labelFormatter={l => `Day ${l}`} />
               <Line type="monotone" dataKey="cumAD" stroke="var(--scanner-blue)" strokeWidth={1.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>

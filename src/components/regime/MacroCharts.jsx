@@ -26,7 +26,16 @@ const CHART_COLORS = {
   bg: 'var(--scanner-bg2)',
 };
 
-const CustomTooltip = ({ active, payload, label }) => {
+/**
+ * Custom recharts tooltip. Recharts passes `active`, `payload`, and `label`
+ * props at runtime, but TypeScript can't infer them from the JSX context.
+ *
+ * @param {object} props
+ * @param {boolean} [props.active]
+ * @param {Array} [props.payload]
+ * @param {any} [props.label]
+ */
+const CustomTooltip = ({ active, payload, label } = {}) => {
   if (!active || !payload?.length) return null;
 
   return (
@@ -63,19 +72,34 @@ export default function MacroCharts({ regime }) {
     );
   }
 
-  const { history = {}, btcPrice = [], quadrant = 'FLUX' } = regime;
+  const { btcPrice = [], quadrant = 'FLUX' } = regime;
 
-  // Generate mock history if not available (for demo)
-  const hasHistory = history.dates?.length > 0
-  const chartData = hasHistory
-    ? history.dates.map((date, i) => ({
-        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        growth: history.growthNowcast?.[i] ?? 50,
-        inflation: history.inflationNowcast?.[i] ?? 50,
-        liquidity: history.liquidityNowcast?.[i] ?? 50,
-        btc: btcPrice[i] ?? null,
-      }))
-    : null;  // History not yet available — shows 'collecting data' message
+  // ── Nowcast history from localStorage ────────────────────────────────────
+  // MacroRegime.jsx persists one entry per day to 'trendscan_regime_history'
+  // with the regime quadrant + numeric nowcast scores (0-100).
+  //
+  // First-time visitors will have an empty history (chart shows a "collecting
+  // data" message). Returning visitors see the accumulated daily history
+  // (up to 90 days, pruned by MacroRegime).
+  //
+  // Older entries (before this field was added) won't have the nowcast
+  // scores and fall back to 50 (neutral) for those days.
+  let chartData = null;
+  let historyDays = 0;
+  try {
+    const stored = JSON.parse(localStorage.getItem('trendscan_regime_history') || '[]');
+    if (stored.length > 0) {
+      historyDays = stored.length;
+      chartData = stored.map(h => ({
+        date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        growth: typeof h.growthNowcast === 'number' ? h.growthNowcast : 50,
+        inflation: typeof h.inflationNowcast === 'number' ? h.inflationNowcast : 50,
+        liquidity: typeof h.liquidityNowcast === 'number' ? h.liquidityNowcast : 50,
+      }));
+    }
+  } catch {
+    // localStorage parse failed — leave chartData as null
+  }
 
   // BTC chart data (last 180 days)
   const btcChartData = btcPrice.length > 0
@@ -92,71 +116,97 @@ export default function MacroCharts({ regime }) {
         className="rounded-lg p-4"
         style={{ background: 'var(--scanner-bg2)', border: '1px solid var(--scanner-border2)' }}
       >
-        <div className="text-[9px] font-bold tracking-[0.15em] uppercase mb-4" style={{ color: 'var(--scanner-text3)' }}>
-          NOWCAST HISTORY · 90D
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+            NOWCAST HISTORY{historyDays > 0 ? ` · ${historyDays}D` : ''}
+          </div>
+          {historyDays > 0 && historyDays < 30 && (
+            <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
+              collecting data ({historyDays}/90 days)
+            </div>
+          )}
         </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-            <CartesianGrid strokeDasharray="2 2" stroke={CHART_COLORS.grid} />
-            <XAxis
-              dataKey="date"
-              tick={{ fill: CHART_COLORS.text, fontSize: 8 }}
-              tickLine={{ stroke: CHART_COLORS.grid }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              domain={[0, 100]}
-              tick={{ fill: CHART_COLORS.text, fontSize: 8 }}
-              tickLine={{ stroke: CHART_COLORS.grid }}
-              width={30}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            {/* Reference lines */}
-            <ReferenceLine y={55} stroke="var(--scanner-border)" strokeDasharray="3 3" />
-            <ReferenceLine y={45} stroke="var(--scanner-border)" strokeDasharray="3 3" />
-            <ReferenceLine y={50} stroke="var(--scanner-text3)" strokeDasharray="1 1" />
-            {/* Data lines */}
-            <Line
-              type="monotone"
-              dataKey="growth"
-              stroke={CHART_COLORS.growth}
-              strokeWidth={1.5}
-              dot={false}
-              name="Growth"
-            />
-            <Line
-              type="monotone"
-              dataKey="inflation"
-              stroke={CHART_COLORS.inflation}
-              strokeWidth={1.5}
-              dot={false}
-              name="Inflation"
-            />
-            <Line
-              type="monotone"
-              dataKey="liquidity"
-              stroke={CHART_COLORS.liquidity}
-              strokeWidth={1.5}
-              dot={false}
-              name="Liquidity"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-        {/* Legend */}
-        <div className="flex items-center justify-center gap-6 mt-2 text-[8px]">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-0.5" style={{ background: CHART_COLORS.growth }} />
-            <span style={{ color: CHART_COLORS.growth }}>Growth</span>
+        {chartData && chartData.length > 0 ? (
+          <>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                <CartesianGrid strokeDasharray="2 2" stroke={CHART_COLORS.grid} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: CHART_COLORS.text, fontSize: 8 }}
+                  tickLine={{ stroke: CHART_COLORS.grid }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fill: CHART_COLORS.text, fontSize: 8 }}
+                  tickLine={{ stroke: CHART_COLORS.grid }}
+                  width={30}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                {/* Reference lines */}
+                <ReferenceLine y={55} stroke="var(--scanner-border)" strokeDasharray="3 3" />
+                <ReferenceLine y={45} stroke="var(--scanner-border)" strokeDasharray="3 3" />
+                <ReferenceLine y={50} stroke="var(--scanner-text3)" strokeDasharray="1 1" />
+                {/* Data lines */}
+                <Line
+                  type="monotone"
+                  dataKey="growth"
+                  stroke={CHART_COLORS.growth}
+                  strokeWidth={1.5}
+                  dot={false}
+                  name="Growth"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="inflation"
+                  stroke={CHART_COLORS.inflation}
+                  strokeWidth={1.5}
+                  dot={false}
+                  name="Inflation"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="liquidity"
+                  stroke={CHART_COLORS.liquidity}
+                  strokeWidth={1.5}
+                  dot={false}
+                  name="Liquidity"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-6 mt-2 text-[8px]">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-0.5" style={{ background: CHART_COLORS.growth }} />
+                <span style={{ color: CHART_COLORS.growth }}>Growth</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-0.5" style={{ background: CHART_COLORS.inflation }} />
+                <span style={{ color: CHART_COLORS.inflation }}>Inflation</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-0.5" style={{ background: CHART_COLORS.liquidity }} />
+                <span style={{ color: CHART_COLORS.liquidity }}>Liquidity</span>
+              </div>
+            </div>
+          </>
+        ) : (
+          // First-visit empty state: show a clear "collecting data" message
+          // instead of an empty chart. The history fills in as the user
+          // visits daily.
+          <div className="h-[200px] flex flex-col items-center justify-center text-center px-4">
+            <div className="text-2xl mb-3 opacity-30">📊</div>
+            <div className="text-[10px] mb-1" style={{ color: 'var(--scanner-text2)' }}>
+              Collecting nowcast history
+            </div>
+            <div className="text-[9px] leading-relaxed max-w-xs" style={{ color: 'var(--scanner-text3)' }}>
+              This chart fills in over time as you visit daily. Each visit records
+              today's growth/inflation/liquidity nowcast scores to your browser's
+              local storage. After 7+ days you'll see a meaningful trend line.
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-0.5" style={{ background: CHART_COLORS.inflation }} />
-            <span style={{ color: CHART_COLORS.inflation }}>Inflation</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-0.5" style={{ background: CHART_COLORS.liquidity }} />
-            <span style={{ color: CHART_COLORS.liquidity }}>Liquidity</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* BTC Price Chart */}
@@ -232,33 +282,11 @@ export default function MacroCharts({ regime }) {
   );
 }
 
-// Generate mock history for demo
-function generateMockHistory(days = 90) {
-  const data = [];
-  let growth = 50;
-  let inflation = 50;
-  let liquidity = 50;
-
-  for (let i = 0; i < days; i++) {
-    growth += (Math.random() - 0.5) * 4;
-    growth = Math.max(20, Math.min(80, growth));
-
-    inflation += (Math.random() - 0.5) * 4;
-    inflation = Math.max(20, Math.min(80, inflation));
-
-    liquidity += (Math.random() - 0.5) * 4;
-    liquidity = Math.max(20, Math.min(80, liquidity));
-
-    data.push({
-      date: new Date(Date.now() - (days - i) * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      growth: Math.round(growth * 10) / 10,
-      inflation: Math.round(inflation * 10) / 10,
-      liquidity: Math.round(liquidity * 10) / 10,
-    });
-  }
-
-  return data;
-}
+// Note: previously had a generateMockHistory() function for demo data.
+// Removed — the Nowcast History chart now reads real data from
+// localStorage ('trendscan_regime_history'), which MacroRegime.jsx
+// populates with one entry per day containing the actual computed
+// growth/inflation/liquidity nowcast scores.
 
 function getSeasonEmoji(quadrant) {
   const map = {

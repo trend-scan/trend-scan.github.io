@@ -26,7 +26,7 @@ async function loadSnapshot() {
 
 /**
  * Fetch a FRED series from the baked snapshot.
- * @returns {Array<{date, time, value}>} or [] if not in snapshot
+ * @returns {Promise<Array<{date, time, value}>>} or [] if not in snapshot
  */
 export async function fetchSeries(seriesId) {
   const snap = await loadSnapshot();
