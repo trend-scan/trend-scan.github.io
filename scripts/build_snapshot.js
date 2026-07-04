@@ -40,6 +40,14 @@ const ROOT = path.resolve(__dirname, '..');
 // hardcoding it here doesn't reduce security. It ensures FRED data is
 // always fetched even when the GitHub Actions secret isn't configured.)
 const FRED_API_KEY = process.env.FRED_API_KEY;
+const fs = require("fs");
+const path = require("path");
+
+// Load previous snapshot for stale-data fallback
+let _prevSnapshot = null;
+try {
+  _prevSnapshot = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "public", "snapshot.json"), "utf8"));
+} catch {}
 const POLYGON_API_KEY = process.env.POLYGON_API_KEY;
 
 if (!FRED_API_KEY) {
@@ -319,6 +327,13 @@ async function main() {
     fetchKenFrench(),
     fetchCBOEPutCall(),
   ]);
+
+  // If FRED data is empty (API failure), use previous snapshot's FRED data
+  const fredPopulated = Object.values(fred).filter(v => Array.isArray(v) && v.length > 0).length;
+  if (fredPopulated === 0 && _prevSnapshot?.fred) {
+    console.log('  ⚠ FRED data empty — using previous snapshot (stale)');
+    fred = _prevSnapshot.fred;
+  }
 
   const snapshot = {
     generated_at: new Date().toISOString(),

@@ -171,7 +171,6 @@ export async function runScan(settings, onProgress) {
       console.warn('[scanEngine] Hyperliquid ticker fetch failed:', e.message);
     }
   } else {
-    console.log('[scanEngine] Exchange is', settings.exchange, '— skipping HL tickers');
   }
 
   onProgress({

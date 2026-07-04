@@ -51,7 +51,7 @@ export default function NavBar() {
                 borderBottomColor: active ? 'var(--scanner-accent)' : 'var(--scanner-border2)',
               }}
             >
-              {tab.label}
+              {tab.label === "Market Board" ? (<><span className="md:hidden">Board</span><span className="hidden md:inline">Market Board</span></>) : tab.label}
             </Link>
           );
         })}

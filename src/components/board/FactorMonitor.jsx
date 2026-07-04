@@ -130,18 +130,7 @@ export default function FactorMonitor() {
         // 8. Compute rotation
         const rotation = detectFactorRotation(portfoliosByFactor, candlesBySymbol);
 
-        // Diagnostic: log Q5 composition per factor to console
-        console.log('[FactorMonitor] Universe size:', universe.length);
-        for (const factor of FACTORS) {
-          const q5 = portfoliosByFactor[factor].longOnly;
-          const q1 = portfoliosByFactor[factor].shortOnly;
-          console.log(`[FactorMonitor] ${factor}:`, {
-            q5Size: q5.length,
-            q5: q5.slice(0, 10),
-            q1Size: q1.length,
-            q1: q1.slice(0, 10),
-          });
-        }
+
 
         if (!cancelled) {
           setData({

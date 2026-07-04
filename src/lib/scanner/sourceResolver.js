@@ -19,10 +19,7 @@ import * as massive          from './sources/massive';        // Polygon.io (pai
 import * as coingecko        from './sources/coingecko';
 import * as hyperliquid      from './sources/hyperliquid';
 import * as bybit            from './sources/bybit';
-import * as gate             from './sources/gate';
-import * as kucoin           from './sources/kucoin';
 import * as okxCrypto        from './sources/okxCrypto';
-import * as kraken           from './sources/kraken';
 import * as okxTradfi        from './sources/okxTradfi';
 import * as lighter          from './sources/lighter';
 import * as binanceXStocks   from './sources/binanceXStocks';
@@ -51,10 +48,7 @@ function classifySymbol(symbol) {
 const CRYPTO_SOURCES = [
   { id: 'okx_perps',   tier: 1, fetch: okxCrypto.fetchCandles,   bestFor: ['all'] },
   { id: 'hyperliquid', tier: 1, fetch: hyperliquid.fetchCandles, bestFor: ['15m','30m','1H','4H','1w'] },
-  { id: 'kraken',      tier: 1, fetch: kraken.fetchCandles,      bestFor: ['1D','1w'] },
   { id: 'bybit',       tier: 2, fetch: bybit.fetchCandles,       bestFor: ['all'] },
-  { id: 'gate',        tier: 3, fetch: gate.fetchCandles,        bestFor: ['all'] },
-  { id: 'kucoin',      tier: 3, fetch: kucoin.fetchCandles,      bestFor: ['all'] },
   { id: 'coingecko',   tier: 4, fetch: coingecko.fetchCandles,   bestFor: ['1D','1w'] },
   // Massive/Polygon free tier: only /prev works for crypto (NOT /range).
   // Keep as absolute last resort — fetchCandles will return null for /range calls,

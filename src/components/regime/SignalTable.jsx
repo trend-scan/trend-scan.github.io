@@ -160,7 +160,7 @@ export default function SignalTable({ regime }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <SignalDot isOn={ultra6.on && ob1.on && core9Score >= 8 && btcAboveMA} />
-              <span style={{ color: 'var(--scanner-text2)' }}>Both + C9 ≥ 8 + BTC > MA50</span>
+              <span style={{ color: 'var(--scanner-text2)' }}>Both + C9 ≥ 8 + BTC &gt; MA50</span>
             </div>
             <span
               className="font-bold"

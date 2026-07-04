@@ -20,7 +20,6 @@
  *   const history = loadQuadrantHistory();   // array of {date, quadrant, growth, inflation, liquidity}
  *   const rotation = detectRegimeRotation(history);
  *   if (rotation.flipFlag) {
- *     console.log(`Regime flipped: ${rotation.previousLabel} → ${rotation.currentLabel}`);
  *   }
  */
 

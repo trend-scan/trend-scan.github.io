@@ -100,8 +100,8 @@ export default function RegimeCard({ regime }) {
   // Next execution: first Friday of next month
   const now = new Date();
   const firstOfNext = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  let dayOfWeek = firstOfNext.getDay();
-  let daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (12 - dayOfWeek);
+  const dayOfWeek = firstOfNext.getDay(); // 0=Sun, 5=Fri
+  const daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (7 - dayOfWeek + 5);
   firstOfNext.setDate(firstOfNext.getDate() + daysToFriday);
 
   return (
