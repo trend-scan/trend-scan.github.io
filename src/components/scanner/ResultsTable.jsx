@@ -298,22 +298,22 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct }) {
 
       {/* Δ Base Trend */}
       <td className="py-2 px-2.5 text-right">
-        <PctBarCell value={row.pricePct} barWidth={pBarW} color="var(--scanner-green)" />
+        <PctBarCell value={row.pricePct} barWidth={pBarW} color="var(--scanner-base)" />
       </td>
 
       {/* Δ Spread */}
       <td className="py-2 px-2.5 text-right">
-        <PctBarCell value={row.emaPct} barWidth={eBarW} color="var(--scanner-blue)" />
+        <PctBarCell value={row.emaPct} barWidth={eBarW} color="var(--scanner-fast)" />
       </td>
 
       {/* Fast EMA/VWAP */}
-      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaFast)}</td>
+      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-fast)' }}>{fmtPrice(row.emaFast)}</td>
 
       {/* Mid EMA/VWAP */}
-      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaMid)}</td>
+      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-slow)' }}>{fmtPrice(row.emaMid)}</td>
 
       {/* Base (slow) */}
-      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>{fmtPrice(row.emaSlow)}</td>
+      <td className="py-2 px-2.5 text-right text-[11px] tabular-nums" style={{ color: 'var(--scanner-base)' }}>{fmtPrice(row.emaSlow)}</td>
     </tr>
   );
 }

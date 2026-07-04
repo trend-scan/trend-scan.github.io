@@ -66,13 +66,13 @@ export default function ScannerHeader({ settings, scanMeta }) {
             <div className="flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--scanner-text3)' }} />
               <span>Price above</span>
-              <CondBadge color="var(--scanner-green)">{slowLabel}</CondBadge>
+              <CondBadge color="var(--scanner-base)">{slowLabel}</CondBadge>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--scanner-text3)' }} />
-              <CondBadge color="var(--scanner-blue)">Fast {fastLabel}</CondBadge>
+              <CondBadge color="var(--scanner-fast)">Fast {fastLabel}</CondBadge>
               <span style={{ color: 'var(--scanner-text3)' }}>above</span>
-              <CondBadge color="var(--scanner-blue)">Slow {midLabel}</CondBadge>
+              <CondBadge color="var(--scanner-slow)">Slow {midLabel}</CondBadge>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--scanner-text3)' }} />
