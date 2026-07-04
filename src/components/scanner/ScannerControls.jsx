@@ -221,16 +221,16 @@ function IndicatorControl({ label, type, emaValue, vwapValue, onTypeChange, onEm
       {/* Period input with spinner */}
       <div style={{ borderLeft: '1px solid var(--scanner-border2)' }} className="flex items-center">
         {type === 'vwap' ? (
-          <SpinnerInput value={vwapValue} onChange={onVwapChange} min={0} max={90} width={40} suffix="d" />
+          <SpinnerInput value={vwapValue} onChange={onVwapChange} min={0} max={90} width={40} suffix="d" color={label === 'Fast' ? 'var(--scanner-fast)' : label === 'Slow' ? 'var(--scanner-slow)' : 'var(--scanner-base)'} />
         ) : (
-          <SpinnerInput value={emaValue} onChange={onEmaChange} min={0} max={500} width={48} />
+          <SpinnerInput value={emaValue} onChange={onEmaChange} min={0} max={500} width={48} color={label === 'Fast' ? 'var(--scanner-fast)' : label === 'Slow' ? 'var(--scanner-slow)' : 'var(--scanner-base)'} />
         )}
       </div>
     </div>
   );
 }
 
-function SpinnerInput({ value, onChange, min = 0, max = 500, width = 48, suffix = '' }) {
+function SpinnerInput({ value, onChange, min = 0, max = 500, width = 48, suffix = '', color = 'var(--scanner-accent)' }) {
   const [localVal, setLocalVal] = React.useState(String(value));
 
   React.useEffect(() => { setLocalVal(String(value)); }, [value]);
@@ -247,7 +247,7 @@ function SpinnerInput({ value, onChange, min = 0, max = 500, width = 48, suffix 
         type="text"
         inputMode="numeric"
         className="font-mono text-[13px] font-semibold bg-transparent border-none outline-none text-center"
-        style={{ color: 'var(--scanner-accent)', borderBottom: '1px solid var(--scanner-border3)', width: `${width}px`, padding: '6px 0' }}
+        style={{ color: color, borderBottom: '1px solid var(--scanner-border3)', width: `${width}px`, padding: '6px 0' }}
         value={localVal}
         onFocus={e => e.target.select()}
         onChange={e => setLocalVal(e.target.value)}
