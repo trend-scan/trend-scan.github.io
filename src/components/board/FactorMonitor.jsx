@@ -58,10 +58,10 @@ export default function FactorMonitor() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [h[hasLoaded, setH[h[hasLoaded] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    if (!h[hasLoaded) return;  // Wait for manual trigger
+    if (!hasLoaded) return;  // Wait for manual trigger
     let cancelled = false;
 
     async function load() {
@@ -152,9 +152,9 @@ export default function FactorMonitor() {
       }
     }
 
-    if (h[hasLoaded) load();
+    if (hasLoaded) load();
     return () => { cancelled = true; };
-  }, [h[h[hasLoaded]);
+  }, [hasLoaded]);
 
   if (loading) {
     return (
