@@ -42,7 +42,7 @@ export default function ScannerHeader({ settings, scanMeta }) {
               background: 'linear-gradient(90deg, var(--scanner-accent), #ffcc44)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
-            }}>Strength Screener</span>
+            }}>Trend Screener</span>
           </h1>
 
           {/* Short description */}
