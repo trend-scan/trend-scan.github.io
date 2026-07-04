@@ -18,7 +18,7 @@ name: Refresh FRED Snapshot
 on:
   schedule:
     # 14:00, 18:00, 22:00 UTC = 10am, 2pm, 6pm ET (US market hours)
-    # Only runs Mon-Fri per the `if` condition below
+    # Only runs Mon-Fri (1-5) — no extra `if:` needed in the job.
     - cron: '0 14,18,22 * * 1-5'
   workflow_dispatch:
 
@@ -29,8 +29,9 @@ jobs:
   refresh:
     name: Fetch fresh FRED data
     runs-on: ubuntu-latest
-    # Skip if not a manual run and we're on a weekend
-      steps:
+    # The cron schedule above already restricts to Mon-Fri (1-5),
+    # so no extra `if:` is needed. workflow_dispatch always runs.
+    steps:
       - name: Checkout
         uses: actions/checkout@v4
 

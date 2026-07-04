@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { diffAndPersist, timeAgo, getLastSnapshotTime, clearSnapshot } from '@/lib/regime/changeLog';
+import { diffAndPersist, timeAgo, getLastSnapshotTime } from '@/lib/regime/changeLog';
 
 export default function ChangeBanner({ regime }) {
   const [changes, setChanges] = useState([]);

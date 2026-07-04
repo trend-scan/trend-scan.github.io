@@ -55,6 +55,12 @@ export default [
       "react-hooks/rules-of-hooks": "error",
       "no-undef": "error",
       "no-unreachable": "error",
+      // Allow console.warn / console.error (useful for surfacing resolver
+      // failures to the devtools console without throwing), but flag
+      // console.log which is almost always leftover debugging. Files that
+      // genuinely need console.log can use a trailing // eslint-disable-line
+      // no-console comment.
+      "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
 ];

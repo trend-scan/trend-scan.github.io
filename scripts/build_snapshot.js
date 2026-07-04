@@ -35,10 +35,11 @@ const ROOT = path.resolve(__dirname, '..');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-// FRED API key — try env var first, then hardcoded fallback
-// (The key is already exposed in the client bundle via snapshot.json, so
-// hardcoding it here doesn't reduce security. It ensures FRED data is
-// always fetched even when the GitHub Actions secret isn't configured.)
+// FRED API key — MUST be provided via the FRED_API_KEY environment variable
+// (configured in GitHub Actions secrets). No hardcoded fallback: a missing
+// key fails loudly so we notice, rather than silently shipping an empty
+// snapshot. The key is server-side only and is NOT baked into the client
+// bundle — the browser only ever sees the resulting snapshot.json.
 const FRED_API_KEY = process.env.FRED_API_KEY;
 
 // Load previous snapshot for stale-data fallback

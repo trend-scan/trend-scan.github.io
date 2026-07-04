@@ -12,7 +12,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  ReferenceArea,
   Area,
   AreaChart,
 } from 'recharts';

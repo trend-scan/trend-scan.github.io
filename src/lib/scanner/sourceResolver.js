@@ -101,12 +101,21 @@ function recordFailure(sourceId, symbol) {
   f.lastFail = Date.now();
   _failures.set(k, f);
 
-  // LRU cap: if Map grows too large, delete oldest entries
+  // LRU cap: if Map grows too large, evict the 100 oldest entries.
+  // Uses Map's insertion-order iteration (O(n) on the iterated entries only,
+  // no array allocation or sort) — far cheaper than the previous
+  // `[...entries()].sort().slice()` which allocated a 500+ element array
+  // and ran an O(n log n) sort on every failure past the cap.
+  // Insertion order is a good-enough proxy for recency here because
+  // `_failures.set(k, f)` re-inserts on update (preserving order would
+  // require delete-then-set; we accept the minor inaccuracy to keep this O(1)).
   if (_failures.size > 500) {
-    const oldest = [..._failures.entries()]
-      .sort((a, b) => a[1].lastFail - b[1].lastFail)
-      .slice(0, 100);
-    for (const [key] of oldest) _failures.delete(key);
+    const it = _failures.keys();
+    for (let i = 0; i < 100; i++) {
+      const { value, done } = it.next();
+      if (done) break;
+      _failures.delete(value);
+    }
   }
 }
 

@@ -22,7 +22,7 @@
  * Data source: /snapshot.json → ken_french field (populated by build_snapshot.js)
  */
 
-import { mean, stddev } from './regimeCalculations';
+import { mean } from './regimeCalculations';
 
 /**
  * Compute seasonality baselines from Ken French monthly data.

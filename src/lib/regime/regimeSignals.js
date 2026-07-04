@@ -4,12 +4,10 @@
 
 import {
   adaptiveZ,
-  mean,
   sma,
   pctROC,
   yoyROC,
   pointChange,
-  weightedComposite,
   computeRSI,
   computeOBV,
 } from './regimeCalculations';
