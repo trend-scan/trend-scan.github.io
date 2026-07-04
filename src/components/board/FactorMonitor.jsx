@@ -58,7 +58,7 @@ export default function FactorMonitor() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [hasLoaded, setH[hasLoaded] = useState(false);
 
   useEffect(() => {
     if (!hasLoaded) return;  // Wait for manual trigger
