@@ -57,7 +57,7 @@ export default function ScannerHeader({ settings, scanMeta }) {
           </p>
 
           {/* Current Scan Settings label */}
-          <div className="mt-3 mb-1 text-[9px] font-bold tracking-[0.18em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+          <div className="mt-3 mb-1 text-[9px] font-bold tracking-[0.18em] uppercase" style={{ color: 'var(--scanner-accent)', textDecoration: 'underline' }}>
             Current Scan Settings
           </div>
 
