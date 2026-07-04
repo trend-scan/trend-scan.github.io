@@ -7,6 +7,8 @@ import StatusBar from '@/components/scanner/StatusBar';
 import MassiveApiKeyInput from '@/components/scanner/MassiveApiKeyInput';
 import { runScan } from '@/lib/scanner/scanEngine';
 
+const STORAGE_KEY = 'trendscan_scanner_settings';
+
 const DEFAULT_SETTINGS = {
   fastType: 'ema',
   emaFast: 21,
@@ -26,7 +28,18 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function Scanner() {
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+    } catch {}
+    return DEFAULT_SETTINGS;
+  });
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch {}
+  }, [settings]);
   const [isScanning, setIsScanning] = useState(false);
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState({ done: 0, total: 0, matched: 0, message: '—' });

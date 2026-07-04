@@ -18,7 +18,18 @@ const DEFAULT_EXCHANGE = 'auto';
 
 export default function Board() {
   const [activeTab, setActiveTab] = useState(0);
-  const [exchange, setExchange] = useState(DEFAULT_EXCHANGE);
+  const [exchange, setExchange] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trendscan_board_exchange');
+      if (saved) return saved;
+    } catch {}
+    return DEFAULT_EXCHANGE;
+  });
+
+  // Save exchange to localStorage when it changes
+  useEffect(() => {
+    try { localStorage.setItem('trendscan_board_exchange', exchange); } catch {}
+  }, [exchange]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState({ phase: 'idle', message: 'Press Refresh to load data' });
   const [data, setData] = useState(null);
