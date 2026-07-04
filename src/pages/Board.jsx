@@ -67,23 +67,9 @@ export default function Board() {
     }
   }, [exchange, isLoading, handleProgress, runTradAnalysis]);
 
-  // Auto-run on mount
-  useEffect(() => {
-    if (!hasLoaded.current) {
-      hasLoaded.current = true;
-      runAnalysis(DEFAULT_EXCHANGE);
-      // Also fetch tradfi data independently (for Macro tab)
-      runTradAnalysis();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // No auto-run — wait for manual user trigger (Refresh button)
 
-  // Auto-refresh tradData every 5 minutes (so Macro tab stays current)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      runTradAnalysis();
-    }, 5 * 60 * 1000);  // 5 minutes
-    return () => clearInterval(interval);
-  }, [runTradAnalysis]);
+  // No auto-refresh — user triggers manually
 
   // API key modal trigger removed — 'auto' default uses free sources.
   // Kept the ref so existing MassiveApiKeyInput component still imports cleanly;

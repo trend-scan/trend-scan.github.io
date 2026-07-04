@@ -81,11 +81,7 @@ export default function Scanner() {
     }
   }, [settings, isScanning, handleProgress]);
 
-  // Auto-scan on mount
-  useEffect(() => {
-    const timer = setTimeout(startScan, 300);
-    return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // No auto-scan — wait for manual user trigger
 
   return (
     <div
