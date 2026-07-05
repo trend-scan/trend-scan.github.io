@@ -70,9 +70,13 @@ export async function fetchCoinMarketChart(coinId, days = 365) {
 }
 
 // ─── Binance Klines ───────────────────────────────────────────────────────────
+// Uses Binance USDⓈ-M futures (fapi) endpoint instead of spot (api.binance.com).
+// fapi.binance.com returns 'Access-Control-Allow-Origin: *' so it works from
+// the browser; api.binance.com is CORS-blocked for US users (HTTP 451).
+// The kline response shape is identical between spot and futures endpoints.
 
 export async function fetchBinanceKlines(symbol, interval = '1d', limit = 365) {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
   const raw = await safeFetch(url);
 
   return raw.map(k => ({

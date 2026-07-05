@@ -8,11 +8,13 @@ import Board from './pages/Board';
 import MacroRegime from './pages/MacroRegime';
 import NavBar from './components/NavBar';
 import ErrorBoundary from './components/ErrorBoundary';
+import SpaAwareRedirect from './components/SpaAwareRedirect';
 
 function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
+        <SpaAwareRedirect />
         <NavBar />
         <Routes>
           <Route path="/" element={<ErrorBoundary name="Scanner"><Scanner /></ErrorBoundary>} />

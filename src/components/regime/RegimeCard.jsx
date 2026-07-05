@@ -50,10 +50,6 @@ const LIQ_COLORS = {
   TIGHT: 'var(--scanner-red)',
 };
 
-function fmtDate(d) {
-  return d.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 export default function RegimeCard({ regime }) {
   if (!regime) {
     return (
@@ -97,12 +93,28 @@ export default function RegimeCard({ regime }) {
     }
   } catch {}
 
-  // Next execution: first Friday of next month
-  const now = new Date();
-  const firstOfNext = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const dayOfWeek = firstOfNext.getDay(); // 0=Sun, 5=Fri
-  const daysToFriday = dayOfWeek <= 5 ? (5 - dayOfWeek) : (7 - dayOfWeek + 5);
-  firstOfNext.setDate(firstOfNext.getDate() + daysToFriday);
+  // Next scheduled FRED snapshot refresh.
+  // The refresh-snapshot.yml workflow runs at 14:00, 18:00, 22:00 UTC on
+  // weekdays (Mon-Fri). Compute the next upcoming run from now.
+  function nextRefreshTime() {
+    const now = new Date();
+    const UTC_HOURS = [14, 18, 22]; // 10am, 2pm, 6pm ET
+    // Iterate forward day-by-day up to 7 days
+    for (let d = 0; d < 8; d++) {
+      const candidate = new Date(now);
+      candidate.setUTCDate(now.getUTCDate() + d);
+      const dayOfWeek = candidate.getUTCDay(); // 0=Sun, 6=Sat
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // skip weekends
+      for (const hr of UTC_HOURS) {
+        candidate.setUTCHours(hr, 0, 0, 0);
+        if (candidate.getTime() > now.getTime()) {
+          return candidate;
+        }
+      }
+    }
+    return null;
+  }
+  const nextExec = nextRefreshTime();
 
   return (
     <div
@@ -184,7 +196,7 @@ export default function RegimeCard({ regime }) {
         {lastUpdated && (
           <div>Updated: {new Date(lastUpdated).toLocaleTimeString()}</div>
         )}
-        <div>Next exec: {fmtDate(firstOfNext)}</div>
+        <div>Next data refresh: {nextExec ? nextExec.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC' : '—'}</div>
         <div style={{ opacity: 0.6 }}>
           {fredAvailable ? (
             <span>via FRED + Binance + Kraken</span>
