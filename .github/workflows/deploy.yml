@@ -106,6 +106,23 @@ jobs:
           path: ./dist
 
       - name: Deploy to GitHub Pages
+        # Retry up to 3 times on failure. GitHub Pages deployment sometimes
+        # fails transiently with "Deployment failed, try again later."
+        # (seen July 4 and July 5). The artifact is already uploaded by
+        # the previous step, so retrying just asks GitHub to deploy it again.
+        uses: actions/deploy-pages@v4
+        id: deploy
+        continue-on-error: true
+
+      - name: Retry deploy if failed
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "First deploy attempt failed. Waiting 30s and retrying..."
+          sleep 30
+        # The actual retry happens in the next step
+
+      - name: Deploy to GitHub Pages (retry)
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
       - name: Post-deploy smoke test
