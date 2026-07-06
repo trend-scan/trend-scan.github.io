@@ -183,23 +183,29 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
             </span>
           </div>
           <div className="flex items-center gap-1" style={{ opacity: settings.rsiEnabled ? 1 : 0.4 }}>
-            <SpinnerInput
-              value={settings.rsiMin}
-              min={0} max={100} width={30}
-              onChange={v => {
-                const newMin = clamp(v, 0, 100);
-                onSettingsChange({ ...settings, rsiMin: newMin, rsiMax: Math.max(newMin, settings.rsiMax) });
-              }}
-            />
-            <span style={{ color: 'var(--scanner-text3)', fontSize: 9 }}>–</span>
-            <SpinnerInput
-              value={settings.rsiMax}
-              min={0} max={100} width={30}
-              onChange={v => {
-                const newMax = clamp(v, 0, 100);
-                onSettingsChange({ ...settings, rsiMax: newMax, rsiMin: Math.min(newMax, settings.rsiMin) });
-              }}
-            />
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-[7px] font-semibold tracking-[0.08em] uppercase" style={{ color: 'var(--scanner-text3)' }}>Min</span>
+              <SpinnerInput
+                value={settings.rsiMin}
+                min={0} max={100} width={30}
+                onChange={v => {
+                  const newMin = clamp(v, 0, 100);
+                  onSettingsChange({ ...settings, rsiMin: newMin, rsiMax: Math.max(newMin, settings.rsiMax) });
+                }}
+              />
+            </div>
+            <span style={{ color: 'var(--scanner-text3)', fontSize: 9, marginTop: '7px' }}>–</span>
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-[7px] font-semibold tracking-[0.08em] uppercase" style={{ color: 'var(--scanner-text3)' }}>Max</span>
+              <SpinnerInput
+                value={settings.rsiMax}
+                min={0} max={100} width={30}
+                onChange={v => {
+                  const newMax = clamp(v, 0, 100);
+                  onSettingsChange({ ...settings, rsiMax: newMax, rsiMin: Math.min(newMax, settings.rsiMin) });
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
