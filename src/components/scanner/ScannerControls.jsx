@@ -109,15 +109,20 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
       <div className="flex items-center gap-2">
         {/* Volume Filter */}
         <div className="flex flex-col gap-0.5">
-          <span className="text-[8px] font-semibold tracking-[0.1em] uppercase px-0.5" style={{ color: 'var(--scanner-text3)' }}>
-            Min Vol 24H
-          </span>
+          <div className="flex items-center gap-1.5">
+            <FilterToggle checked={settings.minVolumeEnabled} onChange={v => update('minVolumeEnabled', v)} />
+            <span className="text-[8px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+              Min Vol 24H
+            </span>
+          </div>
           <select
+            disabled={!settings.minVolumeEnabled}
             className="font-mono text-[10px] px-2 py-1 outline-none cursor-pointer"
             style={{
               background: 'var(--scanner-bg2)',
               border: '1px solid var(--scanner-border2)',
-              color: settings.minVolume > 0 ? 'var(--scanner-accent)' : 'var(--scanner-text3)'
+              color: settings.minVolume > 0 ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
+              opacity: settings.minVolumeEnabled ? 1 : 0.4
             }}
             value={settings.minVolume}
             onChange={e => update('minVolume', Number(e.target.value))}
@@ -134,15 +139,20 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
 
         {/* Market Cap Filter */}
         <div className="flex flex-col gap-0.5">
-          <span className="text-[8px] font-semibold tracking-[0.1em] uppercase px-0.5" style={{ color: 'var(--scanner-text3)' }}>
-            Min MCap
-          </span>
+          <div className="flex items-center gap-1.5">
+            <FilterToggle checked={settings.minMarketCapEnabled} onChange={v => update('minMarketCapEnabled', v)} />
+            <span className="text-[8px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+              Min MCap
+            </span>
+          </div>
           <select
+            disabled={!settings.minMarketCapEnabled}
             className="font-mono text-[10px] px-2 py-1 outline-none cursor-pointer"
             style={{
               background: 'var(--scanner-bg2)',
               border: '1px solid var(--scanner-border2)',
-              color: settings.minMarketCap > 0 ? 'var(--scanner-accent)' : 'var(--scanner-text3)'
+              color: settings.minMarketCap > 0 ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
+              opacity: settings.minMarketCapEnabled ? 1 : 0.4
             }}
             value={settings.minMarketCap}
             onChange={e => update('minMarketCap', Number(e.target.value))}
@@ -156,6 +166,35 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
             <option value={500000000}>$500M</option>
             <option value={1000000000}>$1B</option>
           </select>
+        </div>
+
+        {/* RSI Range Filter */}
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <FilterToggle checked={settings.rsiEnabled} onChange={v => update('rsiEnabled', v)} />
+            <span className="text-[8px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+              RSI(14)
+            </span>
+          </div>
+          <div className="flex items-center gap-1" style={{ opacity: settings.rsiEnabled ? 1 : 0.4 }}>
+            <SpinnerInput
+              value={settings.rsiMin}
+              min={0} max={100} width={30}
+              onChange={v => {
+                const newMin = clamp(v, 0, 100);
+                onSettingsChange({ ...settings, rsiMin: newMin, rsiMax: Math.max(newMin, settings.rsiMax) });
+              }}
+            />
+            <span style={{ color: 'var(--scanner-text3)', fontSize: 9 }}>–</span>
+            <SpinnerInput
+              value={settings.rsiMax}
+              min={0} max={100} width={30}
+              onChange={v => {
+                const newMax = clamp(v, 0, 100);
+                onSettingsChange({ ...settings, rsiMax: newMax, rsiMin: Math.min(newMax, settings.rsiMin) });
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -268,6 +307,30 @@ function SpinnerInput({ value, onChange, min = 0, max = 500, width = 48, suffix 
         >▼</button>
       </div>
     </div>
+  );
+}
+
+function FilterToggle({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex-shrink-0"
+      style={{
+        width: 22, height: 13, borderRadius: 7, padding: 0, border: 'none',
+        background: checked ? 'var(--scanner-accent)' : 'var(--scanner-border2)',
+        cursor: 'pointer', position: 'relative', transition: 'background 0.15s ease'
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 1.5, left: checked ? 10 : 1.5,
+        width: 10, height: 10, borderRadius: '50%',
+        background: checked ? '#000' : 'var(--scanner-text3)',
+        transition: 'left 0.15s ease'
+      }} />
+    </button>
   );
 }
 

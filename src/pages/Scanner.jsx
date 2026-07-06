@@ -25,6 +25,18 @@ const DEFAULT_SETTINGS = {
   // Filters
   minVolume: 0,        // 0 = no filter, otherwise USD value (e.g. 1000000 = $1M min)
   minMarketCap: 0,      // 0 = no filter, otherwise USD value (e.g. 10000000 = $10M min)
+
+  // NEW — explicit enable/disable per filter
+  priceAboveSlowEnabled: true,   // gates: price > slow
+  fastAboveMidEnabled: true,     // gates: fast > mid
+  minVolumeEnabled: true,        // gates: volume24h >= minVolume (also still needs minVolume > 0)
+  minMarketCapEnabled: true,     // gates: marketCap >= minMarketCap (also still needs minMarketCap > 0)
+
+  // NEW — RSI range filter
+  rsiEnabled: false,             // default OFF — new filter, don't change existing scan behavior for anyone
+  rsiPeriod: 14,
+  rsiMin: 0,
+  rsiMax: 100,
 };
 
 export default function Scanner() {

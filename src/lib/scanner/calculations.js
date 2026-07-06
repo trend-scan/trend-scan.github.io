@@ -49,6 +49,40 @@ export function fmtPrice(p) {
   return p.toExponential(3);
 }
 
+/**
+ * RSI (Relative Strength Index) — Wilder's smoothing (TradingView-compatible)
+ * Seed: simple average of first `period` gains/losses
+ * Recurrence: avg = (prevAvg * (period - 1) + current) / period
+ * RSI = 100 - (100 / (1 + avgGain / avgLoss))
+ * @param {number[]} closes — closing prices, oldest→newest
+ * @param {number} period — lookback period (standard: 14)
+ * @returns {number|null} RSI value 0–100, or null if insufficient data
+ */
+export function calcRSI(closes, period = 14) {
+  if (!closes || closes.length < period + 1) return null;
+
+  let gainSum = 0, lossSum = 0;
+  for (let i = 1; i <= period; i++) {
+    const delta = closes[i] - closes[i - 1];
+    if (delta > 0) gainSum += delta;
+    else lossSum += -delta;
+  }
+  let avgGain = gainSum / period;
+  let avgLoss = lossSum / period;
+
+  for (let i = period + 1; i < closes.length; i++) {
+    const delta = closes[i] - closes[i - 1];
+    const gain = delta > 0 ? delta : 0;
+    const loss = delta < 0 ? -delta : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+  }
+
+  if (avgLoss === 0) return avgGain === 0 ? 50 : 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
 export function fmtPct(p) {
   if (p == null || isNaN(p)) return '—';
   const s = p >= 0 ? '+' : '';

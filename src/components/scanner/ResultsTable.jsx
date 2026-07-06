@@ -44,6 +44,11 @@ function fmtRVol(v) {
   return v.toFixed(2) + 'x';
 }
 
+function fmtRSI(v) {
+  if (v == null || !Number.isFinite(v)) return '—';
+  return v.toFixed(1);
+}
+
 function indicatorLabel(type, emaVal, vwapVal) {
   return type === 'vwap' ? `VWAP(${vwapVal}d)` : `EMA(${emaVal})`;
 }
@@ -88,6 +93,7 @@ const SORT_OPTIONS = [
   { key: 'change24h', label: '24h Δ' },
   { key: 'volume24h', label: 'VOL' },
   { key: 'rVol', label: 'rVOL' },
+  { key: 'rsi', label: 'RSI' },
   { key: 'marketCap', label: 'MCAP' },
   { key: 'fundingRate', label: 'FUND' },
   { key: 'openInterest', label: 'OI' },
@@ -108,6 +114,7 @@ export default function ResultsTable({ results, settings, isScanning }) {
     if (sortKey === 'fundingRate') return (b.fundingRate ?? -999) - (a.fundingRate ?? -999);
     if (sortKey === 'openInterest') return (b.openInterest ?? 0) - (a.openInterest ?? 0);
     if (sortKey === 'rVol') return (b.rVol ?? 0) - (a.rVol ?? 0);
+    if (sortKey === 'rsi') return (b.rsi ?? -1) - (a.rsi ?? -1);
     return 0;
   });
 
@@ -169,6 +176,7 @@ export default function ResultsTable({ results, settings, isScanning }) {
                   { key: 'change24h', label: '24h Δ', right: true },
                   { key: 'volume24h', label: 'VOL', right: true },
                   { key: 'rVol', label: 'rVOL', right: true },
+                  { key: 'rsi', label: 'RSI', right: true },
                   { key: 'marketCap', label: 'MCAP', right: true },
                   { key: 'fundingRate', label: 'FUND', right: true },
                   { key: 'openInterest', label: 'OI', right: true },
@@ -268,6 +276,18 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct }) {
                  row.rVol < 0.5 ? 'var(--scanner-text3)' : 'var(--scanner-text2)'
         }}>
           {fmtRVol(row.rVol)}
+        </span>
+      </td>
+
+      {/* RSI (14) — only computed when rsiEnabled is true; otherwise shows — */}
+      <td className="py-2 px-2.5 text-right">
+        <span className="text-[11px] font-semibold tabular-nums" style={{
+          color: row.rsi == null ? 'var(--scanner-text3)' :
+                 row.rsi < 30 ? 'var(--scanner-green)' :   /* oversold = green (buy signal) */
+                 row.rsi > 70 ? 'var(--scanner-red)' :      /* overbought = red (sell signal) */
+                 'var(--scanner-text2)'
+        }}>
+          {fmtRSI(row.rsi)}
         </span>
       </td>
 

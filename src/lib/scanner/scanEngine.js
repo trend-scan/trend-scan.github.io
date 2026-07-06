@@ -1,4 +1,4 @@
-import { calcEMA, calcVWAP } from './calculations';
+import { calcEMA, calcVWAP, calcRSI } from './calculations';
 import { fetchCandles, fetch24hChange, preloadExchange, fetchTop300, CANDLES_PER_DAY } from './exchanges';
 import { fetchAllTickers as fetchHyperliquidTickers } from './sources/hyperliquid';
 
@@ -48,10 +48,15 @@ function computeRVol(candles, period = 20) {
 }
 
 async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
-  const { fastType, emaFast, vwapFastDays, midType, emaMid, vwapMidDays, slowType, emaSlow, vwapDays, exchange, timeframe, minVolume, minMarketCap } = settings;
+  const {
+    fastType, emaFast, vwapFastDays, midType, emaMid, vwapMidDays, slowType, emaSlow, vwapDays,
+    exchange, timeframe, minVolume, minMarketCap,
+    priceAboveSlowEnabled, fastAboveMidEnabled, minVolumeEnabled, minMarketCapEnabled,
+    rsiEnabled, rsiPeriod, rsiMin, rsiMax,
+  } = settings;
 
   // Apply volume filter if specified
-  if (minVolume > 0 && cgMarketData) {
+  if (minVolumeEnabled && minVolume > 0 && cgMarketData) {
     const marketInfo = cgMarketData[asset.symbol];
     if (!marketInfo || marketInfo.volume24h < minVolume) {
       return null;
@@ -59,7 +64,7 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
   }
 
   // Apply market cap filter if specified
-  if (minMarketCap > 0 && cgMarketData) {
+  if (minMarketCapEnabled && minMarketCap > 0 && cgMarketData) {
     const marketInfo = cgMarketData[asset.symbol];
     if (!marketInfo || marketInfo.marketCap < minMarketCap) {
       return null;
@@ -94,7 +99,17 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
 
   const price = closes[closes.length - 1];
 
-  if (price > slow && fast > mid) {
+  const passesPriceVsSlow = !priceAboveSlowEnabled || price > slow;
+  const passesFastVsMid = !fastAboveMidEnabled || fast > mid;
+
+  let rsi = null;
+  let passesRsi = true;
+  if (rsiEnabled) {
+    rsi = calcRSI(closes, rsiPeriod || 14);
+    passesRsi = rsi != null && rsi >= rsiMin && rsi <= rsiMax;
+  }
+
+  if (passesPriceVsSlow && passesFastVsMid && passesRsi) {
     const change24h = await fetch24hChange(asset.symbol, exchange, candles);
     const sparkline = closes.slice(-sparklineCandles);
 
@@ -128,6 +143,7 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
       openInterestRaw: hlData?.openInterest ?? null,  // base currency (for reference)
       // Relative volume
       rVol,
+      rsi,
     };
   }
   return null;
@@ -194,6 +210,9 @@ export async function runScan(settings, onProgress) {
       ? `$${(settings.minMarketCap / 1e9).toFixed(1)}B`
       : `$${(settings.minMarketCap / 1e6).toFixed(0)}M`;
     filterParts.push(`MCap≥${mcapStr}`);
+  }
+  if (settings.rsiEnabled) {
+    filterParts.push(`RSI ${settings.rsiMin}-${settings.rsiMax}`);
   }
   const filterInfo = filterParts.length > 0 ? ` [${filterParts.join(', ')}]` : '';
 
