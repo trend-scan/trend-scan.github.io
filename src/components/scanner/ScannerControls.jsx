@@ -11,7 +11,7 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
       borderBottom: '1px solid var(--scanner-border2)'
     }}>
 
-      {/* Fast indicator */}
+      {/* Fast indicator — toggle gates fast > mid */}
       <IndicatorControl
         label="Fast"
         type={settings.fastType}
@@ -20,9 +20,12 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
         onTypeChange={v => update('fastType', v)}
         onEmaChange={v => update('emaFast', clamp(v, 2, 499))}
         onVwapChange={v => update('vwapFastDays', clamp(v, 1, 90))}
+        toggleChecked={settings.fastAboveMidEnabled}
+        onToggleChange={v => update('fastAboveMidEnabled', v)}
+        toggleTitle="Gate: Fast > Mid"
       />
 
-      {/* Mid indicator */}
+      {/* Mid indicator — no toggle, it's the reference for fast > mid */}
       <IndicatorControl
         label="Slow"
         type={settings.midType}
@@ -33,7 +36,7 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
         onVwapChange={v => update('vwapMidDays', clamp(v, 1, 90))}
       />
 
-      {/* Base (slow) indicator */}
+      {/* Base (slow) indicator — toggle gates price > slow */}
       <IndicatorControl
         label="Base"
         type={settings.slowType}
@@ -42,6 +45,9 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
         onTypeChange={v => update('slowType', v)}
         onEmaChange={v => update('emaSlow', clamp(v, 2, 500))}
         onVwapChange={v => update('vwapDays', clamp(v, 1, 90))}
+        toggleChecked={settings.priceAboveSlowEnabled}
+        onToggleChange={v => update('priceAboveSlowEnabled', v)}
+        toggleTitle="Gate: Price > Base"
       />
 
       <Separator />
@@ -223,12 +229,33 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
   );
 }
 
-function IndicatorControl({ label, type, emaValue, vwapValue, onTypeChange, onEmaChange, onVwapChange }) {
+/**
+ * @param {object} props
+ * @param {string} props.label
+ * @param {string} props.type
+ * @param {number} props.emaValue
+ * @param {number} props.vwapValue
+ * @param {function} props.onTypeChange
+ * @param {function} props.onEmaChange
+ * @param {function} props.onVwapChange
+ * @param {boolean} [props.toggleChecked] Present only when this indicator has a filter toggle
+ * @param {function} [props.onToggleChange] Present only when this indicator has a filter toggle
+ * @param {string} [props.toggleTitle] Tooltip text for the toggle
+ */
+function IndicatorControl({ label, type, emaValue, vwapValue, onTypeChange, onEmaChange, onVwapChange, toggleChecked, onToggleChange, toggleTitle }) {
   return (
     <div className="flex items-center gap-0 overflow-hidden" style={{
       background: 'var(--scanner-bg2)',
-      border: '1px solid var(--scanner-border2)'
+      border: '1px solid var(--scanner-border2)',
+      opacity: toggleChecked === false ? 0.6 : 1
     }}>
+      {/* Toggle (optional — only rendered when onToggleChange is provided) */}
+      {onToggleChange && (
+        <div className="flex items-center px-1.5" style={{ borderRight: '1px solid var(--scanner-border2)' }}>
+          <FilterToggle checked={toggleChecked} onChange={onToggleChange} title={toggleTitle} />
+        </div>
+      )}
+
       {/* Label */}
       <span className="text-[8.5px] font-semibold tracking-[0.14em] uppercase whitespace-nowrap px-2 py-1.5" style={{
         color: 'var(--scanner-text3)',
@@ -310,12 +337,19 @@ function SpinnerInput({ value, onChange, min = 0, max = 500, width = 48, suffix 
   );
 }
 
-function FilterToggle({ checked, onChange }) {
+/**
+ * @param {object} props
+ * @param {boolean} props.checked
+ * @param {function} props.onChange
+ * @param {string} [props.title] Tooltip text for the toggle
+ */
+function FilterToggle({ checked, onChange, title }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      title={title}
       onClick={() => onChange(!checked)}
       className="flex-shrink-0"
       style={{
