@@ -25,12 +25,6 @@ export default function TradingViewChart({ symbol, exchange, timeframe }) {
   const tvSymbol = toTradingViewSymbol(symbol, exchange);
   const tvInterval = toTradingViewInterval(timeframe);
 
-  // Check viewport width once at render time. The Sheet is opened fresh
-  // per row-click, so this will be correct for the viewport the user is
-  // on when they open it. Won't react to live resize, but that's an
-  // acceptable tradeoff — the user can close and reopen the panel.
-  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
-
   const src = useMemo(() => {
     const params = new URLSearchParams({
       frameElementId: 'tv-advanced-chart',
@@ -42,7 +36,7 @@ export default function TradingViewChart({ symbol, exchange, timeframe }) {
       locale: 'en',
       backgroundColor: 'rgba(0, 0, 0, 0)',
       allow_symbol_change: 'true',
-      hide_side_toolbar: isNarrow ? 'true' : 'false',
+      hide_side_toolbar: 'true',
       withdateranges: 'true',
       details: 'false',
       hotlist: 'false',
@@ -50,7 +44,7 @@ export default function TradingViewChart({ symbol, exchange, timeframe }) {
       studies: '[]',
     });
     return `https://s.tradingview.com/embed-widget/advanced-chart/?${params.toString()}`;
-  }, [tvSymbol, tvInterval, isNarrow]);
+  }, [tvSymbol, tvInterval]);
 
   return (
     <>
