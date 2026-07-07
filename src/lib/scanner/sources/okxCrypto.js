@@ -22,6 +22,7 @@ const TIMEFRAME_BAR = {
   '12H': '12H',
   '1D': '1D',
   '1w': '1W',
+  '1W': '1W',
 };
 
 // Tradfi tickers handled by okxTradfi.js — exclude them here to avoid duplicate attempts
@@ -123,7 +124,7 @@ export async function fetchTicker(symbol) {
 export const sourceMeta = {
   id: 'okx_perps',  // keep ID for backwards compatibility (UI dropdowns)
   type: 'crypto',
-  supportsTimeframes: ['15m', '30m', '1H', '4H', '12H', '1D', '1w'],
+  supportsTimeframes: ['15m', '30m', '1H', '4H', '12H', '1D', '1w', '1W'],
   rateLimitPerMin: 20,  // per-IP, generous
   requiresApiKey: false,
   maxCandlesPerCall: 300,

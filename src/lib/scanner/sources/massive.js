@@ -39,6 +39,7 @@ const TIMEFRAME_MAP = {
   '12H': { multiplier: 12, timespan: 'hour' },
   '1D':  { multiplier: 1,  timespan: 'day' },
   '1w':  { multiplier: 1,  timespan: 'week' },
+  '1W':  { multiplier: 1,  timespan: 'week' },
 };
 
 const INTERVAL_MS = {
@@ -51,6 +52,7 @@ const INTERVAL_MS = {
   '12h': 43_200_000,
   '1d': 86_400_000,
   '1w': 604_800_000,
+  '1W': 604_800_000,
 };
 
 /**
@@ -234,7 +236,7 @@ export function isConfigured() {
 export const sourceMeta = {
   id: 'massive',
   type: 'multi',  // crypto + tradfi + forex + indices
-  supportsTimeframes: ['1m', '5m', '15m', '30m', '1H', '4H', '12H', '1D', '1w'],
+  supportsTimeframes: ['1m', '5m', '15m', '30m', '1H', '4H', '12H', '1D', '1w', '1W'],
   rateLimitPerMin: 'unlimited (paid)',
   requiresApiKey: true,
   maxCandlesPerCall: 50000,

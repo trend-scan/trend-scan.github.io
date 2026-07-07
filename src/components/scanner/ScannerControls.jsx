@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TIMEFRAMES = ['15m', '30m', '1H', '4H', '12H', '1D', '1w'];
+const TIMEFRAMES = ['15m', '30m', '1H', '4H', '12H', '1D', '1W'];
 
 export default function ScannerControls({ settings, onSettingsChange, isScanning, onScan }) {
   const update = (key, val) => onSettingsChange({ ...settings, [key]: val });

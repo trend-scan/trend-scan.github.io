@@ -19,6 +19,7 @@ const TIMEFRAME_DAYS = {
   '15m': 1,
   '30m': 1,
   '1w': 365,
+  '1W': 365,
 };
 
 // Map symbol → CoinGecko coin id (the OHLC endpoint requires the id, not the ticker)
@@ -405,7 +406,7 @@ function filterBySymbols(map, symbols) {
 export const sourceMeta = {
   id: 'coingecko',
   type: 'crypto',
-  supportsTimeframes: ['1D', '4H', '1H', '15m', '30m', '1w'],
+  supportsTimeframes: ['1D', '4H', '1H', '15m', '30m', '1w', '1W'],
   rateLimitPerMin: 30,
   requiresApiKey: false,
 };

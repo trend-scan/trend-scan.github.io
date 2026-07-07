@@ -18,6 +18,7 @@ const TIMEFRAME_MINUTES = {
   '12H': 720,
   '1D': 1440,
   '1w': 10080,
+  '1W': 10080,
 };
 
 // Kraken uses special pair names for some assets
@@ -143,7 +144,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
 export const sourceMeta = {
   id: 'kraken',
   type: 'crypto',
-  supportsTimeframes: ['15m', '30m', '1H', '4H', '12H', '1D', '1w'],
+  supportsTimeframes: ['15m', '30m', '1H', '4H', '12H', '1D', '1w', '1W'],
   rateLimitPerMin: 60,  // generous, no hard limit
   requiresApiKey: false,
   maxCandlesPerCall: 720,

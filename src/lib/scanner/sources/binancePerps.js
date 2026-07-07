@@ -37,6 +37,7 @@ const TIMEFRAME_INTERVAL = {
   '12H': '12h',
   '1D': '1d',
   '1w': '1w',
+  '1W': '1w',
 };
 
 // Cache of universe: bare symbol -> actual Binance baseAsset
@@ -138,7 +139,7 @@ export async function isSupported(symbol) {
 export const sourceMeta = {
   id: 'binance_perps',
   type: 'crypto',
-  supportsTimeframes: ['15m', '30m', '1H', '4H', '12H', '1D', '1w'],
+  supportsTimeframes: ['15m', '30m', '1H', '4H', '12H', '1D', '1w', '1W'],
   rateLimitPerMin: 1200,  // Binance default weight limit is 2400/min
   requiresApiKey: false,
   maxCandlesPerCall: 1500,

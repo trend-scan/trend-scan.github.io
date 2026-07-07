@@ -18,6 +18,7 @@ const TIMEFRAME_INTERVAL = {
   '4H': '4h',
   '1D': '1d',
   '1w': '1w',
+  '1W': '1w',
 };
 
 const INTERVAL_MS = {
@@ -29,6 +30,7 @@ const INTERVAL_MS = {
   '4h': 14_400_000,
   '1d': 86_400_000,
   '1w': 604_800_000,
+  '1W': 604_800_000,
 };
 
 // Cache of universe (so we can reject unknown symbols without a wasted candle call)
@@ -154,7 +156,7 @@ export async function fetchAllTickers() {
 export const sourceMeta = {
   id: 'hyperliquid',
   type: 'crypto',
-  supportsTimeframes: ['15m', '30m', '1H', '4H', '1D', '1w'],
+  supportsTimeframes: ['15m', '30m', '1H', '4H', '1D', '1w', '1W'],
   rateLimitPerMin: 60,  // conservative estimate
   requiresApiKey: false,
 };

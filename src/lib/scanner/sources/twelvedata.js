@@ -83,6 +83,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
     '15m': '15min',
     '30m': '30min',
     '1w': '1week',
+    '1W': '1week',
   };
   const interval = intervalMap[timeframe] || '1day';
   
@@ -130,7 +131,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
 export const sourceMeta = {
   id: 'twelvedata',
   type: 'multi',  // stocks + crypto + forex
-  supportsTimeframes: ['15m', '30m', '1H', '4H', '1D', '1w'],
+  supportsTimeframes: ['15m', '30m', '1H', '4H', '1D', '1w', '1W'],
   rateLimitPerDay: 800,
   rateLimitPerMin: 8,
   requiresApiKey: true,

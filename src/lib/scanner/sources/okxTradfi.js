@@ -19,6 +19,7 @@ const TIMEFRAME_BAR = {
   '12H': '12H',
   '1D': '1D',
   '1w': '1W',
+  '1W': '1W',
 };
 
 // OKX SWAP perps that are tradfi (not crypto)

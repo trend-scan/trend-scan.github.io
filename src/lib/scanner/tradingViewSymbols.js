@@ -26,6 +26,7 @@ const INTERVAL_MAP = {
   '4H':  '240',
   '12H': '720',
   '1D':  'D',
+  '1W':  'W',
 };
 
 /** @param {string} symbol - e.g. "BTC" */
