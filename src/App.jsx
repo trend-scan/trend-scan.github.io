@@ -9,6 +9,7 @@ import MacroRegime from './pages/MacroRegime';
 import NavBar from './components/NavBar';
 import ErrorBoundary from './components/ErrorBoundary';
 import SpaAwareRedirect from './components/SpaAwareRedirect';
+import LegalDisclaimer from './components/LegalDisclaimer';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/macro" element={<ErrorBoundary name="Macro Regime"><MacroRegime /></ErrorBoundary>} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
+        <LegalDisclaimer />
       </Router>
       <Toaster />
     </QueryClientProvider>
