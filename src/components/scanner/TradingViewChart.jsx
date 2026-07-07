@@ -1,16 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import { toTradingViewSymbol, toTradingViewInterval } from '@/lib/scanner/tradingViewSymbols';
 
 /**
- * TradingViewChart — embeds TradingView's free Advanced Chart widget.
+ * TradingViewChart — embeds TradingView's free Advanced Chart via direct iframe.
  *
- * The widget is a script tag that injects an iframe. It's not reactive to
- * prop changes after mount, so the effect re-runs (and fully re-injects
- * the widget) whenever symbol, exchange, or timeframe changes.
+ * Previous approach used the embed-widget-advanced-chart.js script which
+ * dynamically creates an iframe. That had two problems:
+ * 1. The script needs to be in CSP script-src (it was, but fragile)
+ * 2. The script creates the iframe as a sibling, not a child, of the
+ *    script tag — which broke the height chain in the Sheet panel.
  *
- * `allow_symbol_change: true` lets the user manually search a different
- * symbol in the widget itself if the mapped one doesn't resolve on that
- * venue — TradingView doesn't have every token on every exchange.
+ * This direct iframe approach:
+ * - No external script needed (one less CSP directive to maintain)
+ * - The iframe IS the chart container (height chain is simple)
+ * - Query params configure the widget (same as the script's JSON config)
  *
  * @param {object} props
  * @param {string} props.symbol - bare symbol, e.g. "BTC"
@@ -18,37 +21,43 @@ import { toTradingViewSymbol, toTradingViewInterval } from '@/lib/scanner/tradin
  * @param {string} props.timeframe - screener timeframe, e.g. "4H"
  */
 export default function TradingViewChart({ symbol, exchange, timeframe }) {
-  const containerRef = useRef(null);
+  const tvSymbol = toTradingViewSymbol(symbol, exchange);
+  const tvInterval = toTradingViewInterval(timeframe);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    containerRef.current.innerHTML = '';
-
-    const widgetDiv = document.createElement('div');
-    widgetDiv.style.height = '100%';
-    widgetDiv.style.width = '100%';
-    containerRef.current.appendChild(widgetDiv);
-
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      autosize: true,
-      symbol: toTradingViewSymbol(symbol, exchange),
-      interval: toTradingViewInterval(timeframe),
+  const src = useMemo(() => {
+    const params = new URLSearchParams({
+      frameElementId: 'tv-advanced-chart',
+      symbol: tvSymbol,
+      interval: tvInterval,
       timezone: 'Etc/UTC',
       theme: 'dark',
       style: '1',
       locale: 'en',
-      backgroundColor: 'rgba(0,0,0,0)',
-      allow_symbol_change: true,   // lets the user manually search a different
-                                    // symbol in the widget itself if the mapped
-                                    // one doesn't resolve on that venue
-      support_host: 'https://www.tradingview.com',
+      backgroundColor: 'rgba(0, 0, 0, 0)',
+      allow_symbol_change: 'true',
+      hide_side_toolbar: 'false',
+      withdateranges: 'true',
+      details: 'false',
+      hotlist: 'false',
+      calendar: 'false',
+      studies: '[]',
     });
-    containerRef.current.appendChild(script);
-  }, [symbol, exchange, timeframe]);
+    return `https://www.tradingview-widget.com/embed-widget/advanced-chart/?${params.toString()}`;
+  }, [tvSymbol, tvInterval]);
 
-  return <div ref={containerRef} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />;
+  return (
+    <iframe
+      id="tv-advanced-chart"
+      src={src}
+      title={`${symbol} · ${timeframe} chart`}
+      style={{
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        display: 'block',
+      }}
+      allowFullScreen
+      allow="clipboard-write"
+    />
+  );
 }
