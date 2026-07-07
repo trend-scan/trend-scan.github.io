@@ -119,6 +119,7 @@
   [data-state="open"].fixed.inset-y-0.right-0 {
     inset: auto 0 0 0 !important;
     height: 70vh !important;
+    height: 70dvh !important;  /* dynamic viewport height — accounts for mobile browser chrome */
     width: 100% !important;
     max-width: 100% !important;
     border-top: 1px solid var(--scanner-border2) !important;
@@ -127,5 +128,7 @@
   /* Ensure the chart container fills the constrained sheet */
   .tradingview-chart-container {
     height: calc(70vh - 65px) !important;
+    height: calc(70dvh - 65px) !important;  /* dvh fallback for mobile browser chrome */
+    min-height: 0 !important;  /* override the inline minHeight on mobile — prevents landscape overflow */
   }
 }
