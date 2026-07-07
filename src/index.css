@@ -110,3 +110,22 @@
 ::-webkit-scrollbar-track { background: var(--scanner-bg1); }
 ::-webkit-scrollbar-thumb { background: var(--scanner-border2); border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: var(--scanner-border3); }
+/* ── TradingView chart panel — mobile responsiveness ──────────────────── */
+/* On mobile (below sm breakpoint = 640px), constrain the sheet to a
+   bottom-oriented panel that doesn't fill the entire screen. The sheet.jsx
+   "right" variant defaults to w-3/4 h-full; on mobile we override to a
+   shorter bottom panel so the user can still see and dismiss it easily. */
+@media (max-width: 639px) {
+  [data-state="open"].fixed.inset-y-0.right-0 {
+    inset: auto 0 0 0 !important;
+    height: 70vh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-top: 1px solid var(--scanner-border2) !important;
+    border-radius: 8px 8px 0 0 !important;
+  }
+  /* Ensure the chart container fills the constrained sheet */
+  .tradingview-chart-container {
+    height: calc(70vh - 65px) !important;
+  }
+}

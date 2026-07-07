@@ -156,7 +156,7 @@ export default function Scanner() {
               {selectedRow?.symbol} · {settings.timeframe}
             </SheetTitle>
           </SheetHeader>
-          <div style={{ height: 'calc(100% - 65px)' }}>
+          <div className="tradingview-chart-container" style={{ height: 'calc(100% - 65px)', minHeight: '400px' }}>
             {selectedRow && (
               <TradingViewChart
                 symbol={selectedRow.symbol}

@@ -2,14 +2,12 @@
  * Maps a Screener exchange + interval to TradingView's symbol/interval conventions.
  * Best-effort mappings based on documented TradingView conventions.
  *
- * NOTE: the HYPERLIQUID: prefix was added by TradingView on 2026-07-02 — this is a
- * brand new integration. Verify the exact perpetual suffix (USD.P here) against a
- * few known symbols (BTC, ETH, HYPE) in TradingView's own symbol search before
- * relying on this in production; the convention may still be settling.
+ * Hyperliquid perpetuals on TradingView use the USDC.P suffix (e.g. BTCUSDC.P),
+ * confirmed against TradingView's symbol search.
  */
 
 const EXCHANGE_MAP = {
-  hyperliquid:    { prefix: 'HYPERLIQUID', suffix: 'USD.P' },   // NEW integration — verify suffix
+  hyperliquid:    { prefix: 'HYPERLIQUID', suffix: 'USDC.P' },   // confirmed: BTCUSDC.P
   okx_perps:      { prefix: 'OKX',         suffix: 'USDT.P' },
   okx:            { prefix: 'OKX',         suffix: 'USDT' },
   binance_perps:  { prefix: 'BINANCE',     suffix: 'USDT.P' },
