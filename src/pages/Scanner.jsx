@@ -5,6 +5,8 @@ import ProgressBar from '@/components/scanner/ProgressBar';
 import ResultsTable from '@/components/scanner/ResultsTable';
 import StatusBar from '@/components/scanner/StatusBar';
 import MassiveApiKeyInput from '@/components/scanner/MassiveApiKeyInput';
+import TradingViewChart from '@/components/scanner/TradingViewChart';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { runScan } from '@/lib/scanner/scanEngine';
 
 const STORAGE_KEY = 'trendscan_scanner_settings';
@@ -59,6 +61,7 @@ export default function Scanner() {
   const [scanMeta, setScanMeta] = useState({ updatedAt: null, duration: null });
   const [error, setError] = useState(null);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
   const throttleRef = useRef(null);
 
   // Massive API key check removed — 'auto' default uses free sources via the resolver.
@@ -135,12 +138,35 @@ export default function Scanner() {
         </div>
       )}
 
-      <ResultsTable results={results} settings={settings} isScanning={isScanning} />
+      <ResultsTable results={results} settings={settings} isScanning={isScanning} onSelectRow={setSelectedRow} />
       <StatusBar settings={settings} />
 
       {showApiKeyModal && (
         <MassiveApiKeyInput onClose={() => setShowApiKeyModal(false)} />
       )}
+
+      <Sheet open={!!selectedRow} onOpenChange={(open) => !open && setSelectedRow(null)}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-2xl p-0"
+          style={{ background: 'var(--scanner-bg)', border: 'none' }}
+        >
+          <SheetHeader className="p-4 border-b" style={{ borderColor: 'var(--scanner-border)' }}>
+            <SheetTitle style={{ color: 'var(--scanner-text)' }}>
+              {selectedRow?.symbol} · {settings.timeframe}
+            </SheetTitle>
+          </SheetHeader>
+          <div style={{ height: 'calc(100% - 65px)' }}>
+            {selectedRow && (
+              <TradingViewChart
+                symbol={selectedRow.symbol}
+                exchange={settings.exchange}
+                timeframe={settings.timeframe}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

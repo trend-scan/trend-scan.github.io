@@ -101,7 +101,7 @@ const SORT_OPTIONS = [
   { key: 'emaPct', label: 'Δ Spread' },
 ];
 
-export default function ResultsTable({ results, settings, isScanning }) {
+export default function ResultsTable({ results, settings, isScanning, onSelectRow }) {
   const [sortKey, setSortKey] = useState('rank');
 
   const sorted = [...results].sort((a, b) => {
@@ -209,6 +209,7 @@ export default function ResultsTable({ results, settings, isScanning }) {
                   index={i}
                   maxPricePct={maxPricePct}
                   maxEmaPct={maxEmaPct}
+                  onSelectRow={onSelectRow}
                 />
               ))}
             </tbody>
@@ -219,18 +220,28 @@ export default function ResultsTable({ results, settings, isScanning }) {
   );
 }
 
-function ResultRow({ row, index, maxPricePct, maxEmaPct }) {
+/**
+ * @param {object} props
+ * @param {object} props.row - result row data
+ * @param {number} props.index - row index (for animation delay)
+ * @param {number} props.maxPricePct - max pricePct across all rows (for bar width)
+ * @param {number} props.maxEmaPct - max emaPct across all rows (for bar width)
+ * @param {function} [props.onSelectRow] - callback when row is clicked
+ */
+function ResultRow({ row, index, maxPricePct, maxEmaPct, onSelectRow }) {
   const pBarW = Math.max(2, Math.round((row.pricePct / maxPricePct) * 40));
   const eBarW = Math.max(2, Math.round((row.emaPct / maxEmaPct) * 40));
   const isPositive = row.change24h != null ? row.change24h >= 0 : null;
 
   return (
     <tr
+      onClick={() => onSelectRow?.(row)}
       style={{
         borderBottom: '1px solid var(--scanner-border)',
         animation: `rowIn 0.18s ease forwards`,
         animationDelay: `${Math.min(index * 0.015, 0.35)}s`,
-        opacity: 0
+        opacity: 0,
+        cursor: 'pointer',
       }}
       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.025)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
