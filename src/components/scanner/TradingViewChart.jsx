@@ -50,5 +50,5 @@ export default function TradingViewChart({ symbol, exchange, timeframe }) {
     containerRef.current.appendChild(script);
   }, [symbol, exchange, timeframe]);
 
-  return <div ref={containerRef} style={{ height: '100%', width: '100%' }} />;
+  return <div ref={containerRef} style={{ height: '100%', width: '100%', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />;
 }

@@ -148,15 +148,15 @@ export default function Scanner() {
       <Sheet open={!!selectedRow} onOpenChange={(open) => !open && setSelectedRow(null)}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-2xl p-0"
-          style={{ background: 'var(--scanner-bg)', border: 'none' }}
+          className="w-full sm:max-w-2xl p-0 flex flex-col"
+          style={{ background: 'var(--scanner-bg)', border: 'none', overflow: 'hidden' }}
         >
-          <SheetHeader className="p-4 border-b" style={{ borderColor: 'var(--scanner-border)' }}>
+          <SheetHeader className="p-4 border-b flex-shrink-0" style={{ borderColor: 'var(--scanner-border)' }}>
             <SheetTitle style={{ color: 'var(--scanner-text)' }}>
               {selectedRow?.symbol} · {settings.timeframe}
             </SheetTitle>
           </SheetHeader>
-          <div className="tradingview-chart-container" style={{ height: 'calc(100% - 65px)', minHeight: '400px' }}>
+          <div className="tradingview-chart-container flex-1" style={{ minHeight: '400px', position: 'relative' }}>
             {selectedRow && (
               <TradingViewChart
                 symbol={selectedRow.symbol}
