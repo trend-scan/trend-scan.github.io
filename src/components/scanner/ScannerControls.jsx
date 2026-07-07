@@ -183,6 +183,23 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
             </span>
           </div>
           <div className="flex items-center gap-1" style={{ opacity: settings.rsiEnabled ? 1 : 0.4 }}>
+            {/* RSI timeframe selector */}
+            <select
+              disabled={!settings.rsiEnabled}
+              className="font-mono text-[9px] px-1 py-1 outline-none cursor-pointer"
+              style={{
+                background: 'var(--scanner-bg2)',
+                border: '1px solid var(--scanner-border2)',
+                color: settings.rsiTimeframe !== settings.timeframe ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
+              }}
+              value={settings.rsiTimeframe}
+              onChange={e => update('rsiTimeframe', e.target.value)}
+              title="RSI timeframe (separate from scan timeframe)"
+            >
+              {TIMEFRAMES.map(tf => (
+                <option key={tf} value={tf} style={{ background: 'var(--scanner-bg2)' }}>{tf}</option>
+              ))}
+            </select>
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-[7px] font-semibold tracking-[0.08em] uppercase" style={{ color: 'var(--scanner-text3)' }}>Min</span>
               <SpinnerInput

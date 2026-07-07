@@ -52,7 +52,7 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
     fastType, emaFast, vwapFastDays, midType, emaMid, vwapMidDays, slowType, emaSlow, vwapDays,
     exchange, timeframe, minVolume, minMarketCap,
     priceAboveSlowEnabled, fastAboveMidEnabled, minVolumeEnabled, minMarketCapEnabled,
-    rsiEnabled, rsiPeriod, rsiMin, rsiMax,
+    rsiEnabled, rsiPeriod, rsiTimeframe, rsiMin, rsiMax,
   } = settings;
 
   // Apply volume filter if specified
@@ -105,8 +105,26 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
   let rsi = null;
   let passesRsi = true;
   if (rsiEnabled) {
-    rsi = calcRSI(closes, rsiPeriod || 14);
-    passesRsi = rsi != null && rsi >= rsiMin && rsi <= rsiMax;
+    // RSI can use a separate timeframe from the main scan timeframe.
+    // If rsiTimeframe differs, fetch candles at that timeframe; otherwise
+    // reuse the already-fetched closes to avoid an extra API call.
+    let rsiCloses = closes;
+    if (rsiTimeframe && rsiTimeframe !== timeframe) {
+      let rsiCandles = await fetchCandles(asset.symbol, exchange, rsiTimeframe);
+      if ((!rsiCandles || rsiCandles.length < (rsiPeriod || 14) + 1) && exchange !== 'auto') {
+        rsiCandles = await fetchCandles(asset.symbol, 'auto', rsiTimeframe);
+      }
+      if (rsiCandles && rsiCandles.length >= (rsiPeriod || 14) + 1) {
+        rsiCloses = rsiCandles.map(c => c.close);
+      } else {
+        // Not enough data at the RSI timeframe — fail the RSI check
+        passesRsi = false;
+      }
+    }
+    if (passesRsi) {
+      rsi = calcRSI(rsiCloses, rsiPeriod || 14);
+      passesRsi = rsi != null && rsi >= rsiMin && rsi <= rsiMax;
+    }
   }
 
   if (passesPriceVsSlow && passesFastVsMid && passesRsi) {
@@ -212,7 +230,9 @@ export async function runScan(settings, onProgress) {
     filterParts.push(`MCap≥${mcapStr}`);
   }
   if (settings.rsiEnabled) {
-    filterParts.push(`RSI ${settings.rsiMin}-${settings.rsiMax}`);
+    const tf = settings.rsiTimeframe && settings.rsiTimeframe !== settings.timeframe
+      ? `@${settings.rsiTimeframe}` : '';
+    filterParts.push(`RSI${tf} ${settings.rsiMin}-${settings.rsiMax}`);
   }
   const filterInfo = filterParts.length > 0 ? ` [${filterParts.join(', ')}]` : '';
 

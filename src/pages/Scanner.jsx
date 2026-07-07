@@ -37,6 +37,7 @@ const DEFAULT_SETTINGS = {
   // NEW — RSI range filter
   rsiEnabled: false,             // default OFF — new filter, don't change existing scan behavior for anyone
   rsiPeriod: 14,
+  rsiTimeframe: '1D',            // separate timeframe for RSI (default daily — most common RSI usage)
   rsiMin: 0,
   rsiMax: 100,
 };
