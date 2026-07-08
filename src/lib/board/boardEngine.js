@@ -58,6 +58,33 @@ function computeMetrics(candles) {
 
   const atrExt50ma = (ma50 != null && atr14 != null && atr14 > 0) ? (price - ma50) / atr14 : null;
 
+  // Average Daily Range % — mean of (high/low - 1) over 20 days, as a percentage.
+  // Distinct from atr14 above: this is unsmoothed and gap-agnostic (pure high/low),
+  // which is what makes it comparable across assets the way a raw ATR value isn't.
+  const rangePct = candles.slice(-20)
+    .map(c => c.low > 0 ? (c.high / c.low - 1) * 100 : null)
+    .filter(v => v != null);
+  const adrPct = rangePct.length >= 10 ? rangePct.reduce((a, b) => a + b, 0) / rangePct.length : null;
+
+  // Trend Tenure — consecutive days closing above the 50MA, counting back from today.
+  // Needs a real rolling 50MA at every prior day, not just today's — built with a
+  // sliding-window sum so it stays O(n) rather than recomputing each day's average from scratch.
+  let trendTenure = null;
+  if (closes.length >= 51) {
+    const ma50Series = [];
+    let sum = closes.slice(0, 50).reduce((a, b) => a + b, 0);
+    ma50Series[49] = sum / 50;
+    for (let i = 50; i < closes.length; i++) {
+      sum += closes[i] - closes[i - 50];
+      ma50Series[i] = sum / 50;
+    }
+    trendTenure = 0;
+    for (let i = closes.length - 1; i >= 49; i--) {
+      if (closes[i] > ma50Series[i]) trendTenure++;
+      else break;
+    }
+  }
+
   const volMa20 = sma(vols, 20);
   const volRatio = (volMa20 && volMa20 > 0) ? vols[n-1] / volMa20 : null;
 
@@ -96,6 +123,7 @@ function computeMetrics(candles) {
     ret1d, ret5d, ret20d, ret60d,
     above20, above50, above200,
     atr14, atrExt50ma, volRatio,
+    adrPct, trendTenure,
     newHigh20d, newHigh52w, distMa20, distMa50, distMa200,
     sparkline,
     ...momData,
@@ -230,6 +258,54 @@ function buildThemeRotation(rawResults, themes) {
   const fallers  = [...rows].sort((a,b) => a.scoreDelta - b.scoreDelta).slice(0, 5);
 
   return { climbers, fallers, lookbackDays: lookback };
+}
+
+// ── Build Starting to Move ────────────────────────────────────────────────────
+
+function computeAssetRsAtOffset(rawResults, offset) {
+  const btcResult = rawResults.find(r => r.asset.symbol === 'BTC');
+  const btcRet20dPrior = btcResult?.candles
+    ? (() => {
+        const c = btcResult.candles.slice(0, -offset);
+        const n = c.length;
+        return n >= 21 ? (c[n-1].close / c[n-21].close - 1) : 0;
+      })()
+    : 0;
+
+  const snapshot = {};
+  for (const r of rawResults) {
+    if (!r.candles || r.candles.length <= offset + 20) continue;
+    const c = r.candles.slice(0, -offset);
+    const closes = c.map(x => x.close);
+    const n = closes.length;
+    const ret20d = n >= 21 ? (closes[n-1] / closes[n-21] - 1) : null;
+    snapshot[r.asset.symbol] = ret20d != null ? ret20d - btcRet20dPrior : null;
+  }
+  return snapshot;
+}
+
+function buildStartingToMove(rawResults) {
+  const priorRs = computeAssetRsAtOffset(rawResults, 20); // ~1 month back
+
+  return rawResults
+    .filter(r => r.metrics?.rs_btc_20d != null && priorRs[r.asset.symbol] != null)
+    .map(r => ({
+      symbol: r.asset.symbol,
+      name: r.asset.name,
+      theme: r.asset.theme,
+      rsNow: r.metrics.rs_btc_20d,
+      rsDelta: r.metrics.rs_btc_20d - priorRs[r.asset.symbol],
+      distMa50: r.metrics.distMa50,
+      ret20d: r.metrics.ret20d,
+      volRatio: r.metrics.volRatio,
+      adrPct: r.metrics.adrPct,
+      trendTenure: r.metrics.trendTenure,
+      price: r.metrics.price,
+    }))
+    // above the 50MA but not already stretched far past it — "inflecting, not extended"
+    .filter(t => t.distMa50 != null && t.distMa50 > 0 && t.distMa50 < 15)
+    .sort((a, b) => b.rsDelta - a.rsDelta)
+    .slice(0, 20);
 }
 
 // ── Build Momentum Scan ──────────────────────────────────────────────────────
@@ -621,6 +697,9 @@ export async function runBoardAnalysis(exchange, onProgress) {
   // Theme Rotation
   const themeRotation = buildThemeRotation(rawResults, themes);
 
+  // Starting to Move
+  const startingToMove = buildStartingToMove(rawResults);
+
   // Style Rotation
   const styleRotation = buildStyleRotation(rawResults);
 
@@ -676,6 +755,7 @@ export async function runBoardAnalysis(exchange, onProgress) {
     themes,
     constituents,
     themeRotation,
+    startingToMove,
     styleRotation,
     riskPulse,
     themeSectorRotation,

@@ -92,6 +92,7 @@ export default function Board() {
   const themes           = data?.themes           ?? [];
   const constituents     = data?.constituents     ?? {};
   const themeRotation    = data?.themeRotation    ?? { climbers: [], fallers: [], lookbackDays: 5 };
+  const startingToMove   = data?.startingToMove   ?? [];
   const styleRotation    = data?.styleRotation    ?? [];
   const riskPulse        = data?.riskPulse         ?? [];
   const themeSectorRotation = data?.themeSectorRotation ?? [];
@@ -197,6 +198,7 @@ export default function Board() {
               themes={themes}
               benchmarks={benchmarks}
               themeRotation={themeRotation}
+              startingToMove={startingToMove}
               styleRotation={styleRotation}
               riskPulse={riskPulse}
               themeSectorRotation={themeSectorRotation}

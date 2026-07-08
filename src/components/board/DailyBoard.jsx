@@ -203,7 +203,57 @@ function ThemeRotation({ themeRotation }) {
   );
 }
 
-// ── Section 4: Style Rotation ─────────────────────────────────────────────────
+// ── Section 4: Starting to Move ───────────────────────────────────────────────
+
+function StartingToMove({ startingToMove = [] }) {
+  if (!startingToMove.length) return null;
+  return (
+    <section>
+      <div className="text-[11px] font-bold tracking-wide uppercase mb-2" style={{ color: 'var(--scanner-text2)' }}>
+        Starting to Move
+      </div>
+      <div className="text-[9px] mb-3" style={{ color: 'var(--scanner-text3)' }}>
+        RS rank inflecting over the past month, still within 15% of the 50MA — not yet extended.
+      </div>
+      <table className="w-full text-[11px]">
+        <thead>
+          <tr style={{ borderBottom: '1px solid var(--scanner-border)' }}>
+            {['Ticker', 'RS Δ/1M', 'RS 20D', 'vs 50MA', 'ADR%', 'TT', 'Vol'].map(h => (
+              <th key={h} className="text-left py-2 px-3 font-normal" style={{ color: 'var(--scanner-text3)' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {startingToMove.map(t => (
+            <tr key={t.symbol} style={{ borderBottom: '1px solid var(--scanner-border)' }}>
+              <td className="py-2 px-3 font-bold" style={{ color: 'var(--scanner-text)' }}>{t.symbol}</td>
+              <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-green)' }}>
+                +{(t.rsDelta * 100).toFixed(1)}%
+              </td>
+              <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                {(t.rsNow * 100).toFixed(1)}%
+              </td>
+              <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                +{t.distMa50.toFixed(1)}%
+              </td>
+              <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                {t.adrPct != null ? t.adrPct.toFixed(1) + '%' : '—'}
+              </td>
+              <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                {t.trendTenure ?? '—'}
+              </td>
+              <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                {t.volRatio != null ? t.volRatio.toFixed(2) + 'x' : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+// ── Section 5: Style Rotation ─────────────────────────────────────────────────
 
 function StyleRotation({ styleRotation }) {
   return (
@@ -336,13 +386,14 @@ function ThemeSectorRotation({ themeSectorRotation }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function DailyBoard({
-  themes, benchmarks, themeRotation, styleRotation, riskPulse, themeSectorRotation
+  themes, benchmarks, themeRotation, startingToMove, styleRotation, riskPulse, themeSectorRotation
 }) {
   return (
     <div className="font-mono space-y-8 px-5 md:px-8 py-5">
       <BenchmarkSnapshot benchmarks={benchmarks} />
       <ThemeStatus themes={themes} />
       <ThemeRotation themeRotation={themeRotation} />
+      <StartingToMove startingToMove={startingToMove} />
       <StyleRotation styleRotation={styleRotation} />
       <RiskPulse riskPulse={riskPulse} />
       <ThemeSectorRotation themeSectorRotation={themeSectorRotation} />

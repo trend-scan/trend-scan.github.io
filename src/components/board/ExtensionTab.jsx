@@ -75,6 +75,12 @@ export default function ExtensionTab({ tooHot, fading }) {
       {r.rs_btc_20d != null ? (r.rs_btc_20d >= 0 ? '+' : '') + (r.rs_btc_20d * 100).toFixed(1) + '%' : '—'}
     </span> },
     { label: 'ATR Ext',render: r => <AtrBar value={r.atrExt50ma} /> },
+    { label: 'ADR%', render: r => <span className="tabular-nums text-[11px]" style={{ color: 'var(--scanner-text2)' }}>
+      {r.adrPct != null ? r.adrPct.toFixed(1) + '%' : '—'}
+    </span> },
+    { label: 'TT', render: r => <span className="tabular-nums text-[11px]" style={{ color: 'var(--scanner-text2)' }}>
+      {r.trendTenure ?? '—'}
+    </span> },
     { label: 'vs50MA', render: r => <span className="tabular-nums text-[11px]" style={{ color: pctColor(r.distMa50 != null ? r.distMa50 / 100 : null) }}>{r.distMa50 != null ? (r.distMa50 >= 0 ? '+' : '') + r.distMa50.toFixed(1) + '%' : '—'}</span> },
     { label: '5D Ret',  render: r => <span className="tabular-nums text-[11px]" style={{ color: pctColor(r.ret5d) }}>{fmtPct(r.ret5d)}</span> },
     { label: 'Vol Ratio',render: r => <span className="tabular-nums text-[11px]" style={{ color: 'var(--scanner-text2)' }}>{r.volRatio != null ? r.volRatio.toFixed(2) + 'x' : '—'}</span> },
