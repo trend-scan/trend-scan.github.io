@@ -21,7 +21,10 @@ const LIGHTER_MARKET_IDS = {
   GME:176, TTWO:179, IP:34, NOK:208,
   WHEAT:170, MAGS:155, BOTZ:154,
   EURUSD:96, GBPUSD:97, USDJPY:98, USDCHF:99, USDCAD:100,
-  AUDUSD:102, NZDUSD:103, USDKRW:101, USDHKD:104,
+  AUDUSD:106, NZDUSD:103, USDKRW:101, USDHKD:104,
+  // Additional tradfi markets on Lighter
+  CC:101, NMR:74, QNT:190, SMIC:202, SPCX:194, SPX:42, STRC:156,
+  STABLE:118, STBL:85, WLFI:72, YZY:70, ZHIPU:205, ADI:213,
 };
 
 let _lighterMarketMap = null;
@@ -311,6 +314,87 @@ export const TRAD_UNIVERSE = [
   { symbol: 'NXPI', name: 'NXP Semiconductors', category: 'Semiconductors', subtheme: 'Auto/Industrial', tier: 'Active', type: 'Stock', source: 'massive' },
   { symbol: 'MPWR', name: 'Monolithic Power', category: 'Semiconductors', subtheme: 'Power', tier: 'Active', type: 'Stock', source: 'massive' },
   { symbol: 'ADI', name: 'Analog Devices', category: 'Semiconductors', subtheme: 'Analog', tier: 'Active', type: 'Stock', source: 'massive' },
+
+  // ─── Additional Lighter tradfi markets ───
+  { symbol: 'CC',       name: 'Canton Network',                        category: 'Blockchain Infrastructure',     subtheme: 'Blockchain',               tier: 'Active',       type: 'Stock' },
+  { symbol: 'NMR',      name: 'Numeraire',                             category: 'AI Applications',               subtheme: 'AI / Quant',               tier: 'Active',       type: 'Stock' },
+  { symbol: 'QNT',      name: 'Quant',                                 category: 'Interoperability',              subtheme: 'Enterprise',               tier: 'Active',       type: 'Stock' },
+  { symbol: 'SMIC',     name: 'SMIC',                                  category: 'Semiconductors',                subtheme: 'Chinese Foundry',           tier: 'Core',         type: 'Stock' },
+  { symbol: 'SPX',      name: 'S&P 500 Index (Spot)',                  category: 'Benchmark',                     subtheme: 'S&P 500 Spot',              tier: 'Active',       type: 'Index' },
+  { symbol: 'SPCX',     name: 'SpaceX (Lighter)',                      category: 'Pre-IPO',                       subtheme: 'Space',                     tier: 'Core',         type: 'Private' },
+  { symbol: 'STRC',     name: 'Strategy',                              category: 'Crypto Equities',               subtheme: 'BTC Treasury',              tier: 'Active',       type: 'Stock' },
+  { symbol: 'WLFI',     name: 'World Liberty Financial',               category: 'Crypto Equities',               subtheme: 'DeFi Protocol',             tier: 'Active',       type: 'Stock' },
+  { symbol: 'YZY',      name: 'Yeezy',                                 category: 'Consumer',                      subtheme: 'Apparel/Brand',             tier: 'Watch',        type: 'Stock' },
+  { symbol: 'ZHIPU',    name: 'Zhipu AI',                              category: 'Pre-IPO',                       subtheme: 'AI',                        tier: 'Active',       type: 'Private' },
+
+  // ─── Twelve Data additions (fetched via TD API — requires VITE_TWELVEDATA_KEY) ───
+  // Financials
+  { symbol: 'JPM',      name: 'JPMorgan Chase',                        category: 'Financials',                    subtheme: 'Banking',                   tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'BAC',      name: 'Bank of America',                       category: 'Financials',                    subtheme: 'Banking',                   tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'GS',       name: 'Goldman Sachs',                         category: 'Financials',                    subtheme: 'Banking',                   tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'MS',       name: 'Morgan Stanley',                        category: 'Financials',                    subtheme: 'Banking',                   tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'V',        name: 'Visa',                                  category: 'Financials',                    subtheme: 'Payments',                  tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'MA',       name: 'Mastercard',                            category: 'Financials',                    subtheme: 'Payments',                  tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'BRK.B',    name: 'Berkshire Hathaway',                    category: 'Financials',                    subtheme: 'Conglomerate',              tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'XLF',      name: 'Financial Select Sector ETF',           category: 'Financials',                    subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Consumer
+  { symbol: 'WMT',      name: 'Walmart',                               category: 'Consumer',                      subtheme: 'Retail',                    tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'COST',     name: 'Costco',                                category: 'Consumer',                      subtheme: 'Retail',                    tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'HD',       name: 'Home Depot',                            category: 'Consumer',                      subtheme: 'Retail',                    tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'NKE',      name: 'Nike',                                  category: 'Consumer',                      subtheme: 'Apparel',                   tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'SBUX',     name: 'Starbucks',                             category: 'Consumer',                      subtheme: 'Restaurants',               tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'MCD',      name: 'McDonalds',                             category: 'Consumer',                      subtheme: 'Restaurants',               tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'DIS',      name: 'Disney',                                category: 'Consumer',                      subtheme: 'Media',                     tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'NFLX',     name: 'Netflix',                               category: 'Consumer',                      subtheme: 'Streaming',                 tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'ABNB',     name: 'Airbnb',                                category: 'Consumer',                      subtheme: 'Travel',                    tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'UBER',     name: 'Uber',                                  category: 'Consumer',                      subtheme: 'Ride-share',                tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'XLY',      name: 'Consumer Discretionary ETF',            category: 'Consumer',                      subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  { symbol: 'XLP',      name: 'Consumer Staples ETF',                  category: 'Consumer',                      subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Energy
+  { symbol: 'XOM',      name: 'Exxon Mobil',                           category: 'Energy',                        subtheme: 'Oil & Gas',                 tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'CVX',      name: 'Chevron',                               category: 'Energy',                        subtheme: 'Oil & Gas',                 tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'XLE',      name: 'Energy Select Sector ETF',              category: 'Energy',                        subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Healthcare
+  { symbol: 'UNH',      name: 'UnitedHealth',                          category: 'Healthcare',                    subtheme: 'Insurance',                 tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'JNJ',      name: 'Johnson & Johnson',                     category: 'Healthcare',                    subtheme: 'Diversified',               tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'PFE',      name: 'Pfizer',                                category: 'Healthcare',                    subtheme: 'Pharma',                    tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'XLV',      name: 'Health Care Select Sector ETF',         category: 'Healthcare',                    subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Industrials
+  { symbol: 'BA',       name: 'Boeing',                                category: 'Industrials',                   subtheme: 'Aerospace',                 tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'CAT',      name: 'Caterpillar',                           category: 'Industrials',                   subtheme: 'Heavy Equipment',           tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'GE',       name: 'GE Aerospace',                          category: 'Industrials',                   subtheme: 'Aerospace',                 tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'UPS',      name: 'UPS',                                   category: 'Industrials',                   subtheme: 'Logistics',                 tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'XLI',      name: 'Industrial ETF',                        category: 'Industrials',                   subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Utilities / Power
+  { symbol: 'NEE',      name: 'NextEra Energy',                        category: 'Utilities',                     subtheme: 'Renewable Energy',          tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'CEG',      name: 'Constellation Energy',                  category: 'Utilities',                     subtheme: 'Nuclear Power',             tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'VST',      name: 'Vistra Corp',                           category: 'Utilities',                     subtheme: 'Power Generation',          tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'XLU',      name: 'Utilities ETF',                         category: 'Utilities',                     subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Real Estate
+  { symbol: 'PLD',      name: 'Prologis',                              category: 'Real Estate',                   subtheme: 'Industrial REIT',           tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'VNQ',      name: 'Vanguard Real Estate ETF',              category: 'Real Estate',                   subtheme: 'REIT ETF',                  tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  { symbol: 'XLRE',     name: 'Real Estate ETF',                       category: 'Real Estate',                   subtheme: 'ETF',                       tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Bonds / Rates
+  { symbol: 'TLT',      name: '20+ Year Treasury Bond ETF',            category: 'Bonds',                         subtheme: 'Long Treasury',             tier: 'Core',         type: 'ETF', source: 'twelvedata' },
+  { symbol: 'IEF',      name: '7-10 Year Treasury ETF',                category: 'Bonds',                         subtheme: 'Intermediate Treasury',     tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  { symbol: 'HYG',      name: 'High Yield Corp Bond ETF',              category: 'Bonds',                         subtheme: 'High Yield',                tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  { symbol: 'LQD',      name: 'Investment Grade Corp Bond ETF',        category: 'Bonds',                         subtheme: 'Investment Grade',          tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Defense
+  { symbol: 'LMT',      name: 'Lockheed Martin',                       category: 'Defense',                       subtheme: 'Aerospace/Defense',         tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'RTX',      name: 'RTX Corporation',                       category: 'Defense',                       subtheme: 'Aerospace/Defense',         tier: 'Core',         type: 'Stock', source: 'twelvedata' },
+  { symbol: 'NOC',      name: 'Northrop Grumman',                      category: 'Defense',                       subtheme: 'Aerospace/Defense',         tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  // Software / Fintech
+  { symbol: 'SHOP',     name: 'Shopify',                               category: 'Software Infrastructure',       subtheme: 'E-commerce SaaS',           tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'SQ',       name: 'Block',                                 category: 'Crypto Equities',               subtheme: 'Fintech',                   tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  { symbol: 'PYPL',     name: 'PayPal',                                category: 'Crypto Equities',               subtheme: 'Fintech',                   tier: 'Active',       type: 'Stock', source: 'twelvedata' },
+  // Broad ETFs
+  { symbol: 'VOO',      name: 'Vanguard S&P 500 ETF',                  category: 'Benchmark',                     subtheme: 'S&P 500',                   tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  { symbol: 'VTI',      name: 'Vanguard Total Market ETF',             category: 'Benchmark',                     subtheme: 'Total Market',              tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  { symbol: 'XLK',      name: 'Technology Select Sector ETF',          category: 'Benchmark',                     subtheme: 'Tech ETF',                  tier: 'Active',       type: 'ETF', source: 'twelvedata' },
+  // Agriculture
+  { symbol: 'CORN',     name: 'Teucrium Corn Fund',                    category: 'Agriculture',                   subtheme: 'Corn',                      tier: 'Watch',        type: 'ETF', source: 'twelvedata' },
+  { symbol: 'SOYB',     name: 'Teucrium Soybean Fund',                 category: 'Agriculture',                   subtheme: 'Soybeans',                  tier: 'Watch',        type: 'ETF', source: 'twelvedata' },
+  { symbol: 'DBA',      name: 'Invesco DB Agriculture Fund',           category: 'Agriculture',                   subtheme: 'Agri ETF',                  tier: 'Active',       type: 'ETF', source: 'twelvedata' },
 ];
 
 
