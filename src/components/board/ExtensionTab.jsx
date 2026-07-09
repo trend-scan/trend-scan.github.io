@@ -78,7 +78,7 @@ export default function ExtensionTab({ tooHot, fading }) {
     { label: 'ADR%', render: r => <span className="tabular-nums text-[11px]" style={{ color: 'var(--scanner-text2)' }}>
       {r.adrPct != null ? r.adrPct.toFixed(1) + '%' : '—'}
     </span> },
-    { label: 'TT', render: r => <span className="tabular-nums text-[11px]" style={{ color: 'var(--scanner-text2)' }}>
+    { label: 'D>50MA', render: r => <span className="tabular-nums text-[11px]" style={{ color: 'var(--scanner-text2)' }}>
       {r.trendTenure ?? '—'}
     </span> },
     { label: 'vs50MA', render: r => <span className="tabular-nums text-[11px]" style={{ color: pctColor(r.distMa50 != null ? r.distMa50 / 100 : null) }}>{r.distMa50 != null ? (r.distMa50 >= 0 ? '+' : '') + r.distMa50.toFixed(1) + '%' : '—'}</span> },

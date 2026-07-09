@@ -218,7 +218,7 @@ function StartingToMove({ startingToMove = [] }) {
       <table className="w-full text-[11px]">
         <thead>
           <tr style={{ borderBottom: '1px solid var(--scanner-border)' }}>
-            {['Ticker', 'RS Δ/1M', 'RS 20D', 'vs 50MA', 'ADR%', 'TT', 'Vol'].map(h => (
+            {['Ticker', 'RS Δ/1M', 'RS 20D', 'vs 50MA', 'ADR%', 'D>50MA', 'Vol'].map(h => (
               <th key={h} className="text-left py-2 px-3 font-normal" style={{ color: 'var(--scanner-text3)' }}>{h}</th>
             ))}
           </tr>

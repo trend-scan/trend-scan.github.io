@@ -388,6 +388,29 @@ function computeTradMetrics(candles) {
 
   const atrExt50ma = (ma50 && atr14) ? (price - ma50) / atr14 : null;
 
+  // Average Daily Range % — mean of (high/low - 1) over 20 days
+  const rangePct = candles.slice(-20)
+    .map(c => c.low > 0 ? (c.high / c.low - 1) * 100 : null)
+    .filter(v => v != null);
+  const adrPct = rangePct.length >= 10 ? rangePct.reduce((a, b) => a + b, 0) / rangePct.length : null;
+
+  // Trend Tenure — consecutive days closing above the 50MA
+  let trendTenure = null;
+  if (closes.length >= 51) {
+    const ma50Series = [];
+    let sum = closes.slice(0, 50).reduce((a, b) => a + b, 0);
+    ma50Series[49] = sum / 50;
+    for (let i = 50; i < closes.length; i++) {
+      sum += closes[i] - closes[i - 50];
+      ma50Series[i] = sum / 50;
+    }
+    trendTenure = 0;
+    for (let i = closes.length - 1; i >= 49; i--) {
+      if (closes[i] > ma50Series[i]) trendTenure++;
+      else break;
+    }
+  }
+
   const volMa20  = sma(vols, Math.min(20, n));
   const volRatio = volMa20 && volMa20 > 0 ? vols[n-1] / volMa20 : null;
 
@@ -409,6 +432,7 @@ function computeTradMetrics(candles) {
     above20, above50, above200,
     distMa20, distMa50, distMa200,
     atr14, atrExt50ma, volRatio,
+    adrPct, trendTenure,
     high52w, low52w, pctFrom52wHigh,
     rsi14,
     sparkline,
@@ -493,6 +517,29 @@ export async function fetchTradMarketData(onProgress) {
     .map(r => ({ ...r.asset, ...r.metrics, source: r.source }))
     .sort((a, b) => (b.ret20d ?? -99) - (a.ret20d ?? -99));
 
+  // ── Starting to Move (tradfi) ──────────────────────────────────────────────
+  // Same concept as crypto: above 50MA but not extended, sorted by RS vs QQQ.
+  // Note: tradfi doesn't store candles in rawResults (only metrics), so we
+  // can't compute a 20-day-prior RS delta. Instead we sort by current RS vs QQQ.
+  const startingToMove = assets2
+    .filter(a => a.distMa50 != null && a.distMa50 > 0 && a.distMa50 < 15)
+    .filter(a => a.rs_qqq_20d != null && a.rs_qqq_20d > 0)
+    .sort((a, b) => (b.rs_qqq_20d ?? -99) - (a.rs_qqq_20d ?? -99))
+    .slice(0, 15)
+    .map(a => ({
+      symbol: a.symbol,
+      name: a.name,
+      category: a.category,
+      rsNow: a.rs_qqq_20d,
+      rsDelta: null, // not available without historical candles
+      distMa50: a.distMa50,
+      ret20d: a.ret20d,
+      volRatio: a.volRatio,
+      adrPct: a.adrPct,
+      trendTenure: a.trendTenure,
+      price: a.price,
+    }));
+
   // Regime breadth across all trad assets
   const valid = rawResults.filter(r => r.metrics);
   const tradRegime = {
@@ -516,6 +563,7 @@ export async function fetchTradMarketData(onProgress) {
     assets: assets2,
     categories,
     tradRegime,
+    startingToMove,
     sourceCounts,
     fetchedAt: new Date().toISOString(),
   };

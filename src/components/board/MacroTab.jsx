@@ -93,6 +93,7 @@ export default function MacroTab({ tradData, isLoading, onRefresh }) {
   const assets = tradData?.assets || [];
   const categories = tradData?.categories || [];
   const tradRegime = tradData?.tradRegime || { total: 0, pctAbove20: 0, pctAbove50: 0, pctAbove200: 0, avgRet1d: 0, avgRet5d: 0, avgRet20d: 0 };
+  const startingToMove = tradData?.startingToMove || [];
   const sourceCounts = tradData?.sourceCounts || {};
   const fetchedAt = tradData?.fetchedAt || null;
 
@@ -245,6 +246,49 @@ export default function MacroTab({ tradData, isLoading, onRefresh }) {
           ))}
         </div>
       </section>
+
+      {/* Starting to Move — tradfi */}
+      {startingToMove.length > 0 && (
+        <section>
+          <div className="text-[11px] font-bold tracking-wide uppercase mb-2" style={{ color: 'var(--scanner-text2)' }}>
+            Starting to Move · TradFi
+          </div>
+          <div className="text-[9px] mb-3" style={{ color: 'var(--scanner-text3)' }}>
+            RS vs QQQ positive, still within 15% of the 50MA — not yet extended.
+          </div>
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--scanner-border)' }}>
+                {['Ticker', 'RS vs QQQ', 'vs 50MA', 'ADR%', 'D>50MA', 'Vol'].map(h => (
+                  <th key={h} className="text-left py-2 px-3 font-normal" style={{ color: 'var(--scanner-text3)' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {startingToMove.map(t => (
+                <tr key={t.symbol} style={{ borderBottom: '1px solid var(--scanner-border)' }}>
+                  <td className="py-2 px-3 font-bold" style={{ color: 'var(--scanner-text)' }}>{t.symbol}</td>
+                  <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-green)' }}>
+                    +{(t.rsNow * 100).toFixed(1)}%
+                  </td>
+                  <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                    +{t.distMa50.toFixed(1)}%
+                  </td>
+                  <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                    {t.adrPct != null ? t.adrPct.toFixed(1) + '%' : '—'}
+                  </td>
+                  <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                    {t.trendTenure ?? '—'}
+                  </td>
+                  <td className="py-2 px-3 tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
+                    {t.volRatio != null ? t.volRatio.toFixed(2) + 'x' : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {/* Individual asset table */}
       <section>
