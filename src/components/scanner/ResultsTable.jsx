@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { fmtPrice, fmtPct } from '@/lib/scanner/calculations';
+import { toTradingViewSymbol } from '@/lib/scanner/tradingViewSymbols';
 
 function fmtChange(v) {
   if (v == null) return '—';
@@ -103,6 +104,35 @@ const SORT_OPTIONS = [
 
 export default function ResultsTable({ results, settings, isScanning, onSelectRow }) {
   const [sortKey, setSortKey] = useState('rank');
+  const [copied, setCopied] = useState(null);
+
+  const handleCopy = useCallback((format) => {
+    if (!results.length) return;
+    let text;
+    if (format === 'tv') {
+      // TradingView-formatted symbols: HYPERLIQUID:BTCUSDC.P, HYPERLIQUID:ETHUSDC.P
+      text = results.map(r => toTradingViewSymbol(r.symbol, settings.exchange)).join(', ');
+    } else {
+      // Bare tickers: BTC, ETH, SOL
+      text = results.map(r => r.symbol).join(', ');
+    }
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(format);
+      setTimeout(() => setCopied(null), 2000);
+    }).catch(() => {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(format);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  }, [results, settings.exchange]);
 
   const sorted = [...results].sort((a, b) => {
     if (sortKey === 'rank') return a.rank - b.rank;
@@ -129,15 +159,51 @@ export default function ResultsTable({ results, settings, isScanning, onSelectRo
     <div className="font-mono px-5 md:px-8 py-5">
       {/* Top bar */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="flex items-baseline gap-2.5">
-          <span className="text-2xl font-bold leading-none" style={{
-            color: results.length > 0 ? 'var(--scanner-green)' : 'var(--scanner-text3)'
-          }}>
-            {results.length || '0'}
-          </span>
-          <span className="text-[10px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text2)' }}>
-            assets matched
-          </span>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-2xl font-bold leading-none" style={{
+              color: results.length > 0 ? 'var(--scanner-green)' : 'var(--scanner-text3)'
+            }}>
+              {results.length || '0'}
+            </span>
+            <span className="text-[10px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text2)' }}>
+              assets matched
+            </span>
+          </div>
+
+          {/* Copy buttons — only show when there are results */}
+          {results.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                className="font-mono text-[9px] font-semibold tracking-[0.08em] px-2.5 py-1.5 rounded transition-all"
+                style={{
+                  background: copied === 'tv' ? 'rgba(0,230,118,0.12)' : 'var(--scanner-bg2)',
+                  border: `1px solid ${copied === 'tv' ? 'var(--scanner-green)' : 'var(--scanner-border2)'}`,
+                  color: copied === 'tv' ? 'var(--scanner-green)' : 'var(--scanner-text3)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+                onClick={() => handleCopy('tv')}
+                title="Copy as TradingView symbols (e.g. HYPERLIQUID:BTCUSDC.P)"
+              >
+                {copied === 'tv' ? '✓ Copied' : '⧉ Copy TV'}
+              </button>
+              <button
+                className="font-mono text-[9px] font-semibold tracking-[0.08em] px-2.5 py-1.5 rounded transition-all"
+                style={{
+                  background: copied === 'tickers' ? 'rgba(0,230,118,0.12)' : 'var(--scanner-bg2)',
+                  border: `1px solid ${copied === 'tickers' ? 'var(--scanner-green)' : 'var(--scanner-border2)'}`,
+                  color: copied === 'tickers' ? 'var(--scanner-green)' : 'var(--scanner-text3)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+                onClick={() => handleCopy('tickers')}
+                title="Copy bare tickers (e.g. BTC, ETH, SOL)"
+              >
+                {copied === 'tickers' ? '✓ Copied' : '⧉ Tickers'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
