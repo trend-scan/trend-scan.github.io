@@ -66,7 +66,12 @@ async function fetchLighterCandles(symbol, limit = 300) {
   } catch { return null; }
 }
 
-const OKX_TRADFI = new Set(['SPY','QQQ','NVDA','TSLA','AAPL','XAU','XAG']);
+// OKX SWAP perps — expanded from 7 to 16 tradfi tickers (verified Jul 2026)
+const OKX_TRADFI = new Set([
+  'SPY','QQQ','NVDA','TSLA','AAPL','XAU','XAG',   // original 7
+  'COIN','MSTR','HOOD','GME','PLTR','IWM',         // stocks
+  'XCU','XPD','XPT',                                // metals
+]);
 async function fetchOkxTradfiCandles(symbol, limit = 300) {
   if (!OKX_TRADFI.has(symbol.toUpperCase())) return null;
   const instId = `${symbol.toUpperCase()}-USDT-SWAP`;
@@ -83,21 +88,99 @@ async function fetchOkxTradfiCandles(symbol, limit = 300) {
   } catch { return null; }
 }
 
+// ── Massive / Polygon.io — broadest stock/ETF coverage, paid key ─────────────
+// Covers ALL US stocks, ETFs, forex, indices. No rate limits on paid plan.
+// Falls back to this when Lighter + OKX + Twelve Data all fail or are rate-limited.
+const MASSIVE_KEY = import.meta.env?.VITE_MASSIVE_API_KEY || '';
+
+async function fetchMassiveTradCandles(symbol, limit = 300) {
+  if (!MASSIVE_KEY && typeof window !== 'undefined') {
+    // Check localStorage for runtime override
+    const local = localStorage.getItem('MASSIVE_API_KEY');
+    if (!local) return null;
+    return _fetchMassiveTradCandlesWithKey(symbol, limit, local);
+  }
+  if (!MASSIVE_KEY) return null;
+  return _fetchMassiveTradCandlesWithKey(symbol, limit, MASSIVE_KEY);
+}
+
+async function _fetchMassiveTradCandlesWithKey(symbol, limit, apiKey) {
+  const s = symbol.toUpperCase();
+  // Polygon ticker format: stocks are bare (AAPL), forex is C:EURUSD, indices I:SPX
+  let ticker = s;
+  // Forex
+  const TD_FOREX = new Set(['EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD','USDKRW','USDHKD']);
+  if (TD_FOREX.has(s)) ticker = `C:${s}`;
+  // Metals
+  else if (['XAU','XAG','XCU','XPD','XPT'].includes(s)) ticker = `C:${s}USD`;
+  // Indices
+  else if (['SPX','NDX','VIX','DJI'].includes(s)) ticker = `I:${s}`;
+
+  const to = new Date();
+  const from = new Date(to.getTime() - limit * 86_400_000);
+  const url = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day/${from.toISOString().slice(0,10)}/${to.toISOString().slice(0,10)}?adjusted=true&sort=asc&limit=${Math.min(limit, 500)}&apiKey=${apiKey}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.status !== 'OK' || !Array.isArray(d.results)) return null;
+    return d.results.map(c => ({
+      ts: c.t, open: c.o, high: c.h, low: c.l, close: c.c, vol: c.v || 0,
+    }));
+  } catch { return null; }
+}
+
+// ── Kraken — limited tradfi coverage but free, no key needed ─────────────────
+// Kraken recently expanded stock listings. Uses OHLC endpoint with USD pairs.
+const KRAKEN_TRADFI = new Set([
+  // Verified USD pairs on Kraken (Jul 2026) — some overlap with crypto names
+  'ADI','BAND','CAT','CORN','CVX','DASH','IP','QTUM','ROBO','S','STX',
+]);
+
+async function fetchKrakenTradCandles(symbol, limit = 300) {
+  if (!KRAKEN_TRADFI.has(symbol.toUpperCase())) return null;
+  const pair = `${symbol.toUpperCase()}USD`;
+  const now = Math.floor(Date.now() / 1000);
+  const since = now - limit * 86400;
+  const url = `https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=1440&since=${since}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.error?.length) return null;
+    const key = Object.keys(d.result).find(k => k !== 'last');
+    if (!key) return null;
+    return d.result[key].map(c => ({
+      ts: parseInt(c[0]) * 1000, open: parseFloat(c[1]), high: parseFloat(c[2]),
+      low: parseFloat(c[3]), close: parseFloat(c[4]), vol: parseFloat(c[6]),
+    }));
+  } catch { return null; }
+}
+
 async function fetchTradfiCandles(symbol, limit = 300) {
-  // Try Lighter first (full OHLC history — 300 daily candles)
+  // Chain: Lighter → OKX SWAP perps → Massive/Polygon → Kraken → Twelve Data
+  // Each source is tried in order; first non-null result wins.
+
+  // 1. Lighter (full OHLC history — 300 daily candles, ~97 tradfi tickers)
   let candles = await fetchLighterCandles(symbol, limit);
   if (candles && candles.length >= 5) return candles;
-  
-  // Try OKX SWAP perps for 7 major tickers
+
+  // 2. OKX SWAP perps (16 tradfi tickers — free, no key)
   candles = await fetchOkxTradfiCandles(symbol, limit);
   if (candles && candles.length >= 5) return candles;
-  
-  // Try Twelve Data ONLY for tickers not on Lighter (saves API credits)
-  // Lighter covers 85 tickers; Twelve Data handles the remaining ~35
-  if (!LIGHTER_MARKET_IDS[symbol.toUpperCase()]) {
-    candles = await fetchTwelveDataCandles(symbol, limit);
-    if (candles && candles.length >= 5) return candles;
-  }
+
+  // 3. Massive/Polygon (broadest stock coverage — paid key, no rate limits)
+  candles = await fetchMassiveTradCandles(symbol, limit);
+  if (candles && candles.length >= 5) return candles;
+
+  // 4. Kraken (limited tradfi — free, no key, 11 tickers)
+  candles = await fetchKrakenTradCandles(symbol, limit);
+  if (candles && candles.length >= 5) return candles;
+
+  // 5. Twelve Data (broad stock/ETF coverage — free tier 800 req/day, 8 req/min)
+  candles = await fetchTwelveDataCandles(symbol, limit);
+  if (candles && candles.length >= 5) return candles;
+
   return null;  // All sources failed
 }
 
