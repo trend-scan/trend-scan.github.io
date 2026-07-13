@@ -89,7 +89,22 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
   }
   if (!candles || candles.length < required) return null;
 
-  const closes = candles.map(c => c.close);
+  // Sanitize: filter out candles with null/zero/NaN prices
+  const cleanCandles = candles.filter(c =>
+    c.close != null && c.close > 0 && !isNaN(c.close) &&
+    c.high != null && c.high > 0 && c.low != null && c.low > 0
+  );
+  if (cleanCandles.length < required) return null;
+
+  // Detect price-scale discontinuities (mixed basket vs per-token prices)
+  const closes = cleanCandles.map(c => c.close);
+  for (let i = 1; i < closes.length; i++) {
+    if (closes[i-1] > 0 && closes[i] > 0) {
+      const ratio = closes[i] / closes[i-1];
+      if (ratio > 100 || ratio < 0.01) return null;  // reject corrupted data
+    }
+  }
+  candles = cleanCandles;
 
   const fast = fastType === 'vwap' ? calcVWAP(candles, vwapFastDays || 3, cpd)  : calcEMA(closes, emaFast);
   const mid  = midType  === 'vwap' ? calcVWAP(candles, vwapMidDays  || 14, cpd) : calcEMA(closes, emaMid);
