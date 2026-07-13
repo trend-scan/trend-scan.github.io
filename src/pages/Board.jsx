@@ -10,7 +10,7 @@ import MacroTab from '@/components/board/MacroTab';
 import MassiveApiKeyInput from '@/components/scanner/MassiveApiKeyInput';
 import FactorMonitor from '@/components/board/FactorMonitor';
 import { runBoardAnalysis } from '@/lib/board/boardEngine';
-import { fetchTradMarketData } from '@/lib/board/traditionalMarkets';
+import { fetchTradMarketData, buildTradDataFromSnapshot } from '@/lib/board/traditionalMarkets';
 
 const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'Macro', 'Factor Monitor'];
 
@@ -36,6 +36,7 @@ export default function Board() {
   const [error, setError] = useState(null);
   const [tradData, setTradData] = useState(null);
   const [tradLoading, setTradLoading] = useState(false);
+  const [tradDataSource, setTradDataSource] = useState('');  // 'snapshot' or 'live'
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const apiKeyChecked = useRef(false);
   const hasLoaded = useRef(false);
@@ -44,22 +45,37 @@ export default function Board() {
     setProgress(p);
   }, []);
 
+  // Load snapshot data instantly (no API calls — reads from /snapshot.json)
+  // This gives the Macro tab immediate data while the live fetch runs in background
+  useEffect(() => {
+    buildTradDataFromSnapshot().then(snapData => {
+      if (snapData) {
+        setTradData(snapData);
+        setTradDataSource('snapshot');
+      }
+    });
+  }, []);
+
   const runTradAnalysis = useCallback(async () => {
-    // Independent of board isLoading — uses its own tradLoading state
     setTradLoading(true);
     try {
       const result = await fetchTradMarketData(
-        undefined,  // onProgress — not needed, Macro tab has its own loading state
-        (partial) => setTradData(partial)  // onPartialResults — update UI incrementally
+        undefined,
+        (partial) => {
+          setTradData(partial);
+          setTradDataSource('live');
+        }
       );
       setTradData(result);
+      setTradDataSource('live');
     } catch (err) {
       console.warn('Trad market fetch failed:', err.message);
-      setTradData(null);
+      // Keep snapshot data if available — don't overwrite with null
+      if (!tradData) setTradData(null);
     } finally {
       setTradLoading(false);
     }
-  }, []);
+  }, [tradData]);
 
   const runAnalysis = useCallback(async (exch = exchange) => {
     if (isLoading) return;

@@ -311,6 +311,100 @@ async function fetchFearGreed() {
   }
 }
 
+// ─── Yahoo Finance — Tradfi OHLCV (server-side, no CORS issue) ───────────────
+// Fetches daily OHLCV for tradfi tickers that aren't on Lighter.
+// Yahoo Finance has no API key requirement and effectively unlimited rate
+// limits when called server-side.
+// Stores compact candle data in snapshot.json so the Macro tab can render
+// instantly without waiting for client-side API calls.
+
+// Read TRAD_UNIVERSE symbols from traditionalMarkets.js
+// (parse the file to avoid importing JS in Node without a build step)
+function readTradUniverseSymbols() {
+  try {
+    const tmPath = path.join(ROOT, 'src', 'lib', 'board', 'traditionalMarkets.js');
+    const tmSrc = fs.readFileSync(tmPath, 'utf8');
+    const matches = [...tmSrc.matchAll(/symbol:\s*'([^']+)'/g)];
+    return matches.map(m => m[1]).filter(s => !s.includes(' '));
+  } catch {
+    return [];
+  }
+}
+
+// Yahoo symbol formatting (BRK.B → BRK-B, forex, metals, indices)
+function toYahooSymbol(symbol) {
+  const s = symbol.toUpperCase();
+  // Forex pairs
+  const forexMap = { 'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','USDCHF':'CHF=X',
+    'USDCAD':'CAD=X','AUDUSD':'AUDUSD=X','NZDUSD':'NZDUSD=X','USDKRW':'KRW=X','USDHKK':'HKD=X' };
+  if (forexMap[s]) return forexMap[s];
+  // Metals (use futures)
+  if (s === 'XAU') return 'GC=F';
+  if (s === 'XAG') return 'SI=F';
+  // BRK.B → BRK-B (Yahoo uses dashes)
+  if (s.includes('.')) return s.replace('.', '-');
+  return s;
+}
+
+async function fetchYahooOHLCV(symbol, limit = 250) {
+  const ySymbol = toYahooSymbol(symbol);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySymbol)}?range=1y&interval=1d`;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
+    if (!res.ok) return null;
+    const d = await res.json();
+    const result = d?.chart?.result?.[0];
+    if (!result?.timestamp) return null;
+    const q = result.indicators?.quote?.[0];
+    if (!q) return null;
+    const candles = [];
+    for (let i = 0; i < result.timestamp.length; i++) {
+      if (q.close?.[i] == null) continue;
+      candles.push({
+        t: result.timestamp[i] * 1000,
+        o: q.open?.[i] ?? q.close[i],
+        h: q.high?.[i] ?? q.close[i],
+        l: q.low?.[i] ?? q.close[i],
+        c: q.close[i],
+        v: q.volume?.[i] ?? 0,
+      });
+    }
+    return candles.slice(-limit);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTradfiSnapshot() {
+  const symbols = readTradUniverseSymbols();
+  console.log(`  Fetching ${symbols.length} tradfi tickers from Yahoo Finance...`);
+  const out = {};
+  let ok = 0, fail = 0;
+  // Process in batches of 10 to be respectful
+  const batchSize = 10;
+  for (let i = 0; i < symbols.length; i += batchSize) {
+    const batch = symbols.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map(sym => fetchYahooOHLCV(sym))
+    );
+    for (let j = 0; j < batch.length; j++) {
+      const sym = batch[j];
+      const r = results[j];
+      if (r.status === 'fulfilled' && r.value && r.value.length >= 30) {
+        out[sym] = r.value;
+        ok++;
+      } else {
+        fail++;
+      }
+    }
+    if ((i + batchSize) % 50 === 0 || i + batchSize >= symbols.length) {
+      console.log(`    ${Math.min(i + batchSize, symbols.length)}/${symbols.length} done (${ok} ok, ${fail} fail)`);
+    }
+  }
+  console.log(`  ✓ ${ok} tickers fetched, ${fail} failed`);
+  return out;
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -319,12 +413,13 @@ async function main() {
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
   console.log('');
 
-  let [fred, coingecko, fearGreed, kenFrench, cboe] = await Promise.all([
+  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
     fetchKenFrench(),
     fetchCBOEPutCall(),
+    fetchTradfiSnapshot(),
   ]);
 
   // If FRED data is empty (API failure), use previous snapshot's FRED data
@@ -341,6 +436,7 @@ async function main() {
     fear_greed: fearGreed,
     ken_french: kenFrench,
     cboe_put_call: cboe,
+    tradfi_ohlcv: tradfiOHLCV,
   };
 
   // Stats
@@ -352,6 +448,7 @@ async function main() {
   console.log(`  Fear & Greed days:      ${fearGreed.length}`);
   console.log(`  CBOE P/C series:        ${Object.keys(cboe).length}`);
   console.log(`  Ken French months:      ${kenFrench.length}`);
+  console.log(`  Tradfi OHLCV tickers:   ${Object.keys(tradfiOHLCV).length}`);
   console.log(`  Total size:             ${JSON.stringify(snapshot).length.toLocaleString()} bytes`);
 
   // Write to public/snapshot.json (gets committed to repo, served from /)

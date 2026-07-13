@@ -1,3 +1,107 @@
+// ── Snapshot data — instant first paint from pre-built Yahoo Finance data ────
+// The daily build_snapshot.js fetches all tradfi OHLCV from Yahoo Finance
+// (server-side, no CORS) and stores it in snapshot.json. This function reads
+// that data and builds a complete tradData result instantly — no API calls,
+// no rate limits, no waiting. The live fetchTradMarketData() can then refresh
+// with fresh data in the background.
+
+let _snapshotCache = null;
+async function loadSnapshotTradfi() {
+  if (_snapshotCache) return _snapshotCache;
+  try {
+    const res = await fetch('/snapshot.json');
+    if (!res.ok) return null;
+    const snap = await res.json();
+    _snapshotCache = snap?.tradfi_ohlcv || null;
+    return _snapshotCache;
+  } catch {
+    return null;
+  }
+}
+
+function candlesFromSnapshot(snapData) {
+  // Convert compact {t,o,h,l,c,v} to {ts,open,high,low,close,vol}
+  if (!snapData || !Array.isArray(snapData)) return null;
+  return snapData.map(c => ({
+    ts: c.t, open: c.o, high: c.h, low: c.l, close: c.c, vol: c.v,
+  }));
+}
+
+// Build a complete tradData result from snapshot data — instant, no API calls
+export async function buildTradDataFromSnapshot() {
+  const snapOHLCV = await loadSnapshotTradfi();
+  if (!snapOHLCV || Object.keys(snapOHLCV).length === 0) return null;
+
+  const rawResults = [];
+  for (const asset of TRAD_UNIVERSE) {
+    const snapCandles = snapOHLCV[asset.symbol];
+    if (!snapCandles || snapCandles.length < 5) {
+      rawResults.push({ asset, metrics: null, source: 'none' });
+      continue;
+    }
+    const candles = candlesFromSnapshot(snapCandles);
+    rawResults.push({ asset, metrics: computeTradMetrics(candles), source: 'snapshot' });
+  }
+
+  return buildTradResult(rawResults, {});
+}
+
+// ── Yahoo Finance via Cloudflare Worker proxy (live data, no rate limit) ─────
+// When deployed, this provides unlimited live tradfi OHLCV from Yahoo Finance.
+// The proxy is needed because Yahoo doesn't send CORS headers.
+// Configure: localStorage.setItem('YAHOO_PROXY_URL', 'https://your-worker.workers.dev')
+// Or: VITE_YAHOO_PROXY_URL in GitHub Actions secrets
+function getYahooProxyUrl() {
+  if (typeof window !== 'undefined') {
+    const local = localStorage.getItem('YAHOO_PROXY_URL');
+    if (local) return local;
+  }
+  return import.meta.env?.VITE_YAHOO_PROXY_URL || '';
+}
+
+// Yahoo symbol formatting (BRK.B → BRK-B, forex, metals, indices)
+const YAHOO_FOREX_MAP = {
+  'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','USDCHF':'CHF=X',
+  'USDCAD':'CAD=X','AUDUSD':'AUDUSD=X','NZDUSD':'NZDUSD=X','USDKRW':'KRW=X','USDHKD':'HKD=X',
+};
+function toYahooSymbol(symbol) {
+  const s = symbol.toUpperCase();
+  if (YAHOO_FOREX_MAP[s]) return YAHOO_FOREX_MAP[s];
+  if (s === 'XAU') return 'GC=F';  // Gold futures
+  if (s === 'XAG') return 'SI=F';  // Silver futures
+  if (s.includes('.')) return s.replace('.', '-');  // BRK.B → BRK-B
+  return s;
+}
+
+async function fetchYahooProxyCandles(symbol, limit = 300) {
+  const proxyUrl = getYahooProxyUrl();
+  if (!proxyUrl) return null;
+  const ySymbol = toYahooSymbol(symbol);
+  const url = `${proxyUrl}/chart/${encodeURIComponent(ySymbol)}?range=1y&interval=1d`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const d = await res.json();
+    const result = d?.chart?.result?.[0];
+    if (!result?.timestamp) return null;
+    const q = result.indicators?.quote?.[0];
+    if (!q) return null;
+    const candles = [];
+    for (let i = 0; i < result.timestamp.length; i++) {
+      if (q.close?.[i] == null) continue;
+      candles.push({
+        ts: result.timestamp[i] * 1000,
+        open: q.open?.[i] ?? q.close[i],
+        high: q.high?.[i] ?? q.close[i],
+        low: q.low?.[i] ?? q.close[i],
+        close: q.close[i],
+        vol: q.volume?.[i] ?? 0,
+      });
+    }
+    return candles.slice(-limit);
+  } catch { return null; }
+}
+
 // Direct Lighter API access (bypasses resolver for reliability)
 const LIGHTER_API = 'https://mainnet.zklighter.elliot.ai/api/v1';
 const LIGHTER_EXPLORER = 'https://explorer.elliot.ai/api';
@@ -177,21 +281,24 @@ async function fetchTradfiCandles(symbol, limit = 300) {
   let krakenCandles = await fetchKrakenTradCandles(symbol, limit);
   if (krakenCandles && krakenCandles.length >= 5) return krakenCandles;
 
+  // Yahoo Finance via Cloudflare Worker (no rate limit, ALL US stocks/ETFs)
+  // Only available if the proxy URL is configured — see cloudflare/yahoo-proxy-worker.js
+  let yahooCandles = await fetchYahooProxyCandles(symbol, limit);
+  if (yahooCandles && yahooCandles.length >= 5) return yahooCandles;
+
   // Massive/Polygon (rate limited ~5 req/min on free tier — has cooldown)
-  // Only try if not in cooldown
   if (Date.now() >= _massiveRateLimitedUntil) {
     let massiveCandles = await fetchMassiveTradCandles(symbol, limit);
     if (massiveCandles && massiveCandles.length >= 5) return massiveCandles;
   }
 
   // Twelve Data (rate limited 8 req/min, 800/day — last resort)
-  // Only try if daily credits not exhausted
   if (_tdCreditsUsed < _tdCreditsLimit) {
     let tdCandles = await fetchTwelveDataCandles(symbol, limit);
     if (tdCandles && tdCandles.length >= 5) return tdCandles;
   }
 
-  return null;  // All sources failed or rate-limited
+  return null;
 }
 
 // ── Twelve Data — full OHLC history for tickers not on Lighter ────────────────
