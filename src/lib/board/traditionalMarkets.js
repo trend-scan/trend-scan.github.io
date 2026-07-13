@@ -56,7 +56,7 @@ function getYahooProxyUrl() {
     const local = localStorage.getItem('YAHOO_PROXY_URL');
     if (local) return local;
   }
-  return import.meta.env?.VITE_YAHOO_PROXY_URL || '';
+  return import.meta.env?.VITE_YAHOO_PROXY_URL || 'https://trendscan-yahoo-proxy.drew-724.workers.dev';
 }
 
 // Yahoo symbol formatting (BRK.B → BRK-B, forex, metals, indices)
