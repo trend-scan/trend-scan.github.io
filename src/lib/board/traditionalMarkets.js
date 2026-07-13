@@ -158,30 +158,46 @@ async function fetchKrakenTradCandles(symbol, limit = 300) {
 }
 
 async function fetchTradfiCandles(symbol, limit = 300) {
-  // Chain: Lighter → OKX SWAP perps → Massive/Polygon → Kraken → Twelve Data
-  // Each source is tried in order; first non-null result wins.
+  // Optimized chain: try the FASTEST sources first, slowest last.
+  // Lighter and Massive are tried in parallel for non-Lighter tickers
+  // to avoid the latency of sequential failures.
 
-  // 1. Lighter (full OHLC history — 300 daily candles, ~97 tradfi tickers)
-  let candles = await fetchLighterCandles(symbol, limit);
-  if (candles && candles.length >= 5) return candles;
+  const s = symbol.toUpperCase();
+  const onLighter = !!LIGHTER_MARKET_IDS[s];
 
-  // 2. OKX SWAP perps (16 tradfi tickers — free, no key)
-  candles = await fetchOkxTradfiCandles(symbol, limit);
-  if (candles && candles.length >= 5) return candles;
+  // 1. Lighter (fastest — ~97 tradfi tickers, free, no key, no rate limit)
+  if (onLighter) {
+    const candles = await fetchLighterCandles(symbol, limit);
+    if (candles && candles.length >= 5) return candles;
+  }
 
-  // 3. Massive/Polygon (broadest stock coverage — paid key, no rate limits)
-  candles = await fetchMassiveTradCandles(symbol, limit);
-  if (candles && candles.length >= 5) return candles;
+  // 2. For non-Lighter tickers, try Massive/Polygon FIRST (unlimited, fast)
+  //    and OKX in parallel — whichever returns first wins.
+  //    Skip Twelve Data in the parallel race since it has 7.5s rate limiting.
+  if (!onLighter) {
+    const [massiveResult, okxResult] = await Promise.allSettled([
+      fetchMassiveTradCandles(symbol, limit),
+      fetchOkxTradfiCandles(symbol, limit),
+    ]);
+    const massive = massiveResult.status === 'fulfilled' ? massiveResult.value : null;
+    if (massive && massive.length >= 5) return massive;
+    const okx = okxResult.status === 'fulfilled' ? okxResult.value : null;
+    if (okx && okx.length >= 5) return okx;
+  } else {
+    // For Lighter tickers that failed, also try OKX
+    let candles2 = await fetchOkxTradfiCandles(symbol, limit);
+    if (candles2 && candles2.length >= 5) return candles2;
+  }
 
-  // 4. Kraken (limited tradfi — free, no key, 11 tickers)
-  candles = await fetchKrakenTradCandles(symbol, limit);
-  if (candles && candles.length >= 5) return candles;
+  // 3. Kraken (free, no key — 11 tickers)
+  let candles3 = await fetchKrakenTradCandles(symbol, limit);
+  if (candles3 && candles3.length >= 5) return candles3;
 
-  // 5. Twelve Data (broad stock/ETF coverage — free tier 800 req/day, 8 req/min)
-  candles = await fetchTwelveDataCandles(symbol, limit);
-  if (candles && candles.length >= 5) return candles;
+  // 4. Twelve Data (last resort — rate limited at 7.5s/req)
+  let candles4 = await fetchTwelveDataCandles(symbol, limit);
+  if (candles4 && candles4.length >= 5) return candles4;
 
-  return null;  // All sources failed
+  return null;
 }
 
 // ── Twelve Data — full OHLC history for tickers not on Lighter ────────────────
@@ -845,32 +861,55 @@ async function fetchWithPool(tasks, concurrency = 5) {
 }
 
 // ── Main Entry Point ──────────────────────────────────────────────────────────
-export async function fetchTradMarketData(onProgress) {
+export async function fetchTradMarketData(onProgress, onPartialResults) {
   const assets = TRAD_UNIVERSE;
   onProgress?.({ done: 0, total: assets.length });
 
   let done = 0;
   const sourceTracker = {};  // symbol → source id (for UI display)
+  const rawResults = [];
 
-  const tasks = assets.map(asset => async () => {
+  // Sort assets: Lighter tickers first (fastest), then non-Lighter (slower)
+  const sortedAssets = [...assets].sort((a, b) => {
+    const aLighter = !!LIGHTER_MARKET_IDS[a.symbol.toUpperCase()];
+    const bLighter = !!LIGHTER_MARKET_IDS[b.symbol.toUpperCase()];
+    if (aLighter && !bLighter) return -1;
+    if (!aLighter && bLighter) return 1;
+    return 0;
+  });
+
+  const tasks = sortedAssets.map(asset => async () => {
     try {
       const candles = await fetchTradfiCandles(asset.symbol, 300);
-      const source = candles ? 'lighter' : 'none';
+      const source = candles ? (LIGHTER_MARKET_IDS[asset.symbol.toUpperCase()] ? 'lighter' : 'polygon') : 'none';
       done++;
       onProgress?.({ done, total: assets.length });
-      if (source) sourceTracker[asset.symbol] = source;
-      if (!candles || candles.length < 5) return { asset, metrics: null, source: 'none' };
-      return { asset, metrics: computeTradMetrics(candles), source };
+      if (source !== 'none') sourceTracker[asset.symbol] = source;
+      if (!candles || candles.length < 5) {
+        rawResults.push({ asset, metrics: null, source: 'none' });
+        return;
+      }
+      rawResults.push({ asset, metrics: computeTradMetrics(candles), source });
+      // Deliver partial results every 10 completed assets so the UI can update
+      if (onPartialResults && done % 10 === 0) {
+        onPartialResults(buildTradResult(rawResults, sourceTracker));
+      }
     } catch (e) {
       done++;
       onProgress?.({ done, total: assets.length });
       console.warn(`[tradData] ${asset.symbol} failed:`, e.message);
-      return { asset, metrics: null, source: 'error' };
+      rawResults.push({ asset, metrics: null, source: 'error' });
     }
   });
 
-  const rawResults = await fetchWithPool(tasks, 2);  // reduced from 3 to 2 for TD rate limit safety
+  // Higher concurrency for Lighter + Massive (no rate limits), TD handles its own throttling
+  await fetchWithPool(tasks, 5);
 
+  return buildTradResult(rawResults, sourceTracker);
+}
+
+// ── Build final/partial result from rawResults ───────────────────────────────
+function buildTradResult(rawResults, sourceTracker) {
   // Compute RS vs QQQ for each asset
   const qqqResult = rawResults.find(r => r.asset.symbol === 'QQQ');
   const qqqRet20d = qqqResult?.metrics?.ret20d ?? 0;
@@ -909,9 +948,6 @@ export async function fetchTradMarketData(onProgress) {
     .sort((a, b) => (b.ret20d ?? -99) - (a.ret20d ?? -99));
 
   // ── Starting to Move (tradfi) ──────────────────────────────────────────────
-  // Same concept as crypto: above 50MA but not extended, sorted by RS vs QQQ.
-  // Note: tradfi doesn't store candles in rawResults (only metrics), so we
-  // can't compute a 20-day-prior RS delta. Instead we sort by current RS vs QQQ.
   const startingToMove = assets2
     .filter(a => a.distMa50 != null && a.distMa50 > 0 && a.distMa50 < 15)
     .filter(a => a.rs_qqq_20d != null && a.rs_qqq_20d > 0)
@@ -922,7 +958,7 @@ export async function fetchTradMarketData(onProgress) {
       name: a.name,
       category: a.category,
       rsNow: a.rs_qqq_20d,
-      rsDelta: null, // not available without historical candles
+      rsDelta: null,
       distMa50: a.distMa50,
       ret20d: a.ret20d,
       volRatio: a.volRatio,
@@ -938,13 +974,12 @@ export async function fetchTradMarketData(onProgress) {
     pctAbove20:  valid.length ? Math.round(valid.filter(r => r.metrics.above20  === 1).length / valid.length * 100) : 0,
     pctAbove50:  valid.length ? Math.round(valid.filter(r => r.metrics.above50  === 1).length / valid.length * 100) : 0,
     pctAbove200: valid.length ? Math.round(valid.filter(r => r.metrics.above200 === 1).length / valid.length * 100) : 0,
-    // Average returns across all assets
     avgRet1d:  valid.length ? valid.reduce((s, r) => s + (r.metrics.ret1d  ?? 0), 0) / valid.length : 0,
     avgRet5d:  valid.length ? valid.reduce((s, r) => s + (r.metrics.ret5d  ?? 0), 0) / valid.length : 0,
     avgRet20d: valid.length ? valid.reduce((s, r) => s + (r.metrics.ret20d ?? 0), 0) / valid.length : 0,
   };
 
-  // Count sources used (for UI display)
+  // Count sources used
   const sourceCounts = {};
   for (const s of Object.values(sourceTracker)) {
     sourceCounts[s] = (sourceCounts[s] || 0) + 1;
