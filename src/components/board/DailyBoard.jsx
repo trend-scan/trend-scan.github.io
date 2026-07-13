@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 const STATUS_COLORS = {
@@ -383,6 +383,95 @@ function ThemeSectorRotation({ themeSectorRotation }) {
   );
 }
 
+// ── Section: ETF Flows (from snapshot.json) ───────────────────────────────────
+
+function ETFFlowTable() {
+  const [flows, setFlows] = useState(null);
+
+  useEffect(() => {
+    fetch('/snapshot.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setFlows(d?.etf_flows || null))
+      .catch(() => setFlows(null));
+  }, []);
+
+  if (!flows || Object.keys(flows).length === 0) return null;
+
+  const assets = ['BTC', 'ETH', 'SOL', 'HYPE'].filter(a => flows[a] && flows[a].length > 0);
+  if (assets.length === 0) return null;
+
+  // Get the last 7 dates across all assets (use BTC as reference since it has the most data)
+  const refAsset = flows['BTC'] || flows[Object.keys(flows)[0]];
+  const dates = refAsset.slice(-7).map(d => d.date);
+
+  // Compute 7-day total for each asset
+  const totals = {};
+  for (const asset of assets) {
+    totals[asset] = flows[asset].reduce((sum, d) => sum + d.total, 0);
+  }
+
+  function fmtFlow(v) {
+    if (v == null || isNaN(v)) return '—';
+    const sign = v >= 0 ? '+' : '';
+    return `${sign}$${Math.abs(v).toFixed(1)}M`;
+  }
+
+  function flowColor(v) {
+    if (v == null || isNaN(v)) return 'var(--scanner-text3)';
+    return v > 0 ? 'var(--scanner-green)' : v < 0 ? 'var(--scanner-red)' : 'var(--scanner-text3)';
+  }
+
+  return (
+    <section>
+      <SectionLabel>ETF Flows · 7D Net (Farside)</SectionLabel>
+      <div className="overflow-x-auto rounded" style={{ border: '1px solid var(--scanner-border2)' }}>
+        <table className="w-full border-collapse min-w-[500px]">
+          <thead>
+            <tr style={{ background: 'var(--scanner-bg2)', borderBottom: '1px solid var(--scanner-border2)' }}>
+              <th className="text-[8.5px] font-semibold tracking-[0.12em] uppercase py-2 px-3 text-left" style={{ color: 'var(--scanner-text3)' }}>Asset</th>
+              {dates.map(d => (
+                <th key={d} className="text-[8.5px] font-semibold tracking-[0.12em] uppercase py-2 px-3 text-right" style={{ color: 'var(--scanner-text3)' }}>
+                  {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </th>
+              ))}
+              <th className="text-[8.5px] font-semibold tracking-[0.12em] uppercase py-2 px-3 text-right" style={{ color: 'var(--scanner-accent)' }}>7D Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {assets.map(asset => (
+              <tr key={asset} style={{ borderBottom: '1px solid var(--scanner-border)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <td className="py-2.5 px-3">
+                  <span className="text-[12px] font-bold" style={{ color: 'var(--scanner-text)' }}>{asset}</span>
+                </td>
+                {dates.map(d => {
+                  const flow = flows[asset]?.find(f => f.date === d);
+                  return (
+                    <td key={d} className="py-2.5 px-3 text-right">
+                      <span className="tabular-nums text-[11px] font-semibold" style={{ color: flowColor(flow?.total) }}>
+                        {fmtFlow(flow?.total)}
+                      </span>
+                    </td>
+                  );
+                })}
+                <td className="py-2.5 px-3 text-right">
+                  <span className="tabular-nums text-[11px] font-bold" style={{ color: flowColor(totals[asset]) }}>
+                    {fmtFlow(totals[asset])}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="text-[8px] mt-1.5" style={{ color: 'var(--scanner-text3)' }}>
+        Source: Farside Investors · US$ millions · Total net flow across all ETFs · '-' = market closed
+      </div>
+    </section>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function DailyBoard({
@@ -391,6 +480,7 @@ export default function DailyBoard({
   return (
     <div className="font-mono space-y-8 px-5 md:px-8 py-5">
       <BenchmarkSnapshot benchmarks={benchmarks} />
+      <ETFFlowTable />
       <StartingToMove startingToMove={startingToMove} />
       <ThemeStatus themes={themes} />
       <ThemeRotation themeRotation={themeRotation} />

@@ -311,6 +311,94 @@ async function fetchFearGreed() {
   }
 }
 
+// ─── Farside ETF Flows — daily net flow data for BTC, ETH, SOL, HYPE ──────────
+// Farside.co.uk publishes daily ETF flow data in HTML tables.
+// We parse the tables server-side (CORS-blocked in browser) and store the
+// last 7 days of total net flow in the snapshot.
+
+const FARSIDE_PAGES = {
+  BTC: 'https://farside.co.uk/bitcoin-etf-flow-all-data/',
+  ETH: 'https://farside.co.uk/ethereum-etf-flow-all-data/',
+  SOL: 'https://farside.co.uk/sol/',
+  HYPE: 'https://farside.co.uk/hyp/',
+};
+
+function parseFarsideTable(html) {
+  // Extract the first table from HTML, return array of { date, total } objects
+  // The table has columns: Date, ETF1, ETF2, ..., Total
+  // Values are in US$ millions. Negatives use parentheses: (59.1)
+  // "-" means no data (market closed)
+  const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/);
+  if (!tableMatch) return [];
+
+  const rows = tableMatch[1].match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || [];
+  const result = [];
+
+  for (const row of rows) {
+    const cells = (row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g) || [])
+      .map(c => c.replace(/<[^>]+>/g, '').trim());
+
+    if (cells.length < 2) continue;
+
+    // First cell is the date (e.g. "10 Jul 2026") or a label ("Total", "Average")
+    const first = cells[0];
+    if (!first || first === 'Fee' || first === 'Staking fee' || first === 'Seed') continue;
+
+    // Skip summary rows
+    if (['Total', 'Average', 'Maximum', 'Minimum'].includes(first)) continue;
+
+    // Parse date (e.g. "10 Jul 2026" → ISO)
+    const dateMatch = first.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+    if (!dateMatch) continue;
+    const [, day, month, year] = dateMatch;
+    const date = new Date(`${day} ${month} ${year}`).toISOString().slice(0, 10);
+
+    // Last cell is the Total column
+    const totalStr = cells[cells.length - 1];
+    if (totalStr === '-' || totalStr === '') continue;
+
+    // Parse value: "(59.1)" → -59.1, "86.8" → 86.8, "60,286" → 60286
+    const cleaned = totalStr.replace(/,/g, '');
+    let total;
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      total = -parseFloat(cleaned.slice(1, -1));
+    } else {
+      total = parseFloat(cleaned);
+    }
+    if (isNaN(total)) continue;
+
+    result.push({ date, total });
+  }
+
+  return result;
+}
+
+async function fetchFarsideETFFlows() {
+  const out = {};
+
+  for (const [asset, url] of Object.entries(FARSIDE_PAGES)) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      });
+      if (!res.ok) {
+        console.warn(`  ✗ Farside ${asset}: HTTP ${res.status}`);
+        continue;
+      }
+      const html = await res.text();
+      const flows = parseFarsideTable(html);
+      // Keep last 7 days
+      const recent = flows.slice(-7);
+      out[asset] = recent;
+      console.log(`  ✓ Farside ${asset}: ${recent.length} days (latest: ${recent[recent.length-1]?.date} = $${recent[recent.length-1]?.total}M)`);
+    } catch (e) {
+      console.warn(`  ✗ Farside ${asset}: ${e.message}`);
+    }
+  }
+
+  return out;
+}
+
 // ─── Yahoo Finance — Tradfi OHLCV (server-side, no CORS issue) ───────────────
 // Fetches daily OHLCV for tradfi tickers that aren't on Lighter.
 // Yahoo Finance has no API key requirement and effectively unlimited rate
@@ -413,13 +501,14 @@ async function main() {
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
   console.log('');
 
-  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV] = await Promise.all([
+  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
     fetchKenFrench(),
     fetchCBOEPutCall(),
     fetchTradfiSnapshot(),
+    fetchFarsideETFFlows(),
   ]);
 
   // If FRED data is empty (API failure), use previous snapshot's FRED data
@@ -437,6 +526,7 @@ async function main() {
     ken_french: kenFrench,
     cboe_put_call: cboe,
     tradfi_ohlcv: tradfiOHLCV,
+    etf_flows: etfFlows,
   };
 
   // Stats
@@ -449,6 +539,7 @@ async function main() {
   console.log(`  CBOE P/C series:        ${Object.keys(cboe).length}`);
   console.log(`  Ken French months:      ${kenFrench.length}`);
   console.log(`  Tradfi OHLCV tickers:   ${Object.keys(tradfiOHLCV).length}`);
+  console.log(`  ETF flow assets:        ${Object.keys(etfFlows).length} (BTC, ETH, SOL, HYPE)`);
   console.log(`  Total size:             ${JSON.stringify(snapshot).length.toLocaleString()} bytes`);
 
   // Write to public/snapshot.json (gets committed to repo, served from /)
