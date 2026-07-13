@@ -12,7 +12,7 @@ import FactorMonitor from '@/components/board/FactorMonitor';
 import { runBoardAnalysis } from '@/lib/board/boardEngine';
 import { fetchTradMarketData, buildTradDataFromSnapshot } from '@/lib/board/traditionalMarkets';
 
-const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'Macro', 'Factor Monitor'];
+const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'TradFi', 'Factor Monitor'];
 
 const DEFAULT_EXCHANGE = 'auto';
 
