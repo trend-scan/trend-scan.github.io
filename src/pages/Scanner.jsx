@@ -58,12 +58,46 @@ export default function Scanner() {
   const [isScanning, setIsScanning] = useState(false);
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState({ done: 0, total: 0, matched: 0, message: '—' });
-  const [results, setResults] = useState([]);
-  const [scanMeta, setScanMeta] = useState({ updatedAt: null, duration: null });
+  const [results, setResults] = useState(() => {
+    // Restore last scan results from sessionStorage so navigating away
+    // and back doesn't wipe the page.
+    try {
+      const saved = sessionStorage.getItem('trendscan_scanner_results');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+  const [scanMeta, setScanMeta] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('trendscan_scanner_meta');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { updatedAt: null, duration: null };
+  });
   const [error, setError] = useState(null);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const throttleRef = useRef(null);
+
+  // Persist scan results to sessionStorage whenever they change
+  useEffect(() => {
+    try {
+      if (results.length > 0) {
+        sessionStorage.setItem('trendscan_scanner_results', JSON.stringify(results));
+      } else {
+        sessionStorage.removeItem('trendscan_scanner_results');
+      }
+    } catch {}
+  }, [results]);
+
+  // Persist scan metadata to sessionStorage
+  useEffect(() => {
+    try {
+      if (scanMeta.updatedAt) {
+        sessionStorage.setItem('trendscan_scanner_meta', JSON.stringify(scanMeta));
+      }
+    } catch {}
+  }, [scanMeta]);
 
   // Massive API key check removed — 'auto' default uses free sources via the resolver.
   // Modal can still be triggered manually from ScannerControls if user wants Massive/Polygon.

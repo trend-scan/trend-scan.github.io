@@ -33,7 +33,15 @@ export default function Board() {
   }, [exchange]);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState({ phase: 'idle', message: 'Press Refresh to load data', done: undefined, total: undefined });
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(() => {
+    // Restore last board data from sessionStorage so navigating away
+    // and back doesn't wipe the page.
+    try {
+      const saved = sessionStorage.getItem('trendscan_board_data');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
   const [error, setError] = useState(null);
   const [tradData, setTradData] = useState(null);
   const [tradLoading, setTradLoading] = useState(false);
@@ -45,6 +53,19 @@ export default function Board() {
   const handleProgress = useCallback((p) => {
     setProgress(p);
   }, []);
+
+  // Persist board data to sessionStorage so navigating away and back
+  // doesn't wipe the page. Uses sessionStorage (not localStorage) so data
+  // is cleared when the browser tab closes — avoids stale data on next visit.
+  useEffect(() => {
+    try {
+      if (data) {
+        sessionStorage.setItem('trendscan_board_data', JSON.stringify(data));
+      } else {
+        sessionStorage.removeItem('trendscan_board_data');
+      }
+    } catch {}
+  }, [data]);
 
   // Load snapshot data instantly (no API calls — reads from /snapshot.json)
   // This gives the Macro tab immediate data while the live fetch runs in background
