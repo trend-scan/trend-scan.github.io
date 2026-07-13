@@ -17,12 +17,11 @@
  *   to actual Binance baseAssets (e.g. '1000XEC'). Callers always pass the
  *   bare symbol; the source handles the translation transparently.
  *
- *   Price adjustment: when reading candles for a 1000x-prefixed symbol,
- *   Binance returns the actual per-unit price (e.g. $0.00003 for 1000XEC),
- *   NOT the price of 1000 tokens. So no price scaling is needed on read.
- *   However, the volume field is in BASE CURRENCY (number of tokens, not
- *   notional USD). For consistency with other sources, we leave vol as-is —
- *   callers that need USD volume should multiply vol × close.
+ *   Price adjustment: Binance returns the BASKET price for 1000x/1000000x
+ *   symbols (e.g. $0.10 for 1000000MOG, not $0.0000001 per token). We
+ *   divide OHLC by the multiplier to get per-token prices that match
+ *   other exchanges. Volume is multiplied by the multiplier to get
+ *   actual token count.
  *
  * NOTE: Geo-restricted in some regions. The UI marks this with "⚠ VPN".
  */
@@ -98,6 +97,17 @@ export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
   const actualBase = universe?.[symUpper] || symUpper;  // fallback: try as-is
   const binanceSymbol = `${actualBase}USDT`;
 
+  // Determine the price multiplier for 1000x/1000000x-prefixed symbols.
+  // Binance returns the BASKET price (e.g. $0.10 for 1000000MOG), NOT the
+  // per-token price ($0.0000001). We must divide by the multiplier to get
+  // the true per-token price that matches other exchanges (Hyperliquid, Yahoo).
+  let priceMultiplier = 1;
+  if (actualBase.startsWith('1000000')) {
+    priceMultiplier = 1000000;
+  } else if (actualBase.startsWith('1000')) {
+    priceMultiplier = 1000;
+  }
+
   const url = `${BASE}/klines?symbol=${encodeURIComponent(binanceSymbol)}&interval=${interval}&limit=${Math.min(limit, 1500)}`;
 
   try {
@@ -111,13 +121,16 @@ export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
 
     // Binance kline format: [openTime, open, high, low, close, volume, closeTime,
     //                       quoteAssetVolume, trades, takerBuyBase, takerBuyQuote, ignore]
+    // For 1000x/1000000x symbols, divide OHLC by the multiplier to get
+    // per-token prices. Volume is already in basket units, so multiply
+    // by the multiplier to get actual token count.
     return arr.map(c => ({
       ts: parseInt(c[0]),
-      open: parseFloat(c[1]),
-      high: parseFloat(c[2]),
-      low: parseFloat(c[3]),
-      close: parseFloat(c[4]),
-      vol: parseFloat(c[5]),  // base currency volume (number of tokens)
+      open: parseFloat(c[1]) / priceMultiplier,
+      high: parseFloat(c[2]) / priceMultiplier,
+      low: parseFloat(c[3]) / priceMultiplier,
+      close: parseFloat(c[4]) / priceMultiplier,
+      vol: parseFloat(c[5]) * priceMultiplier,
     }));
   } catch (e) {
     console.warn(`[binance_perps] ${symbol} failed: ${e.message}`);

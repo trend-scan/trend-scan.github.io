@@ -30,21 +30,46 @@ const TIMEFRAME_INTERVAL = {
  * @returns {Promise<Array<{ts,open,high,low,close,vol}>|null>}
  */
 async function _fetchCandlesForCategory(symbol, interval, limit, category) {
-  const sym = `${symbol.toUpperCase()}USDT`;
-  const url = `${BASE}/kline?category=${category}&symbol=${sym}&interval=${interval}&limit=${Math.min(limit, 1000)}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const d = await res.json();
-  if (d.retCode !== 0 || !d.result?.list?.length) return null;
-  // Bybit returns newest-first strings; reverse + convert
-  return d.result.list.slice().reverse().map(c => ({
-    ts: parseInt(c[0]),
-    open: parseFloat(c[1]),
-    high: parseFloat(c[2]),
-    low: parseFloat(c[3]),
-    close: parseFloat(c[4]),
-    vol: parseFloat(c[5]),
-  }));
+  // Bybit uses 1000x/1000000x prefixes for low-priced tokens (same as Binance).
+  // Try the bare symbol first, then 1000X, then 1000000X.
+  const symUpper = symbol.toUpperCase();
+  const candidates = [`${symUpper}USDT`];
+  // Only add prefixed variants if the bare symbol is short (likely low-priced token)
+  if (symUpper.length <= 6) {
+    candidates.push(`1000${symUpper}USDT`);
+    candidates.push(`1000000${symUpper}USDT`);
+  }
+
+  for (const sym of candidates) {
+    const url = `${BASE}/kline?category=${category}&symbol=${sym}&interval=${interval}&limit=${Math.min(limit, 1000)}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (d.retCode !== 0 || !d.result?.list?.length) continue;
+
+      // Determine price multiplier if this is a 1000x/1000000x symbol
+      let priceMultiplier = 1;
+      if (sym.startsWith('1000000')) priceMultiplier = 1000000;
+      else if (sym.startsWith('1000')) priceMultiplier = 1000;
+
+      // Bybit returns newest-first strings; reverse + convert
+      // For 1000x/1000000x symbols, divide OHLC by multiplier to get
+      // per-token prices. Multiply volume by multiplier for actual token count.
+      const candles = d.result.list.slice().reverse().map(c => ({
+        ts: parseInt(c[0]),
+        open: parseFloat(c[1]) / priceMultiplier,
+        high: parseFloat(c[2]) / priceMultiplier,
+        low: parseFloat(c[3]) / priceMultiplier,
+        close: parseFloat(c[4]) / priceMultiplier,
+        vol: parseFloat(c[5]) * priceMultiplier,
+      }));
+      return candles;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 /**
