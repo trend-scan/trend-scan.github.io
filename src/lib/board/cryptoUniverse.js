@@ -70,6 +70,7 @@ export const CRYPTO_UNIVERSE = [
   { symbol: 'SNX', name: 'Synthetix', theme: 'DeFi', tier: 'Active', subtheme: 'Derivatives' },
   { symbol: 'FLUID', name: 'Fluid', theme: 'DeFi', tier: 'Active', subtheme: 'Liquidity' },
   { symbol: 'ZRX', name: '0x Protocol', theme: 'DeFi', tier: 'Active', subtheme: 'DEX Infrastructure' },
+  { symbol: 'LDO', name: 'Lido DAO', theme: 'DeFi', tier: 'Active', subtheme: 'Liquid Staking' },
   { symbol: 'YFI', name: 'yearn.finance', theme: 'DeFi', tier: 'Active', subtheme: 'DeFi' },
   { symbol: 'GMX', name: 'GMX', theme: 'DeFi', tier: 'Active', subtheme: 'Derivatives' },
   // Moved from Layer 1 (MET is a DEX, not an L1)
