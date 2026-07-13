@@ -9,6 +9,7 @@ import MomentumScanTab from '@/components/board/MomentumScanTab';
 import MacroTab from '@/components/board/MacroTab';
 import MassiveApiKeyInput from '@/components/scanner/MassiveApiKeyInput';
 import FactorMonitor from '@/components/board/FactorMonitor';
+import QuickViewBar from '@/components/board/QuickViewBar';
 import { runBoardAnalysis } from '@/lib/board/boardEngine';
 import { fetchTradMarketData, buildTradDataFromSnapshot } from '@/lib/board/traditionalMarkets';
 
@@ -125,6 +126,7 @@ export default function Board() {
   const fading           = data?.fading           ?? [];
   const momentumScan     = data?.momentumScan     ?? { '1W': [], '1M': [], '3M': [], '6M': [] };
   const breadthSeries    = data?.breadthSeries    ?? null;
+  const quickView        = data?.quickView        ?? null;
 
   return (
     <div className="min-h-screen pb-16 font-mono" style={{ background: 'var(--scanner-bg)', color: 'var(--scanner-text)' }}>
@@ -184,6 +186,9 @@ export default function Board() {
           ⚠ {error}
         </div>
       )}
+
+      {/* Quick View Bar — 5 market summary metrics */}
+      {quickView && <QuickViewBar quickView={quickView} />}
 
       {/* Tab bar */}
       <div className="flex items-end gap-0 px-5 md:px-8 mt-4" style={{ borderBottom: '1px solid var(--scanner-border2)' }}>

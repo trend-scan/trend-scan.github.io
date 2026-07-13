@@ -2,6 +2,7 @@
 // Uses the same exchange candle data as the Trend Strength Screener
 
 import { fetchCandles, preloadExchange } from '../scanner/exchanges';
+import { fetchAllTickers as fetchHyperliquidTickers } from '../scanner/sources/hyperliquid';
 import { CRYPTO_UNIVERSE, BENCHMARKS, ROTATION_PAIRS } from './cryptoUniverse';
 
 const TIMEFRAME = '1D';
@@ -574,6 +575,88 @@ function computeTradMetrics(candles) {
   };
 }
 
+// ── Quick View: 5 market summary metrics ─────────────────────────────────────
+
+function buildQuickView(rawResults, hlTickers) {
+  const valid = rawResults.filter(r => r.metrics != null && r.candles);
+
+  // 1. STRONGEST RIGHT NOW: composite score of ret20d, rs_btc_20d, trend alignment
+  //    Score = ret20d (40%) + rs_btc_20d*100 (30%) + trend score (30%)
+  //    Trend score: above20(1) + above50(2) + above200(3) + newHigh20d(2) = 0-8
+  const strongest = valid.map(r => {
+    const m = r.metrics;
+    const trendScore = (m.above20 === 1 ? 1 : 0) + (m.above50 === 1 ? 2 : 0) +
+                       (m.above200 === 1 ? 3 : 0) + (m.newHigh20d === 1 ? 2 : 0);
+    const composite = (m.ret20d ?? 0) * 0.4 + (m.rs_btc_20d ?? 0) * 100 * 0.3 + trendScore * 5 * 0.3;
+    return {
+      symbol: r.asset.symbol, name: r.asset.name, theme: r.asset.theme,
+      ret20d: m.ret20d, rs_btc_20d: m.rs_btc_20d, trendScore,
+      composite, price: m.price, distMa50: m.distMa50,
+    };
+  }).sort((a, b) => b.composite - a.composite).slice(0, 5);
+
+  // 2. PICKING UP SPEED: ret1w > ret20d/4 (recent acceleration vs month)
+  //    Filter: ret1w > 0 and ret1w > ret20d * 0.25 (doing better recently)
+  //    Sort by: ret1w - (ret20d / 4) = acceleration magnitude
+  const pickingUp = valid.map(r => {
+    const m = r.metrics;
+    const ret1w = m.ret5d ?? 0;  // 5D as proxy for 1W
+    const ret20d = m.ret20d ?? 0;
+    const acceleration = ret1w - (ret20d / 4);
+    return {
+      symbol: r.asset.symbol, name: r.asset.name, theme: r.asset.theme,
+      ret1w, ret20d, acceleration, price: m.price,
+    };
+  }).filter(t => t.ret1w > 0 && t.acceleration > 0)
+    .sort((a, b) => b.acceleration - a.acceleration).slice(0, 5);
+
+  // 3. CROWDED LONGS: high funding rate + rising OI + price climbing
+  //    Uses Hyperliquid funding + OI data when available
+  const hlMap = hlTickers instanceof Map ? hlTickers : null;
+  const crowded = valid.map(r => {
+    const m = r.metrics;
+    const hl = hlMap?.get(r.asset.symbol);
+    const funding = hl?.fundingRate ?? null;
+    const oi = hl?.openInterestUsd ?? null;
+    // Crowding score: high funding (annualized) + price above MAs + positive ret5d
+    // Funding is typically 0.0001-0.001 per 8h; annualize: *3*365
+    const fundingAnn = funding != null ? funding * 3 * 365 * 100 : null; // as %
+    const crowding = (fundingAnn != null ? fundingAnn : 0) +
+                     (m.above20 === 1 ? 5 : 0) + (m.above50 === 1 ? 5 : 0) +
+                     ((m.ret5d ?? 0) > 0 ? 5 : 0);
+    return {
+      symbol: r.asset.symbol, name: r.asset.name, theme: r.asset.theme,
+      funding, fundingAnn, openInterest: oi,
+      ret5d: m.ret5d, price: m.price, crowding,
+    };
+  }).filter(t => t.funding != null && t.funding > 0.00005 && t.crowding > 10)
+    .sort((a, b) => b.crowding - a.crowding).slice(0, 5);
+
+  // 4. WASHED OUT: worst 60D returns — the rebound zone
+  const washedOut = valid.map(r => {
+    const m = r.metrics;
+    return {
+      symbol: r.asset.symbol, name: r.asset.name, theme: r.asset.theme,
+      ret60d: m.ret60d, ret20d: m.ret20d, price: m.price,
+      distMa50: m.distMa50, distMa200: m.distMa200,
+    };
+  }).filter(t => t.ret60d != null && t.ret60d < -0.15)  // down >15% in 2 months
+    .sort((a, b) => a.ret60d - b.ret60d).slice(0, 5);
+
+  // 5. YESTERDAY'S BIG MOVES: largest |ret1d| — drift candidates
+  const bigMoves = valid.map(r => {
+    const m = r.metrics;
+    return {
+      symbol: r.asset.symbol, name: r.asset.name, theme: r.asset.theme,
+      ret1d: m.ret1d, price: m.price, volRatio: m.volRatio,
+      direction: m.ret1d > 0 ? 'up' : 'down',
+    };
+  }).filter(t => t.ret1d != null && Math.abs(t.ret1d) > 0.03)  // >3% move
+    .sort((a, b) => Math.abs(b.ret1d) - Math.abs(a.ret1d)).slice(0, 5);
+
+  return { strongest, pickingUp, crowded, washedOut, bigMoves };
+}
+
 export async function runBoardAnalysis(exchange, onProgress) {
   onProgress({ phase: 'preloading', message: 'Loading exchange instruments…' });
   await preloadExchange(exchange);
@@ -600,6 +683,14 @@ export async function runBoardAnalysis(exchange, onProgress) {
   });
 
   const rawResults = await fetchWithPool(tasks, 6);
+
+  // Fetch Hyperliquid bulk tickers for funding rate + OI data (used by Quick View)
+  let hlTickers = null;
+  try {
+    hlTickers = await fetchHyperliquidTickers();
+  } catch (e) {
+    console.warn('[boardEngine] Hyperliquid ticker fetch failed:', e.message);
+  }
 
   // Retry pass for failed assets
   if (failedAssets.length > 0) {
@@ -746,6 +837,9 @@ export async function runBoardAnalysis(exchange, onProgress) {
   // Breadth Series
   const breadthSeries = buildBreadthSeries(rawResults);
 
+  // Quick View (5 market summary metrics)
+  const quickView = buildQuickView(rawResults, hlTickers);
+
   onProgress({ phase: 'complete', message: 'Done' });
 
   return {
@@ -764,6 +858,7 @@ export async function runBoardAnalysis(exchange, onProgress) {
     fading,
     momentumScan,
     breadthSeries,
+    quickView,
     updatedAt: new Date().toLocaleTimeString(),
     assetCount: total,
   };
