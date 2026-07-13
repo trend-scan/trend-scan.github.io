@@ -88,29 +88,28 @@ async function fetchOkxTradfiCandles(symbol, limit = 300) {
   } catch { return null; }
 }
 
-// ── Massive / Polygon.io — broadest stock/ETF coverage, paid key ─────────────
-// Covers ALL US stocks, ETFs, forex, indices. No rate limits on paid plan.
-// Falls back to this when Lighter + OKX + Twelve Data all fail or are rate-limited.
+// ── Massive / Polygon.io — broadest stock/ETF coverage ───────────────────────
+// Free tier: ~5 req/min. Paid tier: unlimited.
+// Rate limit detection: when 429 is received, sets a cooldown period.
 const MASSIVE_KEY = import.meta.env?.VITE_MASSIVE_API_KEY || '';
+let _massiveRateLimitedUntil = 0;  // timestamp when cooldown ends
+const MASSIVE_COOLDOWN_MS = 12_000;  // 12s cooldown after 429 (allows ~5 req/min)
 
 async function fetchMassiveTradCandles(symbol, limit = 300) {
-  if (!MASSIVE_KEY && typeof window !== 'undefined') {
-    // Check localStorage for runtime override
-    const local = localStorage.getItem('MASSIVE_API_KEY');
-    if (!local) return null;
-    return _fetchMassiveTradCandlesWithKey(symbol, limit, local);
-  }
-  if (!MASSIVE_KEY) return null;
-  return _fetchMassiveTradCandlesWithKey(symbol, limit, MASSIVE_KEY);
-}
+  // Check cooldown — skip entirely if recently rate-limited
+  if (Date.now() < _massiveRateLimitedUntil) return null;
 
-async function _fetchMassiveTradCandlesWithKey(symbol, limit, apiKey) {
+  let apiKey = MASSIVE_KEY;
+  if (!apiKey && typeof window !== 'undefined') {
+    apiKey = localStorage.getItem('MASSIVE_API_KEY') || '';
+  }
+  if (!apiKey) return null;
+
   const s = symbol.toUpperCase();
-  // Polygon ticker format: stocks are bare (AAPL), forex is C:EURUSD, indices I:SPX
   let ticker = s;
   // Forex
-  const TD_FOREX = new Set(['EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD','USDKRW','USDHKD']);
-  if (TD_FOREX.has(s)) ticker = `C:${s}`;
+  const TD_FOREX_M = new Set(['EURUSD','GBPUSD','USDJPY','USDCHF','USDCAD','AUDUSD','NZDUSD','USDKRW','USDHKD']);
+  if (TD_FOREX_M.has(s)) ticker = `C:${s}`;
   // Metals
   else if (['XAU','XAG','XCU','XPD','XPT'].includes(s)) ticker = `C:${s}USD`;
   // Indices
@@ -121,6 +120,11 @@ async function _fetchMassiveTradCandlesWithKey(symbol, limit, apiKey) {
   const url = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day/${from.toISOString().slice(0,10)}/${to.toISOString().slice(0,10)}?adjusted=true&sort=asc&limit=${Math.min(limit, 500)}&apiKey=${apiKey}`;
   try {
     const res = await fetch(url);
+    if (res.status === 429) {
+      // Rate limited — set cooldown
+      _massiveRateLimitedUntil = Date.now() + MASSIVE_COOLDOWN_MS;
+      return null;
+    }
     if (!res.ok) return null;
     const d = await res.json();
     if (d.status !== 'OK' || !Array.isArray(d.results)) return null;
@@ -158,46 +162,36 @@ async function fetchKrakenTradCandles(symbol, limit = 300) {
 }
 
 async function fetchTradfiCandles(symbol, limit = 300) {
-  // Optimized chain: try the FASTEST sources first, slowest last.
-  // Lighter and Massive are tried in parallel for non-Lighter tickers
-  // to avoid the latency of sequential failures.
-
+  // Fast path: Lighter (no rate limit, ~95 tickers)
   const s = symbol.toUpperCase();
-  const onLighter = !!LIGHTER_MARKET_IDS[s];
-
-  // 1. Lighter (fastest — ~97 tradfi tickers, free, no key, no rate limit)
-  if (onLighter) {
+  if (LIGHTER_MARKET_IDS[s]) {
     const candles = await fetchLighterCandles(symbol, limit);
     if (candles && candles.length >= 5) return candles;
   }
 
-  // 2. For non-Lighter tickers, try Massive/Polygon FIRST (unlimited, fast)
-  //    and OKX in parallel — whichever returns first wins.
-  //    Skip Twelve Data in the parallel race since it has 7.5s rate limiting.
-  if (!onLighter) {
-    const [massiveResult, okxResult] = await Promise.allSettled([
-      fetchMassiveTradCandles(symbol, limit),
-      fetchOkxTradfiCandles(symbol, limit),
-    ]);
-    const massive = massiveResult.status === 'fulfilled' ? massiveResult.value : null;
-    if (massive && massive.length >= 5) return massive;
-    const okx = okxResult.status === 'fulfilled' ? okxResult.value : null;
-    if (okx && okx.length >= 5) return okx;
-  } else {
-    // For Lighter tickers that failed, also try OKX
-    let candles2 = await fetchOkxTradfiCandles(symbol, limit);
-    if (candles2 && candles2.length >= 5) return candles2;
+  // OKX (no rate limit, 16 tickers)
+  let okxCandles = await fetchOkxTradfiCandles(symbol, limit);
+  if (okxCandles && okxCandles.length >= 5) return okxCandles;
+
+  // Kraken (no rate limit, 11 tickers)
+  let krakenCandles = await fetchKrakenTradCandles(symbol, limit);
+  if (krakenCandles && krakenCandles.length >= 5) return krakenCandles;
+
+  // Massive/Polygon (rate limited ~5 req/min on free tier — has cooldown)
+  // Only try if not in cooldown
+  if (Date.now() >= _massiveRateLimitedUntil) {
+    let massiveCandles = await fetchMassiveTradCandles(symbol, limit);
+    if (massiveCandles && massiveCandles.length >= 5) return massiveCandles;
   }
 
-  // 3. Kraken (free, no key — 11 tickers)
-  let candles3 = await fetchKrakenTradCandles(symbol, limit);
-  if (candles3 && candles3.length >= 5) return candles3;
+  // Twelve Data (rate limited 8 req/min, 800/day — last resort)
+  // Only try if daily credits not exhausted
+  if (_tdCreditsUsed < _tdCreditsLimit) {
+    let tdCandles = await fetchTwelveDataCandles(symbol, limit);
+    if (tdCandles && tdCandles.length >= 5) return tdCandles;
+  }
 
-  // 4. Twelve Data (last resort — rate limited at 7.5s/req)
-  let candles4 = await fetchTwelveDataCandles(symbol, limit);
-  if (candles4 && candles4.length >= 5) return candles4;
-
-  return null;
+  return null;  // All sources failed or rate-limited
 }
 
 // ── Twelve Data — full OHLC history for tickers not on Lighter ────────────────
@@ -902,8 +896,10 @@ export async function fetchTradMarketData(onProgress, onPartialResults) {
     }
   });
 
-  // Higher concurrency for Lighter + Massive (no rate limits), TD handles its own throttling
-  await fetchWithPool(tasks, 5);
+  // Concurrency: 8 workers. Rate-limited sources (Massive ~5/min, TD ~8/min)
+  // handle their own throttling via cooldown checks. Free sources (Lighter,
+  // OKX, Kraken) have no limits and will resolve instantly.
+  await fetchWithPool(tasks, 8);
 
   return buildTradResult(rawResults, sourceTracker);
 }
