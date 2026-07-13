@@ -206,16 +206,36 @@ function formatTdSymbol(symbol) {
 const _tdCache = new Map();
 const TD_CACHE_TTL = 60 * 60 * 1000;  // 1 hour
 
+// Rate limit tracking — Twelve Data free tier: 800 credits/day, 8 req/min
+let _tdCreditsUsed = 0;
+let _tdCreditsLimit = 800;
+let _tdLastRequestTime = 0;
+const TD_MIN_INTERVAL_MS = 7500;  // 8 req/min = 1 req per 7.5s
+
 async function fetchTwelveDataCandles(symbol, limit = 300) {
   if (!TWELVEDATA_KEY) return null;
-  
+
+  // Check if we've exhausted daily credits
+  if (_tdCreditsUsed >= _tdCreditsLimit) {
+    console.warn('[twelvedata] Daily credit limit reached, skipping');
+    return null;
+  }
+
   // Check cache first
   const cacheKey = symbol.toUpperCase();
   const cached = _tdCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < TD_CACHE_TTL) {
     return cached.data;
   }
-  
+
+  // Rate limit: enforce minimum interval between requests
+  const now = Date.now();
+  const elapsed = now - _tdLastRequestTime;
+  if (elapsed < TD_MIN_INTERVAL_MS) {
+    await new Promise(r => setTimeout(r, TD_MIN_INTERVAL_MS - elapsed));
+  }
+  _tdLastRequestTime = Date.now();
+
   const tdSymbol = formatTdSymbol(symbol);
   const outputsize = Math.min(limit, 365);  // Free tier: 1 year max
   const url = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=${outputsize}&apikey=${TWELVEDATA_KEY}&format=JSON`;
@@ -223,7 +243,22 @@ async function fetchTwelveDataCandles(symbol, limit = 300) {
     const res = await fetch(url);
     if (!res.ok) return null;
     const d = await res.json();
-    if (d.status === 'error' || !d.values) return null;
+    if (d.status === 'error' || !d.values) {
+      // Check for rate limit / credit exhaustion in error message
+      const msg = d.message || '';
+      if (msg.includes('run out of API credits') || msg.includes('limit')) {
+        const match = msg.match(/(\d+) API credits were used.*?limit being (\d+)/);
+        if (match) {
+          _tdCreditsUsed = parseInt(match[1]);
+          _tdCreditsLimit = parseInt(match[2]);
+        } else {
+          _tdCreditsUsed = _tdCreditsLimit;  // stop trying
+        }
+        console.warn(`[twelvedata] ${msg}`);
+      }
+      return null;
+    }
+    _tdCreditsUsed++;  // count successful request
     const candles = d.values.slice().reverse().map(c => ({
       ts: new Date(c.datetime).getTime(),
       open: parseFloat(c.open),
@@ -834,7 +869,7 @@ export async function fetchTradMarketData(onProgress) {
     }
   });
 
-  const rawResults = await fetchWithPool(tasks, 3);
+  const rawResults = await fetchWithPool(tasks, 2);  // reduced from 3 to 2 for TD rate limit safety
 
   // Compute RS vs QQQ for each asset
   const qqqResult = rawResults.find(r => r.asset.symbol === 'QQQ');
