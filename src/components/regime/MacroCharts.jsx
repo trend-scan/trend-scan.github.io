@@ -91,7 +91,7 @@ export default function MacroCharts({ regime }) {
     if (stored.length > 0) {
       historyDays = stored.length;
       chartData = stored.map(h => ({
-        date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
         growth: typeof h.growthNowcast === 'number' ? h.growthNowcast : 50,
         inflation: typeof h.inflationNowcast === 'number' ? h.inflationNowcast : 50,
         liquidity: typeof h.liquidityNowcast === 'number' ? h.liquidityNowcast : 50,

@@ -431,7 +431,7 @@ function ETFFlowTable() {
               <th className="text-[8.5px] font-semibold tracking-[0.12em] uppercase py-2 px-3 text-left" style={{ color: 'var(--scanner-text3)' }}>Asset</th>
               {dates.map(d => (
                 <th key={d} className="text-[8.5px] font-semibold tracking-[0.12em] uppercase py-2 px-3 text-right" style={{ color: 'var(--scanner-text3)' }}>
-                  {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
                 </th>
               ))}
               <th className="text-[8.5px] font-semibold tracking-[0.12em] uppercase py-2 px-3 text-right" style={{ color: 'var(--scanner-accent)' }}>7D Total</th>
