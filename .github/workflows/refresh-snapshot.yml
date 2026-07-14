@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   refresh:
@@ -69,13 +70,25 @@ jobs:
           git add public/snapshot.json
           git commit -m "chore(data): refresh FRED snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
-          echo "Pushed updated snapshot. deploy.yml will rebuild the site automatically."
+          echo "Pushed updated snapshot."
+
+      - name: Trigger deploy
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: 'main',
+            });
 
       - name: Summary
         run: |
           if [ "${{ steps.diff.outputs.changed }}" == "true" ]; then
             echo "### Snapshot Refreshed ✅" >> $GITHUB_STEP_SUMMARY
-            echo "Updated data committed to main; deploy.yml will rebuild the site." >> $GITHUB_STEP_SUMMARY
+            echo "Updated data committed to main and deploy triggered." >> $GITHUB_STEP_SUMMARY
           else
             echo "### No Changes ⏸" >> $GITHUB_STEP_SUMMARY
             echo "FRED data is already current. No commit made." >> $GITHUB_STEP_SUMMARY
