@@ -393,7 +393,7 @@ async function fetchTwelveDataCandles(symbol, limit = 300) {
 
 // Comprehensive tradfi universe — ALL available tickers from Lighter + OKX SWAP perps
 // Sources: Lighter (221 markets, ~97 tradfi) + OKX SWAP perps (7 tradfi)
-// Updated: June 2026 — 82 assets across 19 sector baskets
+// Updated: July 2026 — 374 assets across 19 sector baskets
 // Macro tab uses this independent of cryptoUniverse
 
 export const TRAD_UNIVERSE = [
@@ -432,6 +432,7 @@ export const TRAD_UNIVERSE = [
   // Memory
   { symbol: 'MU',       name: 'Micron Technology',                      category: 'Memory',                       subtheme: 'DRAM/HBM',                 tier: 'Core',         type: 'Stock' },
   { symbol: 'SNDK',     name: 'SanDisk',                                category: 'Memory',                       subtheme: 'Flash/NAND',               tier: 'Active',       type: 'Stock' },
+  { symbol: 'DRAM',     name: 'Roundhill Memory ETF',                   category: 'Memory',                       subtheme: 'Memory ETF',               tier: 'Active',       type: 'ETF' },
   // Optics
   { symbol: 'LITE',     name: 'Lumentum',                               category: 'Optics',                       subtheme: 'Optical Components',       tier: 'Core',         type: 'Stock' },
   { symbol: 'AAOI',     name: 'Applied Optoelectronics',                category: 'Optics',                       subtheme: 'Optical Modules',          tier: 'Active',       type: 'Stock' },
@@ -470,6 +471,7 @@ export const TRAD_UNIVERSE = [
   { symbol: 'SAMSUNGUSD',name: 'Samsung (USD)',                          category: 'International',                subtheme: 'Korea Tech',               tier: 'Watch',        type: 'Stock' },
   { symbol: 'SKHYNIX',  name: 'SK Hynix',                               category: 'International',                subtheme: 'Korea Memory',             tier: 'Core',         type: 'Stock' },
   { symbol: 'SKHYNIXUSD',name: 'SK Hynix (USD)',                         category: 'International',                subtheme: 'Korea Memory',             tier: 'Watch',        type: 'Stock' },
+  { symbol: 'SKHY',     name: 'SK Hynix (Nasdaq ADR)',                  category: 'International',                subtheme: 'Korea Memory',             tier: 'Active',       type: 'Stock' },
   { symbol: 'HYUNDAI',  name: 'Hyundai',                                category: 'International',                subtheme: 'Korea Auto',               tier: 'Active',       type: 'Stock' },
   { symbol: 'HYUNDAIUSD',name: 'Hyundai (USD)',                          category: 'International',                subtheme: 'Korea Auto',               tier: 'Watch',        type: 'Stock' },
   { symbol: 'KRCOMP',   name: 'Korea Composite',                        category: 'International',                subtheme: 'Korea Index',              tier: 'Watch',        type: 'Index' },
@@ -556,7 +558,7 @@ export const TRAD_UNIVERSE = [
   { symbol: 'QNT',      name: 'Quant',                                 category: 'Interoperability',              subtheme: 'Enterprise',               tier: 'Active',       type: 'Stock' },
   { symbol: 'SMIC',     name: 'SMIC',                                  category: 'Semiconductors',                subtheme: 'Chinese Foundry',           tier: 'Core',         type: 'Stock' },
   { symbol: 'SPX',      name: 'S&P 500 Index (Spot)',                  category: 'Benchmark',                     subtheme: 'S&P 500 Spot',              tier: 'Active',       type: 'Index' },
-  { symbol: 'SPCX',     name: 'SpaceX (Lighter)',                      category: 'Pre-IPO',                       subtheme: 'Space',                     tier: 'Core',         type: 'Private' },
+  { symbol: 'SPCX',     name: 'SpaceX',                                category: 'Pre-IPO',                       subtheme: 'Space',                     tier: 'Core',         type: 'Stock' },
   { symbol: 'STRC',     name: 'Strategy',                              category: 'Crypto Equities',               subtheme: 'BTC Treasury',              tier: 'Active',       type: 'Stock' },
   { symbol: 'WLFI',     name: 'World Liberty Financial',               category: 'Crypto Equities',               subtheme: 'DeFi Protocol',             tier: 'Active',       type: 'Stock' },
   { symbol: 'YZY',      name: 'Yeezy',                                 category: 'Consumer',                      subtheme: 'Apparel/Brand',             tier: 'Watch',        type: 'Stock' },
