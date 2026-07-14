@@ -17,10 +17,10 @@ name: Refresh FRED Snapshot
 
 on:
   schedule:
-    # 06:00, 14:00, 18:00, 22:00 UTC = 2am, 10am, 2pm, 6pm ET
-    # 06:00 UTC catches overnight ETF flow data from Farside (updated after US market close)
+    # 04:00, 14:00, 18:00, 22:00 UTC = 12am, 10am, 2pm, 6pm ET
+    # 04:00 UTC catches overnight ETF flow data from Farside (updated after US market close)
     # Only runs Mon-Fri (1-5) — no extra `if:` needed in the job.
-    - cron: '0 6,14,18,22 * * 1-5'
+    - cron: '0 4,14,18,22 * * 1-5'
   workflow_dispatch:
 
 permissions:
