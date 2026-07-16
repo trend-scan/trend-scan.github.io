@@ -24,6 +24,7 @@ import * as okxTradfi        from './sources/okxTradfi';
 import * as lighter          from './sources/lighter';
 import * as binanceXStocks   from './sources/binanceXStocks';
 import * as binancePerps     from './sources/binancePerps';   // Binance USDⓈ-M futures (perps)
+import * as binanceSpot      from './sources/binanceSpot';    // Binance spot (broader coin coverage)
 import * as yahooCrypto      from './sources/yahooCrypto';    // Yahoo Finance via Worker proxy (fallback)
 
 // OKX SWAP perps tradfi tickers (high liquidity, preferred for these names)
@@ -51,15 +52,20 @@ const CRYPTO_SOURCES = [
   { id: 'okx_perps',     tier: 1, fetch: okxCrypto.fetchCandles,     bestFor: ['all'] },
   { id: 'hyperliquid',   tier: 1, fetch: hyperliquid.fetchCandles,   bestFor: ['15m','30m','1H','4H','1w'] },
   { id: 'bybit',         tier: 2, fetch: bybit.fetchCandles,         bestFor: ['all'] },
+  // Binance spot — broader coin coverage than perps (GNO, XNO, TFUEL, AMP, DCR, etc.)
+  // Geo-restricted in some regions; resolver falls through gracefully on 451/403.
+  { id: 'binance_spot',  tier: 2, fetch: binanceSpot.fetchCandles,
+    supports: async (s) => binanceSpot.isSupported(s),
+    bestFor: ['all'] },
   // Binance perps — broad coverage incl. 1000x-prefixed low-priced tokens
   // (XEC→1000XEC, MOG→1000000MOG, SHIB→1000SHIB, PEPE→1000PEPE).
-  // Tier 2 (same as Bybit) — high liquidity but geo-restricted in some regions.
   { id: 'binance_perps', tier: 2, fetch: binancePerps.fetchCandles,
     supports: async (s) => binancePerps.isSupported(s),
     bestFor: ['all'] },
-  // Yahoo Finance via Worker proxy — covers ~75% of crypto with no rate limits.
-  // Placed as tier 3 (after Binance, before CoinGecko) as a fallback for
-  // tickers that fail on all exchange sources.
+  // Yahoo Finance via Worker proxy — covers ~85% of crypto with no rate limits.
+  // Placed as tier 3 (after exchanges, before CoinGecko) as a fallback for
+  // tickers that fail on all exchange sources. Especially important for
+  // smaller-cap tokens not listed on any perps exchange.
   { id: 'yahoo_crypto',  tier: 3, fetch: yahooCrypto.fetchCandles,
     bestFor: ['1D','1w','1W'] },
   { id: 'coingecko',     tier: 4, fetch: coingecko.fetchCandles,     bestFor: ['1D','1w'] },
@@ -218,7 +224,7 @@ export async function fetchCandles(symbol, opts = {}) {
         setTimeout(() => reject(new Error('timeout')), 5000)
       );
       const candles = await Promise.race([fetchPromise, timeoutPromise]);
-      if (candles && candles.length >= Math.min(20, limit * 0.1)) {
+      if (candles && candles.length >= 5) {
         recordSuccess(src.id, symbol);
         return { source: src.id, candles };
       }

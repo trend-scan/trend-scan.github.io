@@ -721,12 +721,12 @@ export async function runBoardAnalysis(exchange, onProgress) {
     try {
       let candles = await fetchCandles(asset.symbol, exchange, TIMEFRAME);
       // Retry via 'auto' resolver if the primary exchange failed
-      if ((!candles || candles.length < 10) && exchange !== 'auto') {
+      if ((!candles || candles.length < 5) && exchange !== 'auto') {
         candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
       }
       done++;
       onProgress({ phase: 'fetching', done, total: allAssets.length, message: `${done}/${allAssets.length} fetched…` });
-      if (!candles || candles.length < 10) {
+      if (!candles || candles.length < 5) {
         failedAssets.push(asset);
         return { asset, metrics: null, candles: null };
       }
@@ -759,10 +759,14 @@ export async function runBoardAnalysis(exchange, onProgress) {
   // Retry pass for failed assets
   if (failedAssets.length > 0) {
     onProgress({ phase: 'fetching', done: allAssets.length, total: allAssets.length, message: `Retrying ${failedAssets.length} failed assets…` });
+    // Clear failure caches before retry — the first pass may have cached
+    // total failures (e.g. Yahoo Worker had a transient blip). The retry
+    // pass should get a fresh attempt at every source.
+    clearFailureCache();
     const retryTasks = failedAssets.map(asset => async () => {
       try {
         const candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
-        if (!candles || candles.length < 10) return { asset, metrics: null, candles: null };
+        if (!candles || candles.length < 5) return { asset, metrics: null, candles: null };
         const metrics = computeMetrics(candles);
         return { asset, metrics, candles };
       } catch (e) {
