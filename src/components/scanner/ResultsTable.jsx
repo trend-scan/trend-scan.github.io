@@ -236,6 +236,7 @@ export default function ResultsTable({ results, settings, isScanning, onSelectRo
             <thead>
               <tr style={{ background: 'var(--scanner-bg2)', borderBottom: '1px solid var(--scanner-border2)' }}>
                 {[
+                  { key: null, label: '' },
                   { key: null, label: 'Asset' },
                   { key: null, label: 'Price', right: true },
                   { key: null, label: '7D', right: true },
@@ -312,6 +313,54 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct, onSelectRow }) {
       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.025)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
     >
+      {/* Chart button — opens TradingView chart in side panel */}
+      <td className="py-2 px-1.5 text-center" style={{ width: '32px' }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectRow?.(row);
+          }}
+          title={`View ${row.symbol} chart`}
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--scanner-border2)',
+            borderRadius: '4px',
+            width: '24px',
+            height: '20px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            transition: 'all 0.15s',
+            color: 'var(--scanner-text3)',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'var(--scanner-accent)';
+            e.currentTarget.style.background = 'rgba(245,158,11,0.08)';
+            e.currentTarget.style.color = 'var(--scanner-accent)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'var(--scanner-border2)';
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--scanner-text3)';
+          }}
+        >
+          {/* Chart/candlestick icon */}
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ display: 'block' }}>
+            <rect x="2" y="5" width="2.5" height="6" rx="0.5" fill="currentColor" opacity="0.7" />
+            <line x1="3.25" y1="3" x2="3.25" y2="5" stroke="currentColor" strokeWidth="0.75" opacity="0.7" />
+            <line x1="3.25" y1="11" x2="3.25" y2="13" stroke="currentColor" strokeWidth="0.75" opacity="0.7" />
+            <rect x="6.75" y="3" width="2.5" height="9" rx="0.5" fill="currentColor" />
+            <line x1="8" y1="1.5" x2="8" y2="3" stroke="currentColor" strokeWidth="0.75" />
+            <line x1="8" y1="12" x2="8" y2="14.5" stroke="currentColor" strokeWidth="0.75" />
+            <rect x="11.5" y="6" width="2.5" height="5" rx="0.5" fill="currentColor" opacity="0.5" />
+            <line x1="12.75" y1="4" x2="12.75" y2="6" stroke="currentColor" strokeWidth="0.75" opacity="0.5" />
+            <line x1="12.75" y1="11" x2="12.75" y2="13" stroke="currentColor" strokeWidth="0.75" opacity="0.5" />
+          </svg>
+        </button>
+      </td>
+
       {/* Asset */}
       <td className="py-2 px-2.5">
         <div className="text-[11px] font-bold leading-tight" style={{ color: 'var(--scanner-text)' }}>{row.symbol}</div>
