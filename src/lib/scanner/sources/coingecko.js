@@ -6,6 +6,8 @@
  * Limits: ~30 req/min on free tier (no key); 100-500/min with demo key.
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://api.coingecko.com/api/v3';
 
 // Timeframe → CoinGecko OHLC `days` param
@@ -207,7 +209,7 @@ let _idCache = null;
 async function loadIdMap() {
   if (_idCache) return _idCache;
   try {
-    const res = await fetch(`${BASE}/coins/list`);
+    const res = await fetchWithTimeout(`${BASE}/coins/list`);
     if (!res.ok) {
       // Don't cache on failure — return fallback without setting _idCache
       // so the next call can retry
@@ -242,7 +244,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `${BASE}/coins/${coinId}/ohlc?vs_currency=usd&days=${days}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) return null;
@@ -330,7 +332,7 @@ export async function fetchMarketData(symbols = []) {
 async function tryCoinGeckoMarkets() {
   try {
     const url = `${BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return {};
     const arr = await res.json();
     if (!Array.isArray(arr)) return {};
@@ -374,7 +376,7 @@ async function trySnapshotMarkets() {
 
 async function tryCoinCapMarkets() {
   try {
-    const res = await fetch('https://api.coincap.io/v2/assets?limit=200');
+    const res = await fetchWithTimeout('https://api.coincap.io/v2/assets?limit=200');
     if (!res.ok) return {};
     const d = await res.json();
     const arr = d?.data || [];

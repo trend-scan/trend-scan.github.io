@@ -241,7 +241,7 @@ export default function MacroCharts({ regime }) {
               />
               <Tooltip
                 content={<CustomTooltip />}
-                formatter={(value) => [`$${value.toLocaleString()}`, 'BTC']}
+                formatter={(value) => [`$${value.toLocaleString('en-US')}`, 'BTC']}
               />
               <Area
                 type="monotone"

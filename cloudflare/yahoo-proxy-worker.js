@@ -27,13 +27,31 @@
 
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
 
+// Allowlist of origins that may use this proxy. Prevents third parties from
+// burning the Worker's 100k req/day quota. Add localhost for local dev.
+const ALLOWED_ORIGINS = new Set([
+  'https://trend-scan.github.io',
+  'http://localhost:5173',
+  'http://localhost:4173',
+]);
+
+function corsHeaders(origin) {
+  // Only return the requesting origin if it's in our allowlist
+  const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : null;
+  return allowOrigin
+    ? { 'Access-Control-Allow-Origin': allowOrigin }
+    : {};
+}
+
 export default {
   async fetch(request) {
+    const origin = request.headers.get('Origin') || '';
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
           'Access-Control-Max-Age': '86400',
@@ -43,12 +61,12 @@ export default {
 
     const url = new URL(request.url);
 
-    // Health check
+    // Health check — open to all (no CORS needed, just returns status)
     if (url.pathname === '/' || url.pathname === '/health') {
       return new Response(JSON.stringify({ status: 'ok', service: 'trendscan-yahoo-proxy' }), {
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
         },
       });
     }
@@ -60,7 +78,7 @@ export default {
         status: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
         },
       });
     }
@@ -82,7 +100,7 @@ export default {
         status: yahooResp.status,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
           'Cache-Control': 'public, max-age=300',  // 5 min browser cache
         },
       });
@@ -91,7 +109,7 @@ export default {
         status: 502,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(origin),
         },
       });
     }

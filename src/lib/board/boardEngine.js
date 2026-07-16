@@ -906,7 +906,7 @@ export async function runBoardAnalysis(exchange, onProgress) {
     momentumScan,
     breadthSeries,
     quickView,
-    updatedAt: new Date().toLocaleTimeString(),
+    updatedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     assetCount: total,
   };
 }

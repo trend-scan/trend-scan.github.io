@@ -13,6 +13,8 @@
  *       end_timestamp, count_back. Missing any → "code":20001 invalid param.
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const API = 'https://mainnet.zklighter.elliot.ai/api/v1';
 const EXPLORER = 'https://explorer.elliot.ai/api';
 
@@ -45,7 +47,7 @@ async function loadMarketMap() {
   const now = Date.now();
   if (_marketMap && now - _marketMapTime < MARKET_MAP_TTL_MS) return _marketMap;
   try {
-    const res = await fetch(`${EXPLORER}/markets`);
+    const res = await fetchWithTimeout(`${EXPLORER}/markets`);
     if (!res.ok) return _marketMap || {};
     const arr = await res.json();
     _marketMap = {};
@@ -94,7 +96,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
               `&count_back=${limit}&set_timestamp_to_end=true`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.code !== 200 || !Array.isArray(d.c)) return null;
@@ -131,7 +133,7 @@ export async function fetchTicker(symbol) {
   if (cached && now - cached.ts < TICKER_TTL_MS) return cached.data;
 
   try {
-    const res = await fetch(`${API}/orderBookDetails?market_id=${marketId}`);
+    const res = await fetchWithTimeout(`${API}/orderBookDetails?market_id=${marketId}`);
     if (!res.ok) return null;
     const d = await res.json();
     const m = Array.isArray(d) ? d[0] : (d.data || d);

@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from './fetchWithTimeout';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // How many candles make up one "day" for each timeframe
@@ -25,7 +26,7 @@ let _okxSpotInstruments = null;
 
 async function loadOKXSpotInstruments() {
   if (_okxSpotInstruments) return _okxSpotInstruments;
-  const res = await fetch('https://www.okx.com/api/v5/public/instruments?instType=SPOT');
+  const res = await fetchWithTimeout('https://www.okx.com/api/v5/public/instruments?instType=SPOT');
   if (!res.ok) throw new Error(`OKX instruments HTTP ${res.status}`);
   const json = await res.json();
   if (json.code !== '0') throw new Error(`OKX: ${json.msg || 'Unknown error'}`);
@@ -40,7 +41,7 @@ async function fetchOKXSpotCandles(symbol, timeframe = '4H', limit = 300) {
 
   const bar = OKX_INTERVAL_MAP[timeframe] || '4H';
   const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${limit}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const json = await res.json();
   if (json.code !== '0' || !json.data?.length) return null;
@@ -60,7 +61,7 @@ let _okxPerpsInstruments = null;
 
 async function loadOKXPerpsInstruments() {
   if (_okxPerpsInstruments) return _okxPerpsInstruments;
-  const res = await fetch('https://www.okx.com/api/v5/public/instruments?instType=SWAP');
+  const res = await fetchWithTimeout('https://www.okx.com/api/v5/public/instruments?instType=SWAP');
   if (!res.ok) throw new Error(`OKX Perps instruments HTTP ${res.status}`);
   const json = await res.json();
   if (json.code !== '0') throw new Error(`OKX Perps: ${json.msg || 'Unknown error'}`);
@@ -80,7 +81,7 @@ async function fetchOKXPerpsCandles(symbol, timeframe = '4H', limit = 300) {
 
   const bar = OKX_INTERVAL_MAP[timeframe] || '4H';
   const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${limit}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const json = await res.json();
   if (json.code !== '0' || !json.data?.length) return null;
@@ -99,7 +100,7 @@ async function fetchOKXPerpsCandles(symbol, timeframe = '4H', limit = 300) {
 async function fetchOKXPerps24hVolume(symbol) {
   const instId = `${symbol}-USDT-SWAP`;
   const url = `https://www.okx.com/api/v5/market/ticker?instId=${encodeURIComponent(instId)}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const json = await res.json();
   if (json.code !== '0' || !json.data?.length) return null;
@@ -124,7 +125,7 @@ let _krakenPairMap = null;
 
 async function loadKrakenPairs() {
   if (_krakenPairMap) return _krakenPairMap;
-  const res = await fetch('https://api.kraken.com/0/public/AssetPairs');
+  const res = await fetchWithTimeout('https://api.kraken.com/0/public/AssetPairs');
   if (!res.ok) throw new Error(`Kraken AssetPairs HTTP ${res.status}`);
   const json = await res.json();
   if (json.error?.length) throw new Error(`Kraken: ${json.error[0]}`);
@@ -160,7 +161,7 @@ async function fetchKrakenCandles(symbol, timeframe = '4H') {
   // fetch enough history: 300 bars
   const since = Math.floor(Date.now() / 1000) - (300 * interval * 60);
   const url = `https://api.kraken.com/0/public/OHLC?pair=${encodeURIComponent(entry.name)}&interval=${interval}&since=${since}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const json = await res.json();
   if (json.error?.length) return null;
@@ -193,7 +194,7 @@ const BINANCE_INTERVAL_MAP = {
 async function fetchBinanceCandles(symbol, timeframe = '4H', limit = 500) {
   const interval = BINANCE_INTERVAL_MAP[timeframe] || '4h';
   const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${limit}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const data = await res.json();
   if (!Array.isArray(data) || !data.length) return null;
@@ -212,7 +213,7 @@ async function fetchBinanceCandles(symbol, timeframe = '4H', limit = 500) {
 async function fetchBinancePerpsCandles(symbol, timeframe = '4H', limit = 500) {
   const interval = BINANCE_INTERVAL_MAP[timeframe] || '4h';
   const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${limit}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const data = await res.json();
   if (!Array.isArray(data) || !data.length) return null;
@@ -301,7 +302,7 @@ async function fetchXStocksCandles(symbol, timeframe = '1D', limit = 300) {
     // Try common Kraken format
     const altPair = `${symbol}USD`;
     const url = `https://api.kraken.com/0/public/OHLC?pair=${altPair}&interval=1440&since=${Math.floor(Date.now() / 1000) - limit * 86400}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const json = await res.json();
     if (json.error?.length) return null;
@@ -324,7 +325,7 @@ async function fetchXStocksCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=${interval}&since=${since}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const json = await res.json();
     if (json.error?.length) {
@@ -384,7 +385,7 @@ async function fetchMassiveCandles(symbol, timeframe = '4H', limit = 300) {
   const url = `https://api.massive.com/v2/aggs/ticker/${ticker}/range/${tf.multiplier}/${tf.timespan}/${from.toISOString()}/${to.toISOString()}?adjusted=false&sort=asc&limit=${limit}&apiKey=${apiKey}`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url);
     if (!response.ok) {
       console.warn(`Massive API error ${response.status} for ${symbol}`);
       return null;
@@ -442,24 +443,24 @@ export async function fetch24hChange(symbol, exchange, candles) {
       return null;
     }
     if (exchange === 'binance_perps') {
-      const res = await fetch(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${symbol}USDT`);
+      const res = await fetchWithTimeout(`https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${symbol}USDT`);
       if (!res.ok) return null;
       const d = await res.json();
       return parseFloat(d.priceChangePercent);
     } else if (exchange === 'binance') {
-      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}USDT`);
+      const res = await fetchWithTimeout(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}USDT`);
       if (!res.ok) return null;
       const d = await res.json();
       return parseFloat(d.priceChangePercent);
     } else if (exchange === 'okx_perps') {
-      const res = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${symbol}-USDT-SWAP`);
+      const res = await fetchWithTimeout(`https://www.okx.com/api/v5/market/ticker?instId=${symbol}-USDT-SWAP`);
       if (!res.ok) return null;
       const json = await res.json();
       const d = json.data?.[0];
       if (!d) return null;
       return ((parseFloat(d.last) - parseFloat(d.open24h)) / parseFloat(d.open24h)) * 100;
     } else if (exchange === 'okx') {
-      const res = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${symbol}-USDT`);
+      const res = await fetchWithTimeout(`https://www.okx.com/api/v5/market/ticker?instId=${symbol}-USDT`);
       if (!res.ok) return null;
       const json = await res.json();
       const d = json.data?.[0];
@@ -485,7 +486,7 @@ export async function fetch24hChange(symbol, exchange, candles) {
         const pairMap = await loadKrakenPairs();
         const entry = pairMap[symbol];
         if (!entry) return null;
-        const res = await fetch(`https://api.kraken.com/0/public/Ticker?pair=${encodeURIComponent(entry.name)}`);
+        const res = await fetchWithTimeout(`https://api.kraken.com/0/public/Ticker?pair=${encodeURIComponent(entry.name)}`);
         if (!res.ok) return null;
         const json = await res.json();
         if (json.error?.length) return null;
@@ -576,7 +577,7 @@ export async function fetchTop300(cgKey) {
     for (let page = 1; page <= 2; page++) {
       const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false`;
       const headers = cgKey ? { 'x-cg-demo-api-key': cgKey } : {};
-      const res = await fetch(url, { headers });
+      const res = await fetchWithTimeout(url, { headers });
       if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error('Unexpected response');
@@ -595,7 +596,7 @@ export async function fetchTop300(cgKey) {
   // 2. CoinCap backup
   if (assets.length < 50) {
     try {
-      const res = await fetch('https://api.coincap.io/v2/assets?limit=300');
+      const res = await fetchWithTimeout('https://api.coincap.io/v2/assets?limit=300');
       if (res.ok) {
         const json = await res.json();
         if (Array.isArray(json.data)) {
@@ -617,7 +618,7 @@ export async function fetchTop300(cgKey) {
   // 3. Binance volume fallback
   if (assets.length < 50) {
     try {
-      const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+      const res = await fetchWithTimeout('https://api.binance.com/api/v3/ticker/24hr');
       if (res.ok) {
         const data = await res.json();
         const tickers = data

@@ -66,6 +66,7 @@ export default function TradingViewChart({ symbol, exchange, timeframe }) {
         id="tv-advanced-chart"
         src={src}
         title={`${symbol} · ${timeframe} chart`}
+        loading="lazy"
         onLoad={() => setLoaded(true)}
         style={{
           width: '100%',
@@ -77,6 +78,7 @@ export default function TradingViewChart({ symbol, exchange, timeframe }) {
         }}
         allowFullScreen
         allow="clipboard-write"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
       />
     </>
   );

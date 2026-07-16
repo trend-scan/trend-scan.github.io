@@ -194,9 +194,9 @@ export default function RegimeCard({ regime }) {
       {/* Footer info */}
       <div className="space-y-1 text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
         {lastUpdated && (
-          <div>Updated: {new Date(lastUpdated).toLocaleTimeString()}</div>
+          <div>Updated: {new Date(lastUpdated).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
         )}
-        <div>Next data refresh: {nextExec ? nextExec.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC' : '—'}</div>
+        <div>Next data refresh: {nextExec ? nextExec.toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC' : '—'}</div>
         <div style={{ opacity: 0.6 }}>
           {fredAvailable ? (
             <span>via FRED + Binance + Kraken</span>

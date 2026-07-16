@@ -13,6 +13,8 @@
  * returns null and the resolver moves on to the next source.
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://api.binance.com/api/v3';
 
 const TIMEFRAME_INTERVAL = {
@@ -35,7 +37,7 @@ async function loadUniverse() {
   const now = Date.now();
   if (_universe && now - _universeTime < UNIVERSE_TTL_MS) return _universe;
   try {
-    const res = await fetch(`${BASE}/exchangeInfo`);
+    const res = await fetchWithTimeout(`${BASE}/exchangeInfo`);
     if (!res.ok) return _universe || null;
     const d = await res.json();
     _universe = new Set();
@@ -79,7 +81,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
 
   const url = `${BASE}/klines?symbol=${encodeURIComponent(sym)}USDT&interval=${interval}&limit=${limit}`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) return null;

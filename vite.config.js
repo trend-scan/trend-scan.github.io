@@ -7,7 +7,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    logLevel: 'error',
+    // Use 'info' in CI so bundle-size summaries are visible in workflow logs.
+    // 'error' hides useful build output and makes size regressions invisible.
+    logLevel: mode === 'production' ? 'info' : 'error',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -20,10 +22,11 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: false,
       minify: 'esbuild',
-      // Code-split heavy vendors into separate chunks so the main app
-      // bundle stays small and cached independently. The router already
-      // lazy-loads page components, so each route gets its own chunk
-      // automatically — this just splits the big shared dependencies.
+      // Route-level code splitting is done via React.lazy() in App.jsx.
+      // Each page (Scanner, Board, MacroRegime) loads its own JS chunk
+      // on demand. This manualChunks config splits the big shared
+      // dependencies (recharts, react-query, etc.) into cacheable chunks
+      // that don't need to be re-downloaded when app code changes.
       rollupOptions: {
         output: {
           manualChunks: {

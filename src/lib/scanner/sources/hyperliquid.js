@@ -9,6 +9,8 @@
  * NOTE: Crypto-only. No tradfi. (PAXG ≈ gold is the only indirect tradfi exposure.)
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://api.hyperliquid.xyz/info';
 
 const TIMEFRAME_INTERVAL = {
@@ -39,7 +41,7 @@ let _universe = null;
 async function loadUniverse() {
   if (_universe) return _universe;
   try {
-    const res = await fetch(BASE, {
+    const res = await fetchWithTimeout(BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'meta' }),
@@ -70,7 +72,7 @@ export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
   const start = end - limit * intervalMs;
 
   try {
-    const res = await fetch(BASE, {
+    const res = await fetchWithTimeout(BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -115,7 +117,7 @@ export async function fetchAllTickers() {
   const now = Date.now();
   if (_tickerCache && now - _tickerCacheTime < TICKER_TTL_MS) return _tickerCache;
   try {
-    const res = await fetch(BASE, {
+    const res = await fetchWithTimeout(BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'metaAndAssetCtxs' }),

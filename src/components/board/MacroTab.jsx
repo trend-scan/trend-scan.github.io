@@ -27,7 +27,7 @@ function timeAgo(iso) {
   if (sec < 60) return 'just now';
   if (min < 60) return `${min}m ago`;
   if (hr < 24) return `${hr}h ago`;
-  return new Date(iso).toLocaleDateString();
+  return new Date(iso).toLocaleDateString('en-US');
 }
 
 function MiniSparkline({ data }) {

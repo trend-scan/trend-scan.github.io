@@ -8,6 +8,8 @@
  * Docs: https://bybit-exchange.github.io/docs/v5/market/kline
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://api.bybit.com/v5/market';
 
 const TIMEFRAME_INTERVAL = {
@@ -43,7 +45,7 @@ async function _fetchCandlesForCategory(symbol, interval, limit, category) {
   for (const sym of candidates) {
     const url = `${BASE}/kline?category=${category}&symbol=${sym}&interval=${interval}&limit=${Math.min(limit, 1000)}`;
     try {
-      const res = await fetch(url);
+      const res = await fetchWithTimeout(url);
       if (!res.ok) continue;
       const d = await res.json();
       if (d.retCode !== 0 || !d.result?.list?.length) continue;

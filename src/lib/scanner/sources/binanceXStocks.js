@@ -5,6 +5,8 @@
  * Docs: https://developers.binance.com/docs/binance-spot-api-api
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://api.binance.com/api/v3';
 
 const TIMEFRAME_INTERVAL = {
@@ -32,7 +34,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `${BASE}/klines?symbol=${sym}&interval=${interval}&limit=${Math.min(limit, 1000)}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) return null;

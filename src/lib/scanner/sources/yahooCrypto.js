@@ -12,6 +12,8 @@
  * Data: daily OHLCV, up to 1 year history.
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const PROXY_URL = (typeof window !== 'undefined' && localStorage.getItem('YAHOO_PROXY_URL'))
   || import.meta.env?.VITE_YAHOO_PROXY_URL
   || 'https://trendscan-yahoo-proxy.drew-724.workers.dev';
@@ -52,7 +54,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `${PROXY_URL}/chart/${encodeURIComponent(ySymbol)}?range=${range}&interval=${interval}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     const result = d?.chart?.result?.[0];

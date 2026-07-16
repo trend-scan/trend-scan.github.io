@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export default function PageNotFound() {
   return (
@@ -6,7 +7,7 @@ export default function PageNotFound() {
       <div className="text-center">
         <div className="text-6xl mb-4 opacity-20">404</div>
         <div className="text-sm mb-2" style={{ color: 'var(--scanner-text2)' }}>Page not found</div>
-        <a href="/" className="text-[11px]" style={{ color: 'var(--scanner-accent)' }}>← Back to TrendScan</a>
+        <Link to="/" className="text-[11px]" style={{ color: 'var(--scanner-accent)' }}>← Back to TrendScan</Link>
       </div>
     </div>
   );

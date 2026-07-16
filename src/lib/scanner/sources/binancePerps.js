@@ -26,6 +26,8 @@
  * NOTE: Geo-restricted in some regions. The UI marks this with "⚠ VPN".
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://fapi.binance.com/fapi/v1';
 
 const TIMEFRAME_INTERVAL = {
@@ -49,7 +51,7 @@ async function loadUniverse() {
   const now = Date.now();
   if (_universe && now - _universeTime < UNIVERSE_TTL_MS) return _universe;
   try {
-    const res = await fetch(`${BASE}/exchangeInfo`);
+    const res = await fetchWithTimeout(`${BASE}/exchangeInfo`);
     if (!res.ok) return _universe || null;
     const d = await res.json();
     _universe = {};  // bare -> actual
@@ -111,7 +113,7 @@ export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
   const url = `${BASE}/klines?symbol=${encodeURIComponent(binanceSymbol)}&interval=${interval}&limit=${Math.min(limit, 1500)}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) {
       // 400 = invalid symbol; 429 = rate limit; 451 = geo-blocked
       return null;

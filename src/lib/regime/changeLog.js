@@ -95,7 +95,7 @@ export function timeAgo(ts) {
   if (hr < 24) return `${hr}h ago`;
   if (day === 1) return 'yesterday';
   if (day < 7) return `${day}d ago`;
-  return new Date(ts).toLocaleDateString();
+  return new Date(ts).toLocaleDateString('en-US');
 }
 
 /**

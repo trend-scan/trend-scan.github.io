@@ -8,6 +8,8 @@
  * Docs: https://docs.kraken.com/rest/#tag/Market-Data/operation/getOHLCData
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://api.kraken.com/0/public';
 
 const TIMEFRAME_MINUTES = {
@@ -116,7 +118,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `${BASE}/OHLC?pair=${encodeURIComponent(pair)}&interval=${interval}&since=${since}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const json = await res.json();
     if (json.error?.length) return null;

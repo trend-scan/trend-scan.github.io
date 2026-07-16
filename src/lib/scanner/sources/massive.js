@@ -26,6 +26,8 @@
  * For local dev: create .env with VITE_MASSIVE_API_KEY=your_key
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE_URL = 'https://api.polygon.io';  // polygon.io is the canonical URL
 
 // Timeframe → Polygon multiplier + timespan
@@ -145,7 +147,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
               `?adjusted=false&sort=asc&limit=${Math.min(limit, 50000)}&apiKey=${apiKey}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) {
       if (res.status === 403 || res.status === 429) {
         // NOT_AUTHORIZED or rate-limited — don't log spam, just return null
@@ -182,7 +184,7 @@ export async function fetchSnapshot(symbol) {
   const ticker = toPolygonTicker(symbol);
   try {
     const url = `${BASE_URL}/v2/snapshot/locale/us/markets/stocks/tickers/${encodeURIComponent(ticker)}?apiKey=${apiKey}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     return d.ticker ? {
@@ -207,7 +209,7 @@ export async function fetchPrevClose(symbol) {
   const ticker = toPolygonTicker(symbol);
   try {
     const url = `${BASE_URL}/v2/aggs/ticker/${encodeURIComponent(ticker)}/prev?adjusted=false&apiKey=${apiKey}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.status !== 'OK' || !d.results?.length) return null;

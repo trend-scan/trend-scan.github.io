@@ -111,6 +111,19 @@ export default function Scanner() {
       message: p.message || `${p.done || 0}/${p.total || '—'} scanned`
     });
 
+    // Handle completion FIRST — must not be skipped by the throttle below.
+    // If the complete event arrives within 200ms of the last progress update
+    // (common for fast scans), the throttle early-return would skip this block.
+    if (p.phase === 'complete') {
+      if (throttleRef.current) {
+        clearTimeout(throttleRef.current);
+        throttleRef.current = null;
+      }
+      setResults(p.results);
+      setScanMeta({ updatedAt: p.updatedAt, duration: p.duration });
+      return;
+    }
+
     if (p.results) {
       // Throttle result updates to ~5fps
       if (throttleRef.current) return;
@@ -118,11 +131,6 @@ export default function Scanner() {
         throttleRef.current = null;
       }, 200);
       setResults([...p.results]);
-    }
-
-    if (p.phase === 'complete') {
-      setResults(p.results);
-      setScanMeta({ updatedAt: p.updatedAt, duration: p.duration });
     }
   }, []);
 
@@ -173,7 +181,7 @@ export default function Scanner() {
         </div>
       )}
 
-      <ResultsTable results={results} settings={settings} isScanning={isScanning} onSelectRow={setSelectedRow} />
+      <ResultsTable results={results} settings={settings} isScanning={isScanning} hasScanned={status !== 'idle'} onSelectRow={setSelectedRow} />
       <StatusBar settings={settings} />
 
       {showApiKeyModal && (

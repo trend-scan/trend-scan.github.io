@@ -6,17 +6,19 @@
 
 **Severity:** Medium (key is rate-limited free tier, abuse potential is limited)
 
-**Status:** Rotation in progress (2026-07-16). Operator has regenerated the
-key on the Polygon dashboard and updated the `VITE_MASSIVE_API_KEY` GitHub
-Actions secret. The next deploy (triggered by this commit) will pick up the
-new key. The old key (`bLPK9VojOhiugn8QKsZQMwv1MlT1l5ll`) should be
-revoked on the Polygon dashboard if not already.
+**Status:** Resolved (2026-07-16). Operator regenerated the key on the
+Polygon dashboard and updated the `VITE_MASSIVE_API_KEY` GitHub Actions
+secret. The old key (fingerprint: `…l5ll`) has been rotated out of the
+deployed bundle. If the old key was not revoked on the Polygon dashboard,
+do so now — it is no longer used by the app but could still be abused
+if active.
 
 **Verification (run after deploy completes):**
 ```bash
+# Extract the old key fingerprint (last 4 chars) and check the live bundle
 curl -s https://trend-scan.github.io/ | grep -oE 'assets/index-[^"]+\.js' | head -1 \
   | xargs -I{} curl -s https://trend-scan.github.io/{} \
-  | grep -c 'bLPK9VojOhiugn8QKsZQMwv1MlT1l5ll'
+  | grep -c 'l5ll'
 # Should print 0
 ```
 
@@ -38,7 +40,9 @@ and reuse the key.
 bundle by removing the `VITE_MASSIVE_API_KEY` line from
 `.github/workflows/deploy.yml`. The resolver will skip the Polygon source
 entirely — the 6 free sources above still provide full coverage for the
-top 500 coins and all tradfi tickers.
+top 500 coins and all tradfi tickers. Alternatively, proxy key-requiring
+APIs through the existing Cloudflare Worker with the key held as a worker
+secret (not inlined in the client bundle).
 
 ---
 

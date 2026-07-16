@@ -9,6 +9,8 @@
  * Docs: https://www.okx.com/docs-v5/en/#rest-api-market-data-get-candlesticks
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://www.okx.com/api/v5';
 
 const TIMEFRAME_BAR = {
@@ -42,7 +44,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `${BASE}/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${Math.min(limit, 300)}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.code !== '0' || !Array.isArray(d.data) || d.data.length === 0) return null;
@@ -70,7 +72,7 @@ export async function fetchTicker(symbol) {
   const instId = `${symbol.toUpperCase()}-USDT-SWAP`;
   const url = `${BASE}/market/ticker?instId=${encodeURIComponent(instId)}`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.code !== '0' || !d.data?.length) return null;

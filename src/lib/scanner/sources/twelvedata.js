@@ -13,6 +13,8 @@
  *   - Vite's loadEnv() picks it up and inlines as import.meta.env.VITE_TWELVEDATA_KEY
  */
 
+import { fetchWithTimeout } from '../fetchWithTimeout';
+
 const BASE = 'https://api.twelvedata.com';
 
 // Twelve Data uses different symbol formats:
@@ -104,7 +106,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `${BASE}/time_series?${params}`;
   
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     

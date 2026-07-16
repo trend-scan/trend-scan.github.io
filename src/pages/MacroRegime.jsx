@@ -512,7 +512,7 @@ export default function MacroRegime() {
         {/* Last updated */}
         {dataUpdatedAt && (
           <div className="text-[8px] mt-2" style={{ color: 'var(--scanner-text3)', opacity: 0.4 }}>
-            Last refresh: {new Date(dataUpdatedAt).toLocaleString()}
+            Last refresh: {new Date(dataUpdatedAt).toLocaleString('en-US')}
           </div>
         )}
       </div>

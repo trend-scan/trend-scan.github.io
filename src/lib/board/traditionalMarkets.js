@@ -7,6 +7,8 @@
 // The live fetchTradMarketData() can then refresh with fresh data in the
 // background.
 
+import { fetchWithTimeout } from '../scanner/fetchWithTimeout';
+
 let _snapshotCache = null;
 async function loadSnapshotTradfi() {
   if (_snapshotCache) return _snapshotCache;
@@ -81,7 +83,7 @@ async function fetchYahooProxyCandles(symbol, limit = 300) {
   const ySymbol = toYahooSymbol(symbol);
   const url = `${proxyUrl}/chart/${encodeURIComponent(ySymbol)}?range=1y&interval=1d`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     const result = d?.chart?.result?.[0];
@@ -139,7 +141,7 @@ async function getLighterMarketId(symbol) {
   if (LIGHTER_MARKET_IDS[s]) return LIGHTER_MARKET_IDS[s];
   if (!_lighterMarketMap) {
     try {
-      const res = await fetch(`${LIGHTER_EXPLORER}/markets`);
+      const res = await fetchWithTimeout(`${LIGHTER_EXPLORER}/markets`);
       if (res.ok) {
         const arr = await res.json();
         _lighterMarketMap = {};
@@ -162,7 +164,7 @@ async function fetchLighterCandles(symbol, limit = 300) {
               `&start_timestamp=${start}&end_timestamp=${now}` +
               `&count_back=${limit}&set_timestamp_to_end=true`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.code !== 200 || !Array.isArray(d.c)) return null;
@@ -183,7 +185,7 @@ async function fetchOkxTradfiCandles(symbol, limit = 300) {
   const instId = `${symbol.toUpperCase()}-USDT-SWAP`;
   const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=1D&limit=${Math.min(limit, 300)}`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.code !== '0' || !Array.isArray(d.data)) return null;
@@ -225,7 +227,7 @@ async function fetchMassiveTradCandles(symbol, limit = 300) {
   const from = new Date(to.getTime() - limit * 86_400_000);
   const url = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day/${from.toISOString().slice(0,10)}/${to.toISOString().slice(0,10)}?adjusted=true&sort=asc&limit=${Math.min(limit, 500)}&apiKey=${apiKey}`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (res.status === 429) {
       // Rate limited — set cooldown
       _massiveRateLimitedUntil = Date.now() + MASSIVE_COOLDOWN_MS;
@@ -254,7 +256,7 @@ async function fetchKrakenTradCandles(symbol, limit = 300) {
   const since = now - limit * 86400;
   const url = `https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=1440&since=${since}`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.error?.length) return null;
@@ -359,7 +361,7 @@ async function fetchTwelveDataCandles(symbol, limit = 300) {
   const outputsize = Math.min(limit, 365);  // Free tier: 1 year max
   const url = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=${outputsize}&apikey=${TWELVEDATA_KEY}&format=JSON`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
     const d = await res.json();
     if (d.status === 'error' || !d.values) {

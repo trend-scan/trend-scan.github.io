@@ -311,7 +311,7 @@ export async function runScan(settings, onProgress) {
     matched: matchedCount,
     results,
     duration,
-    updatedAt: new Date().toLocaleTimeString()
+    updatedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   });
 
   return { results, duration };

@@ -102,7 +102,7 @@ const SORT_OPTIONS = [
   { key: 'emaPct', label: 'Δ Spread' },
 ];
 
-export default function ResultsTable({ results, settings, isScanning, onSelectRow }) {
+export default function ResultsTable({ results, settings, isScanning, onSelectRow, hasScanned }) {
   const [sortKey, setSortKey] = useState('rank');
   const [copied, setCopied] = useState(null);
 
@@ -229,7 +229,7 @@ export default function ResultsTable({ results, settings, isScanning, onSelectRo
       </div>
 
       {sorted.length === 0 ? (
-        <EmptyState isScanning={isScanning} />
+        <EmptyState isScanning={isScanning} hasScanned={hasScanned} />
       ) : (
         <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--scanner-border2)' }}>
           <table className="w-full min-w-[1100px] border-collapse">
@@ -475,19 +475,27 @@ function PctBarCell({ value, barWidth, color }) {
   );
 }
 
-function EmptyState({ isScanning }) {
+function EmptyState({ isScanning, hasScanned }) {
+  // Three states:
+  // 1. Never scanned (hasScanned=false, isScanning=false) → welcome message
+  // 2. Currently scanning (isScanning=true) → scanning message
+  // 3. Scanned but no results (hasScanned=true, isScanning=false) → no matches + rate-limit hint
+  const isWelcome = !isScanning && !hasScanned;
+
   return (
     <div className="text-center py-20 rounded-lg" style={{ border: '1px solid var(--scanner-border2)', background: 'var(--scanner-bg1)' }}>
       <div className={`text-4xl mb-4 ${isScanning ? 'animate-pulse' : ''}`} style={{ opacity: 0.3 }}>◈</div>
       <div className="text-sm font-medium mb-1.5" style={{ color: 'var(--scanner-text2)' }}>
-        {isScanning ? 'Scanning markets…' : 'No assets matched all conditions'}
+        {isScanning ? 'Scanning markets…' : isWelcome ? 'Welcome to TrendScan' : 'No assets matched all conditions'}
       </div>
       <div className="text-[11px] mb-2" style={{ color: 'var(--scanner-text3)' }}>
         {isScanning
           ? 'Results will appear as matches are found'
+          : isWelcome
+          ? 'Press SCAN to analyze the crypto universe across 8+ exchanges'
           : 'Try adjusting indicator periods or selecting a different exchange'}
       </div>
-      {!isScanning && (
+      {!isScanning && !isWelcome && (
         <div className="text-[10px] px-4 py-2 mx-auto max-w-md rounded" style={{
           background: 'rgba(245,158,11,0.06)',
           border: '1px solid rgba(245,158,11,0.2)',
