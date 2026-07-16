@@ -17,7 +17,7 @@ function sma(arr, period) {
 }
 
 function computeMetrics(candles) {
-  if (!candles || candles.length < 10) return null;
+  if (!candles || candles.length < 5) return null;
 
   // Sanitize: filter out candles with null/zero/NaN prices that would cause
   // division-by-zero or Infinity in return calculations. Yahoo Finance
@@ -27,17 +27,19 @@ function computeMetrics(candles) {
     c.high != null && c.high > 0 &&
     c.low != null && c.low > 0
   );
-  if (cleanCandles.length < 10) return null;
+  if (cleanCandles.length < 5) return null;
 
-  // Detect price-scale discontinuities (e.g. mixed basket vs per-token prices).
-  // If any single-day return exceeds 100x (10000%), the data is almost certainly
-  // corrupted by a price-scale jump (e.g. Binance $0.10 → Yahoo $0.0000001).
-  // Reject the entire candle set — better to show no data than Infinity%.
+  // Detect price-scale discontinuities (e.g. mixed basket vs per-token prices
+  // from Binance 1000x/1000000x prefix mismatches). A real crypto price move
+  // can be extreme (meme coins pump 100x, rug pulls drop 99%), so we only
+  // reject truly impossible ratios: >10000x gain or >99.99% drop in one day.
+  // This still catches the 1000x/1000000x prefix bugs (ratio = 1000 or 1000000)
+  // while allowing real crypto volatility.
   const closes = cleanCandles.map(c => c.close);
   for (let i = 1; i < closes.length; i++) {
     if (closes[i-1] > 0 && closes[i] > 0) {
       const ratio = closes[i] / closes[i-1];
-      if (ratio > 100 || ratio < 0.01) {
+      if (ratio > 10000 || ratio < 0.0001) {
         console.warn(`[boardEngine] Price-scale discontinuity detected: close[${i-1}]=${closes[i-1]} → close[${i}]=${closes[i]} (ratio=${ratio.toFixed(2)}x). Rejecting candle set.`);
         return null;
       }

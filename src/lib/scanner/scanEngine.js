@@ -96,12 +96,15 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
   );
   if (cleanCandles.length < required) return null;
 
-  // Detect price-scale discontinuities (mixed basket vs per-token prices)
+  // Detect price-scale discontinuities (mixed basket vs per-token prices
+  // from Binance 1000x/1000000x prefix mismatches). Crypto can have extreme
+  // real price moves (100x pumps, 99% rug pulls), so only reject truly
+  // impossible ratios: >10000x gain or >99.99% drop in one day.
   const closes = cleanCandles.map(c => c.close);
   for (let i = 1; i < closes.length; i++) {
     if (closes[i-1] > 0 && closes[i] > 0) {
       const ratio = closes[i] / closes[i-1];
-      if (ratio > 100 || ratio < 0.01) return null;  // reject corrupted data
+      if (ratio > 10000 || ratio < 0.0001) return null;  // reject corrupted data
     }
   }
   candles = cleanCandles;
