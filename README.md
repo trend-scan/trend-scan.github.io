@@ -16,7 +16,7 @@ Multi-source crypto + tradfi market scanner with macro regime monitoring. Deploy
   └─ Computes regime signals, factor scores, breadth — all client-side
 
 [GitHub Actions]
-  ├─ refresh-snapshot.yml (3× daily Mon-Fri at 04:00/12:00/20:00 UTC)
+  ├─ refresh-snapshot.yml (3× daily Mon-Sat at 04:00/12:00/20:00 UTC)
   │     ├─ Runs scripts/build_snapshot.js with FRED_API_KEY secret
   │     ├─ Fetches FRED + CoinGecko + Fear&Greed + Ken French + CBOE + Yahoo tradfi + Farside ETF
   │     ├─ Writes public/snapshot.json (small) + public/snapshot.tradfi.json (large)
@@ -133,7 +133,8 @@ Series marked "snapshot (FRED only)" cannot be fetched from the browser (FRED is
 
 ### `.github/workflows/refresh-snapshot.yml`
 
-- Triggers: 04:00, 12:00, 20:00 UTC Mon-Fri (3× daily during US market week), manual dispatch
+- Triggers: 04:00, 12:00, 20:00 UTC Mon-Sat, manual dispatch
+- Saturday 04:00 UTC captures Friday's final market-close data flows
 - Only refreshes `snapshot.json` + `snapshot.tradfi.json` (no full bundle rebuild)
 - If snapshot changed, commits to main → dispatches `deploy.yml` for rebuild
 - Verifies the deploy workflow actually started (polls for the resulting run)
