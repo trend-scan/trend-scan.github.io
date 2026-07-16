@@ -91,10 +91,11 @@ jobs:
           VITE_YAHOO_PROXY_URL: ${{ secrets.VITE_YAHOO_PROXY_URL }}
         run: npm run build
 
-      - name: Copy snapshot.json into build output
+      - name: Copy snapshot files into build output
         run: |
           mkdir -p dist
           cp public/snapshot.json dist/snapshot.json
+          cp public/snapshot.tradfi.json dist/snapshot.tradfi.json
           # .nojekyll tells GitHub Pages to serve files as-is (no Jekyll processing)
           touch dist/.nojekyll
 
@@ -151,13 +152,19 @@ jobs:
             # step itself already passed, so the artifact is uploaded; the
             # smoke test is purely informational.
           fi
-          # Also verify snapshot.json is served (FRED data is critical for
-          # the macro regime tab to work).
+          # Also verify snapshot files are served (FRED data is critical for
+          # the macro regime tab to work; tradfi snapshot is lazy-loaded by Board/Macro).
           SNAP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://trend-scan.github.io/snapshot.json || echo "000")
           if [ "$SNAP_STATUS" = "200" ]; then
             echo "✓ Live snapshot.json returned HTTP 200"
           else
             echo "⚠ Live snapshot.json returned HTTP $SNAP_STATUS (expected 200)"
+          fi
+          TRADFI_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://trend-scan.github.io/snapshot.tradfi.json || echo "000")
+          if [ "$TRADFI_STATUS" = "200" ]; then
+            echo "✓ Live snapshot.tradfi.json returned HTTP 200"
+          else
+            echo "⚠ Live snapshot.tradfi.json returned HTTP $TRADFI_STATUS (expected 200)"
           fi
 
       - name: Summary

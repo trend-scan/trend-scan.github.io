@@ -1,0 +1,6 @@
+# Optional: blank issue template disabled to encourage structured reports
+blank_issues_enabled: true
+contact_links:
+  - name: TrendScan live site
+    url: https://trend-scan.github.io/
+    about: Open the live app to verify the issue is current.

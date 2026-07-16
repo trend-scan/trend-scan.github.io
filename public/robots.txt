@@ -1,0 +1,10 @@
+# TrendScan robots.txt
+# Allow all crawlers full access (the app is fully client-side rendered,
+# so crawlers will see the empty shell + JS bundle — the og-card.png and
+# meta description in index.html are what show up in search results).
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://trend-scan.github.io/sitemap.xml

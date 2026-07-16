@@ -1,15 +1,17 @@
 // ── Snapshot data — instant first paint from pre-built Yahoo Finance data ────
 // The daily build_snapshot.js fetches all tradfi OHLCV from Yahoo Finance
-// (server-side, no CORS) and stores it in snapshot.json. This function reads
-// that data and builds a complete tradData result instantly — no API calls,
-// no rate limits, no waiting. The live fetchTradMarketData() can then refresh
-// with fresh data in the background.
+// (server-side, no CORS) and stores it in snapshot.tradfi.json (sharded
+// out of the main snapshot.json to keep first paint lean — tradfi_ohlcv
+// alone is ~13 MB). This function reads that data and builds a complete
+// tradData result instantly — no API calls, no rate limits, no waiting.
+// The live fetchTradMarketData() can then refresh with fresh data in the
+// background.
 
 let _snapshotCache = null;
 async function loadSnapshotTradfi() {
   if (_snapshotCache) return _snapshotCache;
   try {
-    const res = await fetch('/snapshot.json');
+    const res = await fetch('/snapshot.tradfi.json');
     if (!res.ok) return null;
     const snap = await res.json();
     _snapshotCache = snap?.tradfi_ohlcv || null;

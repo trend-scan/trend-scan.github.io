@@ -3,15 +3,18 @@
  * build_snapshot.js — Daily pre-build of macro + crypto data.
  *
  * Runs in GitHub Actions daily (and on every push to main).
- * Output: public/snapshot.json — a single JSON file consumed by the browser.
+ * Outputs:
+ *   - public/snapshot.json — small (~700 KB) file consumed by every page.
+ *     Contains FRED, CoinGecko, Fear&Greed, Ken French, CBOE, ETF flows.
+ *   - public/snapshot.tradfi.json — large (~13 MB) file lazy-loaded only
+ *     when the Board or Macro page needs tradfi OHLCV. Keeping this in a
+ *     separate file avoids bloating the first paint of every page.
  *
  * What this script fetches server-side (using secrets):
  *   - FRED macro series (uses FRED_API_KEY from environment)
  *   - Top 100 crypto market data from CoinGecko (no key)
- *
- * What this script does NOT do:
- *   - Compute regime signals (the client does that — same code path as live mode)
- *   - Fetch tradfi OHLC (the resolver does that client-side via OKX/Lighter)
+ *   - Tradfi OHLCV from Yahoo Finance (no key, no CORS server-side)
+ *   - ETF flows from Farside (no key)
  *
  * Architecture: server-side fetches the "hard" data (FRED is CORS-blocked in
  * browser), client-side fetches everything else and uses this snapshot as a
@@ -518,19 +521,32 @@ async function main() {
     fred = _prevSnapshot.fred;
   }
 
+  const generatedAt = new Date().toISOString();
+
+  // Small snapshot — loaded by every page (FRED proxy, CoinGecko fallback,
+  // Fear&Greed, Ken French seasonality, CBOE put/call, ETF flows).
+  // Keeping this lean is critical for first paint.
   const snapshot = {
-    generated_at: new Date().toISOString(),
+    generated_at: generatedAt,
     fred,
     coingecko_top: coingecko,
     fear_greed: fearGreed,
     ken_french: kenFrench,
     cboe_put_call: cboe,
-    tradfi_ohlcv: tradfiOHLCV,
     etf_flows: etfFlows,
+  };
+
+  // Large snapshot — only loaded when Board or Macro needs tradfi OHLCV.
+  // ~13 MB for 335 tickers × 250 days. Sharding keeps it off the critical path.
+  const tradfiSnapshot = {
+    generated_at: generatedAt,
+    tradfi_ohlcv: tradfiOHLCV,
   };
 
   // Stats
   const fredCount = Object.keys(fred).filter(k => fred[k].length > 0).length;
+  const snapshotBytes = JSON.stringify(snapshot).length;
+  const tradfiBytes = JSON.stringify(tradfiSnapshot).length;
   console.log('');
   console.log('━━━ Snapshot summary ━━━');
   console.log(`  FRED series populated:  ${fredCount}/${Object.keys(FRED_SERIES).length}`);
@@ -540,14 +556,15 @@ async function main() {
   console.log(`  Ken French months:      ${kenFrench.length}`);
   console.log(`  Tradfi OHLCV tickers:   ${Object.keys(tradfiOHLCV).length}`);
   console.log(`  ETF flow assets:        ${Object.keys(etfFlows).length} (BTC, ETH, SOL, HYPE)`);
-  console.log(`  Total size:             ${JSON.stringify(snapshot).length.toLocaleString()} bytes`);
+  console.log(`  snapshot.json:          ${snapshotBytes.toLocaleString()} bytes`);
+  console.log(`  snapshot.tradfi.json:   ${tradfiBytes.toLocaleString()} bytes`);
 
-  // Write to public/snapshot.json (gets committed to repo, served from /)
+  // Write to public/ (gets committed to repo, served from /)
   const outDir = path.join(ROOT, 'public');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-  const outPath = path.join(outDir, 'snapshot.json');
-  fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2));
-  console.log(`  Written to:             ${path.relative(ROOT, outPath)}`);
+  fs.writeFileSync(path.join(outDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
+  fs.writeFileSync(path.join(outDir, 'snapshot.tradfi.json'), JSON.stringify(tradfiSnapshot, null, 2));
+  console.log(`  Written to:             public/snapshot.json, public/snapshot.tradfi.json`);
   console.log('');
   console.log('✓ Done.');
 }

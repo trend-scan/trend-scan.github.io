@@ -1,17 +1,27 @@
-# TrendScan — Daily FRED Snapshot Refresh
+# TrendScan — Snapshot Refresh (3× daily on weekdays)
 #
-# This is a lightweight workflow that ONLY refreshes the FRED macro data
-# (without rebuilding the entire site). It commits an updated snapshot.json
-# to the main branch, which then triggers the deploy.yml workflow to
-# rebuild + redeploy.
+# This is a lightweight workflow that ONLY refreshes the snapshot data
+# (without rebuilding the entire site bundle). It commits an updated
+# snapshot.json + snapshot.tradfi.json to the main branch, then dispatches
+# deploy.yml to rebuild + redeploy.
 #
 # Why separate from deploy.yml?
 #   - deploy.yml rebuilds the entire bundle on every code push
 #   - this workflow just refreshes data, then lets deploy.yml handle the rest
-#   - runs more frequently if you want fresher macro data (default: 4x daily)
+#   - runs more frequently than deploy's daily schedule for fresher macro data
 #
-# Schedule: every 6 hours during US trading week (Mon-Fri 10am-10pm ET)
-# Skips weekends and outside-market-hours to save Actions minutes.
+# Schedule: 04:00, 12:00, 20:00 UTC (Mon-Fri only)
+#   - 04:00 UTC = 12am ET (catches overnight ETF flow data from Farside)
+#   - 12:00 UTC = 8am ET (pre-market)
+#   - 20:00 UTC = 4pm ET (close)
+# Skips weekends to save Actions minutes.
+#
+# Failure mode this workflow guards against:
+#   - If the snapshot fetch fails silently (e.g. FRED API down), the previous
+#     snapshot is preserved (the build script falls back to _prevSnapshot).
+#   - If the deploy dispatch returns 204 but no run starts (e.g. due to a
+#     concurrency cancel), the "Verify deploy workflow started" step logs a
+#     warning so the operator can intervene manually.
 
 name: Refresh FRED Snapshot
 
@@ -54,12 +64,13 @@ jobs:
       - name: Check for changes
         id: diff
         run: |
-          if git diff --quiet public/snapshot.json; then
+          # Check both the small snapshot.json and the sharded snapshot.tradfi.json
+          if git diff --quiet public/snapshot.json public/snapshot.tradfi.json; then
             echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No changes in FRED data."
+            echo "No changes in snapshot data."
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "FRED data has new updates."
+            echo "Snapshot data has new updates."
           fi
 
       - name: Commit & push if changed
@@ -67,29 +78,87 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add public/snapshot.json
-          git commit -m "chore(data): refresh FRED snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git add public/snapshot.json public/snapshot.tradfi.json
+          git commit -m "chore(data): refresh snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
-          echo "Pushed updated snapshot."
+          echo "Pushed updated snapshots."
 
       - name: Trigger deploy
         if: steps.diff.outputs.changed == 'true'
+        id: trigger
         uses: actions/github-script@v7
         with:
           script: |
+            // Dispatch the deploy workflow and record the time so we can
+            // poll for the resulting run in the next step.
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'deploy.yml',
               ref: 'main',
             });
+            // Record dispatch time so the verify step can find the new run
+            core.setOutput('dispatched_at', new Date().toISOString());
+
+      - name: Verify deploy workflow started
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Poll the deploy workflow runs to confirm our dispatch actually
+            // started a run. This catches the failure mode where workflow_dispatch
+            // returns 204 but no run is created (e.g. due to a syntax error in
+            // deploy.yml or a concurrency-group cancel).
+            const dispatchedAt = '${{ steps.trigger.outputs.dispatched_at }}';
+            const dispatchedTime = new Date(dispatchedAt).getTime();
+            const workflowId = 'deploy.yml';
+
+            // Give the workflow dispatcher a moment to register the run
+            await new Promise(r => setTimeout(r, 5000));
+
+            let foundRun = null;
+            for (let attempt = 0; attempt < 6; attempt++) {
+              const res = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                status: 'queued',  // looking for newly queued runs
+                created: `>=${dispatchedAt}`,
+              });
+              if (res.data.workflow_runs.length > 0) {
+                foundRun = res.data.workflow_runs[0];
+                break;
+              }
+              // Also check in_progress (it may have already started)
+              const res2 = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                status: 'in_progress',
+                created: `>=${dispatchedAt}`,
+              });
+              if (res2.data.workflow_runs.length > 0) {
+                foundRun = res2.data.workflow_runs[0];
+                break;
+              }
+              await new Promise(r => setTimeout(r, 10000));
+            }
+
+            if (foundRun) {
+              console.log(`✓ Deploy workflow run #${foundRun.run_number} started (id: ${foundRun.id})`);
+              console.log(`  URL: ${foundRun.html_url}`);
+            } else {
+              core.warning('Could not confirm deploy workflow started within 65s. ' +
+                'The dispatch may have been cancelled by the concurrency group or failed to register. ' +
+                'Check https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/workflows/deploy.yml manually.');
+            }
 
       - name: Summary
         run: |
           if [ "${{ steps.diff.outputs.changed }}" == "true" ]; then
             echo "### Snapshot Refreshed ✅" >> $GITHUB_STEP_SUMMARY
-            echo "Updated data committed to main and deploy triggered." >> $GITHUB_STEP_SUMMARY
+            echo "Updated snapshot.json + snapshot.tradfi.json committed to main and deploy triggered." >> $GITHUB_STEP_SUMMARY
           else
             echo "### No Changes ⏸" >> $GITHUB_STEP_SUMMARY
-            echo "FRED data is already current. No commit made." >> $GITHUB_STEP_SUMMARY
+            echo "Snapshot data is already current. No commit made." >> $GITHUB_STEP_SUMMARY
           fi

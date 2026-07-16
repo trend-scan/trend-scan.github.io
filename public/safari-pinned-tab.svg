@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Safari pinned-tab icon — must be a monochrome SVG (silhouette).
+  Uses a candlestick chart symbol on transparent background.
+  Safari applies its own mask color at runtime.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="black">
+  <!-- Three candlesticks of varying heights, classic market-chart motif -->
+  <g>
+    <!-- Left candle (short, down) -->
+    <rect x="80"  y="200" width="40" height="120" rx="4"/>
+    <rect x="96"  y="160" width="8"  height="40"/>
+    <rect x="96"  y="320" width="8"  height="40"/>
+    <!-- Middle candle (tall, up) -->
+    <rect x="200" y="120" width="40" height="180" rx="4"/>
+    <rect x="216" y="80"  width="8"  height="40"/>
+    <rect x="216" y="300" width="8"  height="40"/>
+    <!-- Right candle (medium, down) -->
+    <rect x="320" y="180" width="40" height="120" rx="4"/>
+    <rect x="336" y="140" width="8"  height="40"/>
+    <rect x="336" y="300" width="8"  height="40"/>
+  </g>
+</svg>

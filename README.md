@@ -7,19 +7,24 @@ Multi-source crypto + tradfi market scanner with macro regime monitoring. Deploy
 ```
 [Client Browser]
   ├─ Loads index.html (with inlined Vite bundle)
-  ├─ Reads /snapshot.json (pre-baked FRED macro data — instant)
+  ├─ Reads /snapshot.json (small ~450 KB: FRED macro + CoinGecko top + Fear & Greed + ETF flows)
+  ├─ Lazy-loads /snapshot.tradfi.json (only on Board/Macro pages — ~13 MB of OHLCV)
   ├─ Live fetches crypto OHLC via sourceResolver:
   │     CoinGecko → Hyperliquid → Bybit → Gate → Kucoin (auto fallback)
   ├─ Live fetches tradfi OHLC via sourceResolver:
   │     OKX SWAP perps → Lighter → Binance xStocks (auto fallback)
   └─ Computes regime signals, factor scores, breadth — all client-side
 
-[GitHub Actions — daily at 22:00 UTC]
-  ├─ Runs scripts/build_snapshot.js with FRED_API_KEY secret
-  ├─ Fetches 11 FRED series + CoinGecko top 100 + Fear & Greed
-  ├─ Writes public/snapshot.json (committed to repo)
-  ├─ Runs npm run build
-  └─ Pushes dist/ to gh-pages branch → live site updates
+[GitHub Actions]
+  ├─ refresh-snapshot.yml (3× daily Mon-Fri at 04:00/12:00/20:00 UTC)
+  │     ├─ Runs scripts/build_snapshot.js with FRED_API_KEY secret
+  │     ├─ Fetches FRED + CoinGecko + Fear&Greed + Ken French + CBOE + Yahoo tradfi + Farside ETF
+  │     ├─ Writes public/snapshot.json (small) + public/snapshot.tradfi.json (large)
+  │     └─ Dispatches deploy.yml to rebuild + redeploy
+  └─ deploy.yml (on push to main + daily at 22:00 UTC)
+        ├─ Builds the Vite bundle
+        ├─ Copies both snapshot files into dist/
+        └─ Pushes dist/ to gh-pages branch → live site updates
 ```
 
 ## Quick start (local dev)
@@ -128,9 +133,10 @@ Series marked "snapshot (FRED only)" cannot be fetched from the browser (FRED is
 
 ### `.github/workflows/refresh-snapshot.yml`
 
-- Triggers: 14:00, 18:00, 22:00 UTC Mon-Fri (US market hours), manual dispatch
-- Only refreshes `snapshot.json` (faster, no full rebuild)
-- If snapshot changed, commits to main → triggers `deploy.yml` for rebuild
+- Triggers: 04:00, 12:00, 20:00 UTC Mon-Fri (3× daily during US market week), manual dispatch
+- Only refreshes `snapshot.json` + `snapshot.tradfi.json` (no full bundle rebuild)
+- If snapshot changed, commits to main → dispatches `deploy.yml` for rebuild
+- Verifies the deploy workflow actually started (polls for the resulting run)
 
 ## Development commands
 
@@ -146,13 +152,27 @@ npm run typecheck        # TypeScript check
 
 ```
 .
-├── .github/workflows/
-│   ├── deploy.yml                    # Build + deploy to gh-pages
-│   └── refresh-snapshot.yml          # Refresh FRED data only
+├── .github/
+│   ├── workflows/
+│   │   ├── deploy.yml                # Build + deploy to gh-pages
+│   │   └── refresh-snapshot.yml      # Refresh snapshot data 3× daily
+│   ├── ISSUE_TEMPLATE/               # Bug / feature / data issue templates
+│   └── PULL_REQUEST_TEMPLATE.md      # PR checklist
 ├── public/
-│   └── snapshot.json                 # Pre-baked FRED + crypto data (committed)
+│   ├── snapshot.json                 # Small (~450 KB) FRED + CoinGecko + ETF flows
+│   ├── snapshot.tradfi.json          # Large (~13 MB) tradfi OHLCV (lazy-loaded)
+│   ├── robots.txt                    # SEO
+│   ├── sitemap.xml                   # SEO
+│   ├── safari-pinned-tab.svg         # Safari tab icon
+│   ├── browserconfig.xml             # Windows tiles
+│   └── mstile-*.png                  # Windows tile icons
 ├── scripts/
-│   └── build_snapshot.js             # Server-side FRED fetcher (runs in CI)
+│   ├── build_snapshot.js             # Server-side data fetcher (runs in CI)
+│   └── verify-csp.py                 # CSP allowlist verification
+├── cloudflare/
+│   └── yahoo-proxy-worker.js         # Cloudflare Worker for Yahoo Finance proxy
+├── LICENSE                           # MIT
+├── SECURITY.md                       # Vulnerability disclosures + key rotation
 └── src/
     └── lib/
         ├── scanner/
@@ -183,7 +203,7 @@ npm run typecheck        # TypeScript check
 The `snapshot.json` hasn't been built yet. Either:
 - Wait for the daily workflow to run (check the Actions tab)
 - Manually trigger the deploy workflow from the Actions tab
-- Run `npm run build:snapshot` locally with `FRED_API_KEY=your_key` and commit `public/snapshot.json`
+- Run `npm run build:snapshot` locally with `FRED_API_KEY=your_key` and commit `public/snapshot.json` + `public/snapshot.tradfi.json`
 
 ### Scanner shows 0 results
 

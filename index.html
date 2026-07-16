@@ -11,12 +11,29 @@
     <!-- Apple touch icon (iOS home screen) -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
+    <!-- Safari pinned-tab icon (monochrome SVG silhouette) -->
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#06090f" />
+
+    <!-- Windows / Edge tiles -->
+    <meta name="msapplication-TileColor" content="#06090f" />
+    <meta name="msapplication-TileImage" content="/mstile-150x150.png" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+
     <!-- Web app manifest (PWA install) -->
     <link rel="manifest" href="/manifest.json" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#06090f" />
     <meta name="description" content="Multi-source crypto + tradfi market scanner with macro regime monitoring. Real-time data from 8+ exchanges, no API key required." />
+
+    <!-- SEO: canonical URL + sitemap discovery -->
+    <link rel="canonical" href="https://trend-scan.github.io/" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <!-- Additional metadata -->
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="TrendScan" />
+    <meta name="keywords" content="crypto scanner, crypto screener, tradfi, macro regime, bitcoin, ethereum, solana, market board, defi, rwa, ai tokens" />
 
     <!--
       Content-Security-Policy: restricts what the browser is allowed to load
@@ -86,7 +103,7 @@
     <meta name="twitter:description" content="Multi-source crypto + tradfi market scanner with macro regime monitoring. Auto-fallback across 8 exchanges, no API key required." />
     <meta name="twitter:image" content="https://trend-scan.github.io/og-card.png" />
 
-    <title>TrendScan</title>
+    <title>TrendScan — Crypto + Tradfi Market Scanner & Macro Regime Monitor</title>
   </head>
   <body>
     <div id="root"></div>

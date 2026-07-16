@@ -41,7 +41,14 @@ def extract_csp_from_html(html: str) -> str:
 
 
 def find_external_urls_in_src() -> set[str]:
-    """Find all https:// URLs referenced in src/ source code."""
+    """Find all https:// URLs referenced in src/ source code.
+
+    NOTE: We deliberately do NOT scan cloudflare/ — the Worker runs
+    server-side and its fetched URLs (e.g. query1.finance.yahoo.com)
+    are not subject to the browser CSP. The Worker's *deployed URL*
+    (trendscan-yahoo-proxy.drew-724.workers.dev) IS browser-fetched
+    and is verified because it appears in src/lib/board/traditionalMarkets.js.
+    """
     urls = set()
     # Match https://host patterns, ignoring URL paths
     pattern = re.compile(r"https://([a-zA-Z0-9.-]+)")
@@ -59,6 +66,11 @@ def find_external_urls_in_src() -> set[str]:
         "twelvedata.com",
         "bybit-exchange.github.io",
     }
+    # Placeholder / example hosts that appear in comments only
+    placeholder_hosts = {
+        "your-worker.workers.dev",   # example in localStorage.setItem comment
+        "trend-scan.github.io",       # the site itself (og:url, deep-link docs)
+    }
     for path in SRC.rglob("*"):
         if not path.is_file():
             continue
@@ -73,7 +85,7 @@ def find_external_urls_in_src() -> set[str]:
         # the docs_hosts set above.
         for match in pattern.finditer(text):
             host = match.group(1)
-            if host in docs_hosts:
+            if host in docs_hosts or host in placeholder_hosts:
                 continue
             urls.add(f"https://{host}")
     return urls
