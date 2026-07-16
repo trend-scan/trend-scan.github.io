@@ -952,13 +952,28 @@ function computeTradMetrics(candles) {
 }
 
 // ── Pool Fetcher ──────────────────────────────────────────────────────────────
-async function fetchWithPool(tasks, concurrency = 5) {
+async function fetchWithPool(tasks, concurrency = 5, perTaskTimeoutMs = 0) {
   const results = new Array(tasks.length);
   let idx = 0;
   async function worker() {
     while (idx < tasks.length) {
       const i = idx++;
-      results[i] = await tasks[i]();
+      try {
+        if (perTaskTimeoutMs > 0) {
+          const taskPromise = Promise.resolve(tasks[i]());
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('task_timeout')), perTaskTimeoutMs)
+          );
+          results[i] = await Promise.race([taskPromise, timeoutPromise]);
+        } else {
+          results[i] = await tasks[i]();
+        }
+      } catch (e) {
+        results[i] = null;
+        if (e.message !== 'task_timeout') {
+          console.warn('[tradfi fetchWithPool] task threw:', e.message);
+        }
+      }
     }
   }
   await Promise.all(Array.from({ length: concurrency }, worker));
@@ -1007,10 +1022,12 @@ export async function fetchTradMarketData(onProgress, onPartialResults) {
     }
   });
 
-  // Concurrency: 8 workers. Rate-limited sources (Massive ~5/min, TD ~8/min)
-  // handle their own throttling via cooldown checks. Free sources (Lighter,
-  // OKX, Kraken) have no limits and will resolve instantly.
-  await fetchWithPool(tasks, 8);
+  // Concurrency: 8 workers, 25s per-task timeout. Rate-limited sources
+  // (Massive ~5/min, TD ~8/min) handle their own throttling via cooldown
+  // checks. Free sources (Lighter, OKX, Kraken) have no limits and resolve
+  // instantly. The 25s timeout prevents a single hung ticker (e.g. Yahoo
+  // proxy down) from blocking the whole pool.
+  await fetchWithPool(tasks, 8, 25_000);
 
   return buildTradResult(rawResults, sourceTracker);
 }

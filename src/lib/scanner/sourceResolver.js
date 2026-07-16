@@ -96,6 +96,29 @@ const _failures = new Map();
 const FAILURE_THRESHOLD = 3;
 const FAILURE_TTL_MS = 5 * 60 * 1000;
 
+// Fast-fail cache: if a symbol has been tried against ALL its candidate
+// sources and none returned data, cache that "total failure" result for
+// 2 minutes. This prevents the board from re-trying 69 orphan symbols
+// (each taking 5s × 7 sources = 35s) on every single refresh.
+// The cache is cleared if the caller explicitly requests a preferredSource
+// (user forcing a specific exchange).
+const _totalFailCache = new Map();  // symbol → expiry timestamp
+const TOTAL_FAIL_TTL_MS = 2 * 60 * 1000;
+
+function isTotalFailure(symbol) {
+  const expiry = _totalFailCache.get(symbol);
+  if (!expiry) return false;
+  if (Date.now() > expiry) {
+    _totalFailCache.delete(symbol);
+    return false;
+  }
+  return true;
+}
+
+function recordTotalFailure(symbol) {
+  _totalFailCache.set(symbol, Date.now() + TOTAL_FAIL_TTL_MS);
+}
+
 function isDeprioritized(sourceId, symbol) {
   const k = `${sourceId}:${symbol}`;
   const f = _failures.get(k);
@@ -154,6 +177,15 @@ export async function fetchCandles(symbol, opts = {}) {
   const { timeframe = '1D', limit = 300, preferredSource, type } = opts;
   const assetType = type || classifySymbol(symbol);
 
+  // Fast-fail: if this symbol has already been tried against ALL sources
+  // in the last 2 minutes and none returned data, skip immediately.
+  // This prevents 69 orphan symbols from re-burning 35s each on every refresh.
+  // Skip the fast-fail if the user explicitly requested a preferredSource
+  // (they're forcing a specific exchange, so respect that).
+  if (!preferredSource && isTotalFailure(symbol)) {
+    return { source: null, candles: null };
+  }
+
   const sourceList = assetType === 'tradfi' ? TRADFI_SOURCES : CRYPTO_SOURCES;
 
   // Build candidate list, filtering by explicit support + deprioritization
@@ -176,10 +208,14 @@ export async function fetchCandles(symbol, opts = {}) {
 
   for (const src of candidates) {
     try {
-      // Add 8-second timeout per source to prevent hanging
+      // 5-second timeout per source. The underlying fetch() is not aborted
+      // (would require passing AbortSignal through every source adapter),
+      // but Promise.race lets the resolver move on to the next source.
+      // The per-task timeout in fetchWithPool (boardEngine) provides a
+      // hard cap on total time per symbol.
       const fetchPromise = src.fetch(symbol, timeframe, limit);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 8000)
+        setTimeout(() => reject(new Error('timeout')), 5000)
       );
       const candles = await Promise.race([fetchPromise, timeoutPromise]);
       if (candles && candles.length >= Math.min(20, limit * 0.1)) {
@@ -194,6 +230,11 @@ export async function fetchCandles(symbol, opts = {}) {
         console.warn(`[resolver] ${src.id} failed for ${symbol}: ${e.message}`);
       }
     }
+  }
+
+  // All sources failed → cache as total failure so the next call fast-fails
+  if (candidates.length > 0) {
+    recordTotalFailure(symbol);
   }
 
   return { source: null, candles: null };
@@ -251,6 +292,16 @@ export function getSourceHealth() {
     out.push({ source, symbol, failures: f.count, lastFail: f.lastFail });
   }
   return out;
+}
+
+/**
+ * Clear all failure caches (both per-source deprioritization and the
+ * total-failure fast-fail cache). Call this when the user explicitly
+ * clicks REFRESH — they want a fresh attempt regardless of prior failures.
+ */
+export function clearFailureCache() {
+  _failures.clear();
+  _totalFailCache.clear();
 }
 
 export const ALL_SOURCE_IDS = [

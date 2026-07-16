@@ -2,6 +2,7 @@
 // Uses the same exchange candle data as the Trend Strength Screener
 
 import { fetchCandles, preloadExchange } from '../scanner/exchanges';
+import { clearFailureCache } from '../scanner/sourceResolver';
 import { fetchAllTickers as fetchHyperliquidTickers } from '../scanner/sources/hyperliquid';
 import { CRYPTO_UNIVERSE, BENCHMARKS, ROTATION_PAIRS } from './cryptoUniverse';
 
@@ -526,13 +527,34 @@ function buildRegimeLabel(regime) {
 
 // ── Main Engine ──────────────────────────────────────────────────────────────
 
-async function fetchWithPool(tasks, concurrency = 8) {
+async function fetchWithPool(tasks, concurrency = 8, perTaskTimeoutMs = 0) {
   const results = new Array(tasks.length);
   let idx = 0;
   async function worker() {
     while (idx < tasks.length) {
       const i = idx++;
-      results[i] = await tasks[i]();
+      try {
+        if (perTaskTimeoutMs > 0) {
+          // Race the task against a timeout. If the task exceeds the budget,
+          // we abandon it and move on — this prevents a single hung fetch
+          // (e.g. an exchange that stopped responding mid-request) from
+          // blocking the entire worker pool indefinitely.
+          const taskPromise = Promise.resolve(tasks[i]());
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('task_timeout')), perTaskTimeoutMs)
+          );
+          results[i] = await Promise.race([taskPromise, timeoutPromise]);
+        } else {
+          results[i] = await tasks[i]();
+        }
+      } catch (e) {
+        // Catch ANY error (task throw OR timeout) so the worker stays alive.
+        // The caller checks results[i] for null/undefined to detect failures.
+        results[i] = null;
+        if (e.message !== 'task_timeout') {
+          console.warn('[fetchWithPool] task threw:', e.message);
+        }
+      }
     }
   }
   await Promise.all(Array.from({ length: concurrency }, worker));
@@ -683,6 +705,10 @@ function buildQuickView(rawResults, hlTickers) {
 }
 
 export async function runBoardAnalysis(exchange, onProgress) {
+  // Clear all failure caches — the user clicked REFRESH, so we want a
+  // fresh attempt on every symbol regardless of prior failures.
+  clearFailureCache();
+
   onProgress({ phase: 'preloading', message: 'Loading exchange instruments…' });
   await preloadExchange(exchange);
 
@@ -692,22 +718,35 @@ export async function runBoardAnalysis(exchange, onProgress) {
   let done = 0;
   const failedAssets = [];
   const tasks = allAssets.map(asset => async () => {
-    let candles = await fetchCandles(asset.symbol, exchange, TIMEFRAME);
-    // Retry via 'auto' resolver if the primary exchange failed
-    if ((!candles || candles.length < 10) && exchange !== 'auto') {
-      candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
-    }
-    done++;
-    onProgress({ phase: 'fetching', done, total: allAssets.length, message: `${done}/${allAssets.length} fetched…` });
-    if (!candles || candles.length < 10) {
+    try {
+      let candles = await fetchCandles(asset.symbol, exchange, TIMEFRAME);
+      // Retry via 'auto' resolver if the primary exchange failed
+      if ((!candles || candles.length < 10) && exchange !== 'auto') {
+        candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
+      }
+      done++;
+      onProgress({ phase: 'fetching', done, total: allAssets.length, message: `${done}/${allAssets.length} fetched…` });
+      if (!candles || candles.length < 10) {
+        failedAssets.push(asset);
+        return { asset, metrics: null, candles: null };
+      }
+      const metrics = computeMetrics(candles);
+      return { asset, metrics, candles };
+    } catch (e) {
+      done++;
+      onProgress({ phase: 'fetching', done, total: allAssets.length, message: `${done}/${allAssets.length} fetched…` });
+      console.warn(`[boardEngine] ${asset.symbol} threw:`, e.message);
       failedAssets.push(asset);
       return { asset, metrics: null, candles: null };
     }
-    const metrics = computeMetrics(candles);
-    return { asset, metrics, candles };
   });
 
-  const rawResults = await fetchWithPool(tasks, 6);
+  // 30s per-task timeout — if a single symbol's fetch chain (OKX→HL→Bybit→
+  // Binance→Yahoo→CoinGecko→Massive) takes longer than 30s, abandon it and
+  // move on. With 6 workers and 378 symbols, this caps worst-case time at
+  // ~378 * 30 / 6 = 1890s = ~31 min, but in practice most symbols resolve
+  // in <2s so the typical run is 3-5 min.
+  const rawResults = await fetchWithPool(tasks, 6, 30_000);
 
   // Fetch Hyperliquid bulk tickers for funding rate + OI data (used by Quick View)
   let hlTickers = null;
@@ -721,12 +760,17 @@ export async function runBoardAnalysis(exchange, onProgress) {
   if (failedAssets.length > 0) {
     onProgress({ phase: 'fetching', done: allAssets.length, total: allAssets.length, message: `Retrying ${failedAssets.length} failed assets…` });
     const retryTasks = failedAssets.map(asset => async () => {
-      const candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
-      if (!candles || candles.length < 10) return { asset, metrics: null, candles: null };
-      const metrics = computeMetrics(candles);
-      return { asset, metrics, candles };
+      try {
+        const candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
+        if (!candles || candles.length < 10) return { asset, metrics: null, candles: null };
+        const metrics = computeMetrics(candles);
+        return { asset, metrics, candles };
+      } catch (e) {
+        return { asset, metrics: null, candles: null };
+      }
     });
-    const retryResults = await fetchWithPool(retryTasks, 3);
+    // 20s timeout for retries (shorter — these are already-known failures)
+    const retryResults = await fetchWithPool(retryTasks, 3, 20_000);
     // Merge retry results back into rawResults
     for (const rr of retryResults) {
       if (rr.metrics) {
