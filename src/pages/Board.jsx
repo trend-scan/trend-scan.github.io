@@ -78,6 +78,12 @@ export default function Board() {
     });
   }, []);
 
+  // Use a ref to track the latest tradData so the callback doesn't
+  // get recreated on every partial update (which would cause the
+  // Board's useCallback dependency to fire constantly).
+  const tradDataRef = useRef(null);
+  tradDataRef.current = tradData;
+
   const runTradAnalysis = useCallback(async () => {
     setTradLoading(true);
     try {
@@ -92,12 +98,12 @@ export default function Board() {
       setTradDataSource('live');
     } catch (err) {
       console.warn('Trad market fetch failed:', err.message);
-      // Keep snapshot data if available — don't overwrite with null
-      if (!tradData) setTradData(null);
+      // Keep existing data if available — don't overwrite with null
+      if (!tradDataRef.current) setTradData(null);
     } finally {
       setTradLoading(false);
     }
-  }, [tradData]);
+  }, []);
 
   const runAnalysis = useCallback(async (exch = exchange) => {
     if (isLoading) return;

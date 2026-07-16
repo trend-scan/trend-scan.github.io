@@ -114,7 +114,10 @@ export default function MacroTab({ tradData, isLoading, onRefresh }) {
     });
   }, [filtered, sortKey]);
 
-  if (isLoading) {
+  // If we have no data at all AND we're loading, show the full-page spinner.
+  // If we have data (snapshot or partial live), show it with a loading
+  // indicator in the header — don't replace the entire view with a spinner.
+  if (isLoading && !tradData) {
     return (
       <div className="font-mono text-center py-20 px-5">
         <div className="text-3xl mb-4 animate-pulse opacity-30">◈</div>
@@ -147,6 +150,18 @@ export default function MacroTab({ tradData, isLoading, onRefresh }) {
 
   return (
     <div className="font-mono px-5 md:px-8 py-5 space-y-6">
+
+      {/* Loading banner — shown when refreshing with existing data */}
+      {isLoading && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded text-[10px]" style={{
+          background: 'rgba(245,158,11,0.06)',
+          border: '1px solid rgba(245,158,11,0.2)',
+          color: 'var(--scanner-accent)',
+        }}>
+          <span className="animate-pulse">⟳</span>
+          <span>Refreshing live data… showing last cached results</span>
+        </div>
+      )}
 
       {/* Header strip — last updated + refresh + sources */}
       <div className="flex items-center justify-between flex-wrap gap-3 pb-3" style={{ borderBottom: '1px solid var(--scanner-border2)' }}>
@@ -188,12 +203,12 @@ export default function MacroTab({ tradData, isLoading, onRefresh }) {
               background: 'var(--scanner-accent)',
               color: '#000',
               border: 'none',
-              cursor: 'pointer',
-              opacity: isLoading ? 0.5 : 1,
+              cursor: isLoading ? 'wait' : 'pointer',
+              opacity: isLoading ? 0.6 : 1,
             }}
             disabled={isLoading}
           >
-            ↻ REFRESH
+            {isLoading ? '⟳ Refreshing…' : '↻ REFRESH'}
           </button>
         )}
       </div>
