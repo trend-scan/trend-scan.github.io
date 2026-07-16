@@ -2,7 +2,6 @@
 // Uses the same exchange candle data as the Trend Strength Screener
 
 import { fetchCandles, preloadExchange } from '../scanner/exchanges';
-import { clearFailureCache } from '../scanner/sourceResolver';
 import { fetchAllTickers as fetchHyperliquidTickers } from '../scanner/sources/hyperliquid';
 import { CRYPTO_UNIVERSE, BENCHMARKS, ROTATION_PAIRS } from './cryptoUniverse';
 
@@ -529,33 +528,20 @@ function buildRegimeLabel(regime) {
 
 // ── Main Engine ──────────────────────────────────────────────────────────────
 
-async function fetchWithPool(tasks, concurrency = 8, perTaskTimeoutMs = 0) {
+async function fetchWithPool(tasks, concurrency = 8) {
   const results = new Array(tasks.length);
   let idx = 0;
   async function worker() {
     while (idx < tasks.length) {
       const i = idx++;
       try {
-        if (perTaskTimeoutMs > 0) {
-          // Race the task against a timeout. If the task exceeds the budget,
-          // we abandon it and move on — this prevents a single hung fetch
-          // (e.g. an exchange that stopped responding mid-request) from
-          // blocking the entire worker pool indefinitely.
-          const taskPromise = Promise.resolve(tasks[i]());
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('task_timeout')), perTaskTimeoutMs)
-          );
-          results[i] = await Promise.race([taskPromise, timeoutPromise]);
-        } else {
-          results[i] = await tasks[i]();
-        }
+        results[i] = await tasks[i]();
       } catch (e) {
-        // Catch ANY error (task throw OR timeout) so the worker stays alive.
-        // The caller checks results[i] for null/undefined to detect failures.
-        results[i] = null;
-        if (e.message !== 'task_timeout') {
-          console.warn('[fetchWithPool] task threw:', e.message);
-        }
+        // Catch any error so the worker stays alive. The task itself
+        // has its own try/catch and should always return an object,
+        // but this is a safety net for unexpected errors.
+        results[i] = { asset: { symbol: 'UNKNOWN' }, metrics: null, candles: null };
+        console.warn('[fetchWithPool] task threw:', e.message);
       }
     }
   }
@@ -707,10 +693,6 @@ function buildQuickView(rawResults, hlTickers) {
 }
 
 export async function runBoardAnalysis(exchange, onProgress) {
-  // Clear all failure caches — the user clicked REFRESH, so we want a
-  // fresh attempt on every symbol regardless of prior failures.
-  clearFailureCache();
-
   onProgress({ phase: 'preloading', message: 'Loading exchange instruments…' });
   await preloadExchange(exchange);
 
@@ -743,12 +725,7 @@ export async function runBoardAnalysis(exchange, onProgress) {
     }
   });
 
-  // 30s per-task timeout — if a single symbol's fetch chain (OKX→HL→Bybit→
-  // Binance→Yahoo→CoinGecko→Massive) takes longer than 30s, abandon it and
-  // move on. With 6 workers and 378 symbols, this caps worst-case time at
-  // ~378 * 30 / 6 = 1890s = ~31 min, but in practice most symbols resolve
-  // in <2s so the typical run is 3-5 min.
-  const rawResults = await fetchWithPool(tasks, 6, 30_000);
+  const rawResults = await fetchWithPool(tasks, 6);
 
   // Fetch Hyperliquid bulk tickers for funding rate + OI data (used by Quick View)
   let hlTickers = null;
@@ -761,10 +738,6 @@ export async function runBoardAnalysis(exchange, onProgress) {
   // Retry pass for failed assets
   if (failedAssets.length > 0) {
     onProgress({ phase: 'fetching', done: allAssets.length, total: allAssets.length, message: `Retrying ${failedAssets.length} failed assets…` });
-    // Clear failure caches before retry — the first pass may have cached
-    // total failures (e.g. Yahoo Worker had a transient blip). The retry
-    // pass should get a fresh attempt at every source.
-    clearFailureCache();
     const retryTasks = failedAssets.map(asset => async () => {
       try {
         const candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
@@ -775,8 +748,7 @@ export async function runBoardAnalysis(exchange, onProgress) {
         return { asset, metrics: null, candles: null };
       }
     });
-    // 20s timeout for retries (shorter — these are already-known failures)
-    const retryResults = await fetchWithPool(retryTasks, 3, 20_000);
+    const retryResults = await fetchWithPool(retryTasks, 3);
     // Merge retry results back into rawResults
     for (const rr of retryResults) {
       if (rr.metrics) {
