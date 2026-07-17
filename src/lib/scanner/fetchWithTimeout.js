@@ -10,8 +10,13 @@
  * @param {object} [options] - standard fetch options
  * @param {number} [timeoutMs=10000] - timeout in milliseconds
  * @returns {Promise<Response>}
- * @throws {Error} with .name === 'TimeoutError' if the timeout fires
+ * @throws {TimeoutError} if the timeout fires
  */
+
+/**
+ * @typedef {Error & { name: string, url?: string }} TimeoutError
+ */
+
 export async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -25,7 +30,8 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
   } catch (e) {
     // Distinguish timeout aborts from network errors
     if (e.name === 'AbortError') {
-      const err = new Error(`Request timed out after ${timeoutMs}ms: ${url}`);
+      /** @type {TimeoutError} */
+      const err = /** @type {TimeoutError} */ (new Error(`Request timed out after ${timeoutMs}ms: ${url}`));
       err.name = 'TimeoutError';
       err.url = url;
       throw err;
