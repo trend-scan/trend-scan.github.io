@@ -45,7 +45,9 @@ export default function Board() {
   const [error, setError] = useState(null);
   const [tradData, setTradData] = useState(null);
   const [tradLoading, setTradLoading] = useState(false);
+  const [tradSnapshotLoading, setTradSnapshotLoading] = useState(true); // true until snapshot fetch resolves
   const [tradDataSource, setTradDataSource] = useState('');  // 'snapshot' or 'live'
+  const [tradAutoRefreshed, setTradAutoRefreshed] = useState(false); // tracks if auto-refresh has fired
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const apiKeyChecked = useRef(false);
   const hasLoaded = useRef(false);
@@ -67,15 +69,18 @@ export default function Board() {
     } catch {}
   }, [data]);
 
-  // Load snapshot data instantly (no API calls — reads from /snapshot.json)
-  // This gives the Macro tab immediate data while the live fetch runs in background
+  // Load snapshot data instantly (no API calls — reads from /snapshot.tradfi.json)
+  // This gives the TradFi tab immediate data while the live fetch runs in background.
+  // The snapshot is pre-baked server-side by build_snapshot.js (fetches Yahoo Finance
+  // via the Cloudflare Worker, stores in snapshot.tradfi.json).
   useEffect(() => {
     buildTradDataFromSnapshot().then(snapData => {
       if (snapData) {
         setTradData(snapData);
         setTradDataSource('snapshot');
       }
-    });
+      setTradSnapshotLoading(false);
+    }).catch(() => setTradSnapshotLoading(false));
   }, []);
 
   // Use a ref to track the latest tradData so the callback doesn't
@@ -104,6 +109,17 @@ export default function Board() {
       setTradLoading(false);
     }
   }, []);
+
+  // Auto-refresh: when the user first visits the TradFi tab (activeTab === 6)
+  // and we only have snapshot data (not yet refreshed with live data), kick
+  // off the live background refresh automatically. This gives the user the
+  // instant snapshot view, then seamlessly updates with live data as it arrives.
+  useEffect(() => {
+    if (activeTab === 6 && tradDataSource === 'snapshot' && !tradLoading && !tradAutoRefreshed) {
+      setTradAutoRefreshed(true);
+      runTradAnalysis();
+    }
+  }, [activeTab, tradDataSource, tradLoading, tradAutoRefreshed, runTradAnalysis]);
 
   const runAnalysis = useCallback(async (exch = exchange) => {
     if (isLoading) return;
@@ -265,7 +281,7 @@ export default function Board() {
           {activeTab === 3 && <MomentumScanTab momentumScan={momentumScan} />}
           {activeTab === 4 && <MomentumTab cleanMomentum={cleanMomentum} />}
           {activeTab === 5 && <ExtensionTab tooHot={tooHot} fading={fading} />}
-          {activeTab === 6 && <MacroTab tradData={tradData} isLoading={tradLoading} onRefresh={runTradAnalysis} />}
+          {activeTab === 6 && <MacroTab tradData={tradData} isLoading={tradLoading} snapshotLoading={tradSnapshotLoading} onRefresh={runTradAnalysis} />}
           {activeTab === 7 && <FactorMonitor />}
         </>
       )}

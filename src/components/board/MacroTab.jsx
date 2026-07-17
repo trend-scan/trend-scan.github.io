@@ -84,7 +84,7 @@ function rsiColor(v) {
   return 'var(--scanner-text2)';
 }
 
-export default function MacroTab({ tradData, isLoading, onRefresh }) {
+export default function MacroTab({ tradData, isLoading, snapshotLoading, onRefresh }) {
   const [sortKey, setSortKey] = useState('ret20d');
   const [filterCat, setFilterCat] = useState('All');
   const [search, setSearch] = useState('');
@@ -114,7 +114,19 @@ export default function MacroTab({ tradData, isLoading, onRefresh }) {
     });
   }, [filtered, sortKey]);
 
-  // If we have no data at all AND we're loading, show the full-page spinner.
+  // If the snapshot is still loading (page just mounted), show a loading spinner.
+  // This prevents the "No macro data loaded" flash before the snapshot resolves.
+  if (snapshotLoading && !tradData) {
+    return (
+      <div className="font-mono text-center py-20 px-5">
+        <div className="text-3xl mb-4 animate-pulse opacity-30">◈</div>
+        <div className="text-sm mb-1" style={{ color: 'var(--scanner-text2)' }}>Loading traditional market data…</div>
+        <div className="text-[11px]" style={{ color: 'var(--scanner-text3)' }}>Reading from pre-built snapshot</div>
+      </div>
+    );
+  }
+
+  // If we have no data at all AND we're loading (live refresh, no snapshot), show the full-page spinner.
   // If we have data (snapshot or partial live), show it with a loading
   // indicator in the header — don't replace the entire view with a spinner.
   if (isLoading && !tradData) {
