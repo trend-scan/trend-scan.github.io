@@ -157,16 +157,15 @@ export async function fetchCandles(symbol, opts = {}) {
 
   const sourceList = assetType === 'tradfi' ? TRADFI_SOURCES : CRYPTO_SOURCES;
 
-  // Build candidate list, filtering by explicit support + deprioritization
-  const candidates = [];
-  for (const src of sourceList) {
-    if (isDeprioritized(src.id, symbol)) continue;
-    if (src.supports) {
-      const supported = await src.supports(symbol);
-      if (!supported) continue;
-    }
-    candidates.push(src);
-  }
+  // Build candidate list, filtering by deprioritization only.
+  // Skip the supports() check entirely — it's an optimization that backfires:
+  // 1. It's sequential (await in a loop), adding latency per symbol
+  // 2. If the universe cache isn't loaded yet, supports() returns true
+  //    (optimistic), so the source is included anyway — the check is wasted
+  // 3. The source's fetchCandles() already returns null for unsupported
+  //    symbols, so the supports() check is redundant — just let the race
+  //    handle it. Promise.any() picks the first success and ignores failures.
+  const candidates = sourceList.filter(src => !isDeprioritized(src.id, symbol));
 
   // Sort: preferred first, then by tier
   candidates.sort((a, b) => {

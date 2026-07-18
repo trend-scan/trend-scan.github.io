@@ -45,39 +45,46 @@ const TIMEFRAME_INTERVAL = {
 // (e.g. 'XEC' -> '1000XEC', 'BTC' -> 'BTC')
 let _universe = null;
 let _universeTime = 0;
+let _universePromise = null;  // deduplicates concurrent loadUniverse() calls
 const UNIVERSE_TTL_MS = 10 * 60 * 1000;  // refresh every 10 min
 
 async function loadUniverse() {
   const now = Date.now();
   if (_universe && now - _universeTime < UNIVERSE_TTL_MS) return _universe;
-  try {
-    const res = await fetchWithTimeout(`${BASE}/exchangeInfo`);
-    if (!res.ok) return _universe || null;
-    const d = await res.json();
-    _universe = {};  // bare -> actual
-    for (const inst of d.symbols || []) {
-      if (inst.contractType !== 'PERPETUAL') continue;
-      if (inst.quoteAsset !== 'USDT') continue;
-      const baseAsset = inst.baseAsset;
-      if (!baseAsset) continue;
-      // Add the bare asset as-is (e.g. 'BTC' -> 'BTC')
-      _universe[baseAsset] = baseAsset;
-      // Also add the normalized form (strip '1000' / '1000000' prefixes)
-      // so callers passing 'XEC' find '1000XEC'
-      if (baseAsset.startsWith('1000000')) {
-        const bare = baseAsset.slice(7);
-        _universe[bare] = baseAsset;
-      } else if (baseAsset.startsWith('1000')) {
-        const bare = baseAsset.slice(4);
-        _universe[bare] = baseAsset;
+  // If a fetch is already in progress, wait for it instead of starting another
+  if (_universePromise) return _universePromise;
+
+  _universePromise = (async () => {
+    try {
+      const res = await fetchWithTimeout(`${BASE}/exchangeInfo`);
+      if (!res.ok) return _universe || null;
+      const d = await res.json();
+      _universe = {};  // bare -> actual
+      for (const inst of d.symbols || []) {
+        if (inst.contractType !== 'PERPETUAL') continue;
+        if (inst.quoteAsset !== 'USDT') continue;
+        const baseAsset = inst.baseAsset;
+        if (!baseAsset) continue;
+        _universe[baseAsset] = baseAsset;
+        if (baseAsset.startsWith('1000000')) {
+          const bare = baseAsset.slice(7);
+          _universe[bare] = baseAsset;
+        } else if (baseAsset.startsWith('1000')) {
+          const bare = baseAsset.slice(4);
+          _universe[bare] = baseAsset;
+        }
       }
+      _universeTime = Date.now();
+      return _universe;
+    } catch (e) {
+      console.warn(`[binance_perps] universe fetch failed: ${e.message}`);
+      return _universe || null;
+    } finally {
+      _universePromise = null;
     }
-    _universeTime = now;
-    return _universe;
-  } catch (e) {
-    console.warn(`[binance_perps] universe fetch failed: ${e.message}`);
-    return _universe || null;
-  }
+  })();
+
+  return _universePromise;
 }
 
 /**

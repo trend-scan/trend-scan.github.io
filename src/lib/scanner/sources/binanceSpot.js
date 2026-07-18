@@ -31,26 +31,36 @@ const TIMEFRAME_INTERVAL = {
 // Cache of universe: set of valid baseAssets
 let _universe = null;
 let _universeTime = 0;
+let _universePromise = null;  // deduplicates concurrent loadUniverse() calls
 const UNIVERSE_TTL_MS = 10 * 60 * 1000;
 
 async function loadUniverse() {
   const now = Date.now();
   if (_universe && now - _universeTime < UNIVERSE_TTL_MS) return _universe;
-  try {
-    const res = await fetchWithTimeout(`${BASE}/exchangeInfo`);
-    if (!res.ok) return _universe || null;
-    const d = await res.json();
-    _universe = new Set();
-    for (const inst of d.symbols || []) {
-      if (inst.quoteAsset !== 'USDT') continue;
-      if (inst.status !== 'TRADING') continue;
-      if (inst.baseAsset) _universe.add(inst.baseAsset);
+  // If a fetch is already in progress, wait for it instead of starting another
+  if (_universePromise) return _universePromise;
+
+  _universePromise = (async () => {
+    try {
+      const res = await fetchWithTimeout(`${BASE}/exchangeInfo`);
+      if (!res.ok) return _universe || null;
+      const d = await res.json();
+      _universe = new Set();
+      for (const inst of d.symbols || []) {
+        if (inst.quoteAsset !== 'USDT') continue;
+        if (inst.status !== 'TRADING') continue;
+        if (inst.baseAsset) _universe.add(inst.baseAsset);
+      }
+      _universeTime = Date.now();
+      return _universe;
+    } catch {
+      return _universe || null;
+    } finally {
+      _universePromise = null;
     }
-    _universeTime = now;
-    return _universe;
-  } catch {
-    return _universe || null;
-  }
+  })();
+
+  return _universePromise;
 }
 
 /**
