@@ -692,40 +692,106 @@ function buildQuickView(rawResults, hlTickers) {
   return { strongest, pickingUp, crowded, washedOut, bigMoves };
 }
 
-export async function runBoardAnalysis(exchange, onProgress) {
+export async function runBoardAnalysis(exchange, onProgress, existingData) {
   onProgress({ phase: 'preloading', message: 'Loading exchange instruments…' });
   await preloadExchange(exchange);
 
   const allAssets = CRYPTO_UNIVERSE;
   onProgress({ phase: 'fetching', message: `Fetching candles for ${allAssets.length} assets…`, done: 0, total: allAssets.length });
 
+  // ── Seed rawResults with existing data ────────────────────────────────────
+  // Same pattern as tradfi: pre-populate with existing metrics so assets
+  // not yet refreshed retain their previous values instead of disappearing.
+  const existingMap = new Map();
+  if (existingData?.constituents) {
+    // constituents is a map of theme → array of assets with metrics
+    for (const assets of Object.values(existingData.constituents)) {
+      if (Array.isArray(assets)) {
+        for (const a of assets) {
+          if (a.symbol) {
+            existingMap.set(a.symbol, {
+              asset: { symbol: a.symbol, name: a.name, theme: a.theme, tier: a.tier, subtheme: a.subtheme },
+              metrics: a.metrics || null,
+              candles: null,  // don't preserve full candle arrays (too large)
+            });
+          }
+        }
+      }
+    }
+  }
+  // Also check the raw benchmark/theme data
+  if (existingData?.benchmarks) {
+    for (const b of existingData.benchmarks) {
+      if (b.symbol && b.metrics) {
+        existingMap.set(b.symbol, {
+          asset: { symbol: b.symbol, name: b.name, theme: b.subtheme, tier: 'Core', subtheme: b.subtheme },
+          metrics: b.metrics,
+          candles: null,
+        });
+      }
+    }
+  }
+
+  // Pre-populate rawResults for ALL assets
+  const rawResults = [];
+  const resultIndexBySymbol = new Map();
+  for (const asset of allAssets) {
+    const existing = existingMap.get(asset.symbol);
+    resultIndexBySymbol.set(asset.symbol, rawResults.length);
+    if (existing && existing.metrics) {
+      rawResults.push(existing);
+    } else {
+      rawResults.push({ asset, metrics: null, candles: null });
+    }
+  }
+
+  // Sort: assets WITHOUT existing data first (fill gaps), then the rest
+  const sortedAssets = [...allAssets].sort((a, b) => {
+    const aExisting = existingMap.has(a.symbol) && existingMap.get(a.symbol).metrics != null;
+    const bExisting = existingMap.has(b.symbol) && existingMap.get(b.symbol).metrics != null;
+    if (!aExisting && bExisting) return -1;
+    if (aExisting && !bExisting) return 1;
+    return 0;
+  });
+
   let done = 0;
   const failedAssets = [];
-  const tasks = allAssets.map(asset => async () => {
+  const tasks = sortedAssets.map(asset => async () => {
     try {
       let candles = await fetchCandles(asset.symbol, exchange, TIMEFRAME);
-      // Retry via 'auto' resolver if the primary exchange failed
       if ((!candles || candles.length < 5) && exchange !== 'auto') {
         candles = await fetchCandles(asset.symbol, 'auto', TIMEFRAME);
       }
       done++;
       onProgress({ phase: 'fetching', done, total: allAssets.length, message: `${done}/${allAssets.length} fetched…` });
-      if (!candles || candles.length < 5) {
-        failedAssets.push(asset);
-        return { asset, metrics: null, candles: null };
+
+      // Update in-place — preserve existing metrics if live fetch failed
+      const idx = resultIndexBySymbol.get(asset.symbol);
+      if (idx != null) {
+        if (!candles || candles.length < 5) {
+          // Keep existing metrics if we have them
+          if (rawResults[idx].metrics == null) {
+            failedAssets.push(asset);
+          }
+          // else: keep existing metrics, don't push to failedAssets
+        } else {
+          const metrics = computeMetrics(candles);
+          rawResults[idx] = { asset, metrics, candles };
+        }
       }
-      const metrics = computeMetrics(candles);
-      return { asset, metrics, candles };
     } catch (e) {
       done++;
       onProgress({ phase: 'fetching', done, total: allAssets.length, message: `${done}/${allAssets.length} fetched…` });
       console.warn(`[boardEngine] ${asset.symbol} threw:`, e.message);
-      failedAssets.push(asset);
-      return { asset, metrics: null, candles: null };
+      // Keep existing metrics on error
+      const idx = resultIndexBySymbol.get(asset.symbol);
+      if (idx != null && rawResults[idx].metrics == null) {
+        failedAssets.push(asset);
+      }
     }
   });
 
-  const rawResults = await fetchWithPool(tasks, 10);
+  await fetchWithPool(tasks, 10);
 
   // Fetch Hyperliquid bulk tickers for funding rate + OI data (used by Quick View)
   let hlTickers = null;

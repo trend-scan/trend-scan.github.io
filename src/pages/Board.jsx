@@ -131,14 +131,10 @@ export default function Board() {
     setError(null);
     setProgress({ phase: 'loading', message: 'Starting…', done: undefined, total: undefined });
     try {
-      // Decoupled: run crypto board analysis and tradfi fetch independently.
-      // Previously used Promise.all which blocked ALL tabs until BOTH finished.
-      // With 372 tradfi assets and TD rate limiting (7.5s/req), tradfi can take
-      // 30+ minutes — this was preventing the Daily/Themes/Breadth/etc tabs from
-      // rendering until the Macro tab's data also finished loading.
-      // Now: crypto board loads first (fast), tradfi loads in parallel (slow but
-      // non-blocking). The Macro tab shows its own loading state independently.
-      const result = await runBoardAnalysis(exch, handleProgress);
+      // Pass existing data (from sessionStorage or previous refresh) so the
+      // engine can seed rawResults — assets not yet refreshed retain their
+      // previous metrics instead of disappearing during the refresh.
+      const result = await runBoardAnalysis(exch, handleProgress, data);
       setData(result);
       // Kick off tradfi fetch in the background — don't await it
       runTradAnalysis();
@@ -148,7 +144,7 @@ export default function Board() {
       setIsLoading(false);
       setProgress(prev => ({ ...prev, phase: 'complete' }));
     }
-  }, [exchange, isLoading, handleProgress, runTradAnalysis]);
+  }, [exchange, isLoading, handleProgress, runTradAnalysis, data]);
 
   // No auto-run — wait for manual user trigger (Refresh button)
 
