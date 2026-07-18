@@ -25,8 +25,8 @@
  *   - Report |z| >= 2 as a flag
  */
 
-import { mean, stddev } from '../regime/regimeCalculations';
-import { horizonReturnWithStats } from '../regime/regimePercentile';
+import { mean, stddev } from '../regime/regimeCalculations.js';
+import { horizonReturnWithStats } from '../regime/regimePercentile.js';
 
 // ─── Factor Score Computations ────────────────────────────────────────────────
 

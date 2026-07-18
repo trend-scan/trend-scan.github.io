@@ -14,7 +14,7 @@
  * In Phase 3, it will use server-side persisted history.
  */
 
-import { mean, stddev } from '../regime/regimeCalculations';
+import { mean, stddev } from '../regime/regimeCalculations.js';
 
 /**
  * Compute Pearson correlation between two series.
