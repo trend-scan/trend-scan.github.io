@@ -32,6 +32,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchFactorWatch } from './scrapers/factorWatch.js';
+import { computeCryptoFactors } from './compute_crypto_factors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -505,7 +506,7 @@ async function main() {
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
   console.log('');
 
-  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch] = await Promise.all([
+  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch, cryptoFactors] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
@@ -514,6 +515,7 @@ async function main() {
     fetchTradfiSnapshot(),
     fetchFarsideETFFlows(),
     fetchFactorWatch(),
+    computeCryptoFactors(_prevSnapshot),
   ]);
 
   // If FRED data is empty (API failure), use previous snapshot's FRED data
@@ -565,8 +567,8 @@ async function main() {
   const generatedAt = new Date().toISOString();
 
   // Small snapshot — loaded by every page (FRED proxy, CoinGecko fallback,
-  // Fear&Greed, Ken French seasonality, CBOE put/call, ETF flows, FactorWatch).
-  // Keeping this lean is critical for first paint.
+  // Fear&Greed, Ken French seasonality, CBOE put/call, ETF flows, FactorWatch,
+  // crypto factors). Keeping this lean is critical for first paint.
   const snapshot = {
     generated_at: generatedAt,
     fred,
@@ -577,6 +579,8 @@ async function main() {
     etf_flows: etfFlows,
     factor_watch: factorWatch,
     factor_watch_history: factorWatchHistory,
+    crypto_factors: cryptoFactors?.factorData || null,
+    crypto_factor_history: cryptoFactors?.factorHistory || [],
   };
 
   // Large snapshot — only loaded when Board or Macro needs tradfi OHLCV.
@@ -600,6 +604,7 @@ async function main() {
   console.log(`  Tradfi OHLCV tickers:   ${Object.keys(tradfiOHLCV).length}`);
   console.log(`  ETF flow assets:        ${Object.keys(etfFlows).length} (BTC, ETH, SOL, HYPE)`);
   console.log(`  FactorWatch:            ${factorWatch ? '✓ populated' : 'null'} (history: ${factorWatchHistory.length} days)`);
+  console.log(`  Crypto factors:         ${cryptoFactors?.factorData ? '✓ populated' : 'null'} (history: ${cryptoFactors?.factorHistory?.length || 0} days)`);
   console.log(`  snapshot.json:          ${snapshotBytes.toLocaleString()} bytes`);
   console.log(`  snapshot.tradfi.json:   ${tradfiBytes.toLocaleString()} bytes`);
 

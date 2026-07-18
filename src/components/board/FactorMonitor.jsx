@@ -70,8 +70,68 @@ export default function FactorMonitor() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [snapshotLoaded, setSnapshotLoaded] = useState(false);
 
   const [hasLoaded, setHasLoaded] = useState(false);
+
+  // Phase 3: Load crypto factors from snapshot for instant first paint.
+  // The server computes factors every 8 hours and stores them in
+  // snapshot.json. This gives the user immediate data while the live
+  // fetch (manual trigger) runs in the background.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/snapshot.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(snap => {
+        if (cancelled || !snap?.crypto_factors) return;
+        const cf = snap.crypto_factors;
+        const history = snap.crypto_factor_history || [];
+        const confirmedRotation = detectRotation(history);
+
+        // Compute stances from snapshot spread data
+        const stances = {};
+        for (const row of (cf.spread_monitor || [])) {
+          const spread20d = row.spread_20d || {};
+          stances[row.factor] = computeFactorStance({
+            spreadZ: spread20d.z,
+            spreadPctile: spread20d.pctile,
+            rotation: confirmedRotation.currentLabel === row.factor ? confirmedRotation : null,
+            factorName: row.factor,
+          });
+        }
+
+        const primaryEntry = Object.entries(stances)
+          .sort(([,a], [,b]) => b.confidence - a.confidence)[0];
+
+        if (!cancelled) {
+          setData({
+            spreadMonitor: cf.spread_monitor || [],
+            rotation: {
+              leader_20d: cf.leader,
+              leader_held_days: cf.leader_held_days,
+              flipped_from: cf.previous_leader,
+              flip_flag: cf.flip_flag,
+              trailing_20d_returns: cf.trailing_20d_returns || {},
+            },
+            confirmedRotation,
+            crowding: null,  // Crowding needs live spread series — computed on live load
+            quilt: null,     // Quilt needs full candle data — computed on live load
+            stances,
+            primarySignal: primaryEntry ? {
+              factorName: primaryEntry[0],
+              stance: primaryEntry[1],
+              rotation: confirmedRotation,
+            } : null,
+            universeSize: cf.universe_size || 100,
+            q5Size: Math.floor((cf.universe_size || 100) / 5),
+            fromSnapshot: true,
+          });
+          setSnapshotLoaded(true);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!hasLoaded) return;  // Wait for manual trigger
@@ -150,11 +210,27 @@ export default function FactorMonitor() {
         const spreadSeries = extractSpreadSeries(portfoliosByFactor, candlesBySymbol, 90);
         const crowding = buildCrowdingMatrix(spreadSeries, 90);
 
-        // 8c. Persist factor leadership history and compute confirmed rotation
+        // 8c. Use server-side factor history from snapshot (Phase 3) — falls
+        // back to localStorage if snapshot history isn't available.
+        // The server-side history is shared across all visitors and persists
+        // across browser cache clears.
         const HISTORY_KEY = 'trendscan_crypto_factor_history';
         const today = new Date().toISOString().slice(0, 10);
-        let history = loadFactorHistory(HISTORY_KEY);
+
+        // Read server-side history from snapshot
+        let snapshotHistory = null;
+        try {
+          const snapRes = await fetch('/snapshot.json');
+          if (snapRes.ok) {
+            const snap = await snapRes.json();
+            snapshotHistory = snap?.crypto_factor_history || null;
+          }
+        } catch {}
+
+        // Prefer server-side history; fall back to localStorage
+        let history = snapshotHistory || loadFactorHistory(HISTORY_KEY);
         history = appendToHistory(history, today, snapshotRotation.leader_20d);
+        // Also update localStorage as a fallback
         saveFactorHistory(HISTORY_KEY, history);
         const confirmedRotation = detectRotation(history);
 
@@ -224,7 +300,7 @@ export default function FactorMonitor() {
     );
   }
 
-  if (!hasLoaded && !loading && !data) {
+  if (!hasLoaded && !loading && !data && !snapshotLoaded) {
     return (
       <div className="font-mono text-center py-12 px-5">
         <div className="text-3xl mb-4 opacity-30">◈</div>
@@ -293,15 +369,35 @@ export default function FactorMonitor() {
         <div>
           <div className="text-[10px] tracking-[0.15em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
             Crypto Factor Monitor
+            {data.fromSnapshot && (
+              <span className="ml-2 text-[8px] px-1.5 py-0.5 rounded" style={{
+                background: 'rgba(245,158,11,0.08)',
+                color: 'var(--scanner-accent)',
+                border: '1px solid rgba(245,158,11,0.2)',
+              }}>
+                snapshot
+              </span>
+            )}
           </div>
           <div className="text-[11px] mt-1" style={{ color: 'var(--scanner-text2)' }}>
             Quintile portfolios · top {universeSize} by mcap · Q5={q5Size} assets · monthly rebalance
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--scanner-text3)' }}>20D Leader</div>
-          <div className="text-[14px] font-bold capitalize" style={{ color: 'var(--scanner-accent)' }}>
-            {rotation.leader_20d || '—'}
+        <div className="flex items-center gap-3">
+          {!hasLoaded && (
+            <button
+              onClick={() => { setHasLoaded(true); setLoading(true); }}
+              className="font-mono text-[9px] font-bold tracking-wide px-3 py-1.5 rounded"
+              style={{ background: 'var(--scanner-bg2)', color: 'var(--scanner-text2)', border: '1px solid var(--scanner-border2)', cursor: 'pointer' }}
+            >
+              ▶ LIVE REFRESH
+            </button>
+          )}
+          <div className="text-right">
+            <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--scanner-text3)' }}>20D Leader</div>
+            <div className="text-[14px] font-bold capitalize" style={{ color: 'var(--scanner-accent)' }}>
+              {rotation.leader_20d || '—'}
+            </div>
           </div>
         </div>
       </div>
