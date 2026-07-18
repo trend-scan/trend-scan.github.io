@@ -23,6 +23,7 @@
 
 import { computeFactorScores, buildQuintilePortfolios, computeSpreadMonitor, detectFactorRotation } from '../src/lib/scanner/factorEngine.js';
 import { detectRotation, appendToHistory } from '../src/lib/factors/rotationDetector.js';
+import { buildCrowdingMatrix, extractSpreadSeries } from '../src/lib/factors/crowdingMatrix.js';
 import { fetchWithTimeout } from '../src/lib/scanner/fetchWithTimeout.js';
 
 const FACTORS = ['momentum', 'size', 'volatility', 'beta', 'liquidity'];
@@ -213,9 +214,52 @@ export async function computeCryptoFactors(prevSnapshot) {
   // 9. Compute confirmed rotation from history
   const confirmedRotation = detectRotation(factorHistory);
 
-  console.log(`  ✓ Crypto factors: ${universe.length} assets, leader=${rotation.leader_20d}, history=${factorHistory.length} days`);
+  // 10. Compute crowding matrix from live spread series
+  const spreadSeries = extractSpreadSeries(portfoliosByFactor, candlesBySymbol, 90);
+  const crowding = buildCrowdingMatrix(spreadSeries, 90);
 
-  // 10. Build compact snapshot data (don't store full candle data — too large)
+  // 11. Accumulate daily spread returns for server-side crowding history.
+  // Each day we store the latest Q5-Q1 spread return per factor. This builds
+  // a 90-day rolling series that can be used for correlation without needing
+  // a live candle fetch — the crowding matrix renders instantly from snapshot.
+  let spreadHistory = prevSnapshot?.crypto_factor_spread_history || [];
+  const todaySpread = { date: today };
+  for (const factor of FACTORS) {
+    const series = spreadSeries[factor] || [];
+    todaySpread[factor] = series.length > 0 ? series[series.length - 1] : null;
+  }
+  // Don't duplicate if today's entry already exists
+  if (spreadHistory.length === 0 || spreadHistory[spreadHistory.length - 1].date !== today) {
+    spreadHistory.push(todaySpread);
+    // Cap at 90 entries (matching the correlation window)
+    if (spreadHistory.length > 90) {
+      spreadHistory = spreadHistory.slice(-90);
+    }
+  }
+
+  // 12. Build crowding matrix from accumulated history (server-side)
+  // This gives us a 90-day correlation matrix without needing live candles
+  const historySpreadSeries = {};
+  for (const factor of FACTORS) {
+    historySpreadSeries[factor] = spreadHistory
+      .map(h => h[factor])
+      .filter(v => v != null && Number.isFinite(v));
+  }
+  const historyCrowding = buildCrowdingMatrix(historySpreadSeries, 90);
+
+  // 13. Compute factor stances using the crowding data
+  const stances = {};
+  for (const row of Object.values(spreadMonitor)) {
+    const spread20d = row.spread_20d || {};
+    stances[row.factor] = {
+      stance: computeStanceFromSpread(spread20d, confirmedRotation, historyCrowding.maxCorrelation(row.factor)),
+      factor: row.factor,
+    };
+  }
+
+  console.log(`  ✓ Crypto factors: ${universe.length} assets, leader=${rotation.leader_20d}, history=${factorHistory.length} days, spread_history=${spreadHistory.length} days`);
+
+  // 14. Build compact snapshot data (don't store full candle data — too large)
   const factorData = {
     timestamp: new Date().toISOString(),
     as_of: today,
@@ -235,10 +279,61 @@ export async function computeCryptoFactors(prevSnapshot) {
       spread_1d: row.spread_1d ? { ret: row.spread_1d.ret, z: row.spread_1d.z, pctile: row.spread_1d.pctile } : null,
       spread_60d: row.spread_60d ? { ret: row.spread_60d.ret, z: row.spread_60d.z, pctile: row.spread_60d.pctile } : null,
     })),
+    // Server-side crowding matrix (computed from 90-day accumulated history)
+    crowding: {
+      matrix: historyCrowding.matrix,
+      max_correlations: Object.fromEntries(
+        FACTORS.map(f => [f, historyCrowding.maxCorrelation(f)])
+      ),
+    },
+    // Server-side stances (computed from spread z + crowding + rotation)
+    stances,
   };
 
   return {
     factorData,
     factorHistory,
+    spreadHistory,
   };
+}
+
+/**
+ * Lightweight stance computation for server-side use.
+ * Mirrors computeFactorStance but without importing the full compositeEngine
+ * (which has React-incompatible import paths in some environments).
+ */
+function computeStanceFromSpread(spread20d, rotation, crowdingScore) {
+  const z = spread20d?.z ?? 0;
+  const absZ = Math.abs(z);
+  const crowded = (crowdingScore ?? 0) > 0.7;
+  const confirmed = rotation?.confirmed ?? false;
+
+  let stance, confidence;
+
+  if (absZ >= 2.0 && confirmed && !crowded) {
+    stance = 'CONSTRUCTIVE';
+    confidence = 7;
+  } else if (absZ >= 2.0 && confirmed && crowded) {
+    stance = 'SELECTIVE';
+    confidence = 5;
+  } else if (absZ >= 2.0 && !confirmed) {
+    stance = 'WAIT';
+    confidence = 3;
+  } else if (absZ >= 1.0 && confirmed) {
+    stance = 'SELECTIVE';
+    confidence = 5;
+  } else if (absZ >= 2.0 && z < 0) {
+    stance = 'DEFENSIVE';
+    confidence = 6;
+  } else {
+    stance = 'WAIT';
+    confidence = 2;
+  }
+
+  if (crowded && stance === 'CONSTRUCTIVE') {
+    stance = 'SELECTIVE';
+    confidence = Math.min(confidence, 5);
+  }
+
+  return { stance, confidence, crowdingScore };
 }

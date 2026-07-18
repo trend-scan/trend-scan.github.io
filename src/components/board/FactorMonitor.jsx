@@ -88,16 +88,50 @@ export default function FactorMonitor() {
         const history = snap.crypto_factor_history || [];
         const confirmedRotation = detectRotation(history);
 
-        // Compute stances from snapshot spread data
-        const stances = {};
-        for (const row of (cf.spread_monitor || [])) {
-          const spread20d = row.spread_20d || {};
-          stances[row.factor] = computeFactorStance({
-            spreadZ: spread20d.z,
-            spreadPctile: spread20d.pctile,
-            rotation: confirmedRotation.currentLabel === row.factor ? confirmedRotation : null,
-            factorName: row.factor,
-          });
+        // Use server-side crowding if available, otherwise compute from snapshot
+        const serverCrowding = cf.crowding;
+        const crowdingAdapter = serverCrowding ? {
+          matrix: serverCrowding.matrix,
+          maxCorrelation: (factor) => serverCrowding.max_correlations?.[factor] ?? 0,
+          avgCorrelation: (factor) => {
+            const row = serverCrowding.matrix?.[factor] || {};
+            let sum = 0, count = 0;
+            for (const [other, corr] of Object.entries(row)) {
+              if (other === factor) continue;
+              sum += Math.abs(corr);
+              count++;
+            }
+            return count > 0 ? sum / count : 0;
+          },
+        } : null;
+
+        // Use server-side stances if available, otherwise compute client-side
+        let stances = {};
+        if (cf.stances) {
+          // Server computed stances — recompute with full stance object
+          for (const row of (cf.spread_monitor || [])) {
+            const spread20d = row.spread_20d || {};
+            const serverStance = cf.stances[row.factor];
+            stances[row.factor] = computeFactorStance({
+              spreadZ: spread20d.z,
+              spreadPctile: spread20d.pctile,
+              rotation: confirmedRotation.currentLabel === row.factor ? confirmedRotation : null,
+              crowdingScore: serverCrowding?.max_correlations?.[row.factor],
+              factorName: row.factor,
+            });
+          }
+        } else {
+          // Fallback: compute from snapshot spread data
+          for (const row of (cf.spread_monitor || [])) {
+            const spread20d = row.spread_20d || {};
+            stances[row.factor] = computeFactorStance({
+              spreadZ: spread20d.z,
+              spreadPctile: spread20d.pctile,
+              rotation: confirmedRotation.currentLabel === row.factor ? confirmedRotation : null,
+              crowdingScore: serverCrowding?.max_correlations?.[row.factor],
+              factorName: row.factor,
+            });
+          }
         }
 
         const primaryEntry = Object.entries(stances)
@@ -114,8 +148,8 @@ export default function FactorMonitor() {
               trailing_20d_returns: cf.trailing_20d_returns || {},
             },
             confirmedRotation,
-            crowding: null,  // Crowding needs live spread series — computed on live load
-            quilt: null,     // Quilt needs full candle data — computed on live load
+            crowding: crowdingAdapter,  // Server-side crowding from 90-day history
+            quilt: null,                // Quilt needs full candle data — computed on live load
             stances,
             primarySignal: primaryEntry ? {
               factorName: primaryEntry[0],

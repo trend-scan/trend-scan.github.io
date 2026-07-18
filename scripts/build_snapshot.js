@@ -581,6 +581,7 @@ async function main() {
     factor_watch_history: factorWatchHistory,
     crypto_factors: cryptoFactors?.factorData || null,
     crypto_factor_history: cryptoFactors?.factorHistory || [],
+    crypto_factor_spread_history: cryptoFactors?.spreadHistory || [],
   };
 
   // Large snapshot — only loaded when Board or Macro needs tradfi OHLCV.
