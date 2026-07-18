@@ -270,7 +270,7 @@ async function fetchKrakenTradCandles(symbol, limit = 300) {
 }
 
 async function fetchTradfiCandles(symbol, limit = 300) {
-  // Fast path: Lighter (no rate limit, ~95 tickers)
+  // Fast path: Lighter (no rate limit, ~95 tickers with known market IDs)
   const s = symbol.toUpperCase();
   if (LIGHTER_MARKET_IDS[s]) {
     const candles = await fetchLighterCandles(symbol, limit);
@@ -281,14 +281,15 @@ async function fetchTradfiCandles(symbol, limit = 300) {
   let okxCandles = await fetchOkxTradfiCandles(symbol, limit);
   if (okxCandles && okxCandles.length >= 5) return okxCandles;
 
-  // Kraken (no rate limit, 11 tickers)
-  let krakenCandles = await fetchKrakenTradCandles(symbol, limit);
-  if (krakenCandles && krakenCandles.length >= 5) return krakenCandles;
-
-  // Yahoo Finance via Cloudflare Worker (no rate limit, ALL US stocks/ETFs)
-  // Only available if the proxy URL is configured — see cloudflare/yahoo-proxy-worker.js
+  // Yahoo Finance via Cloudflare Worker — this is the PRIMARY source for the
+  // ~280 tickers not on Lighter/OKX. Moved up from 4th position to 3rd.
+  // No rate limits, covers ALL US stocks/ETFs, CORS-enabled via proxy.
   let yahooCandles = await fetchYahooProxyCandles(symbol, limit);
   if (yahooCandles && yahooCandles.length >= 5) return yahooCandles;
+
+  // Kraken (no rate limit, 11 tickers — rarely useful but free)
+  let krakenCandles = await fetchKrakenTradCandles(symbol, limit);
+  if (krakenCandles && krakenCandles.length >= 5) return krakenCandles;
 
   // Massive/Polygon (rate limited ~5 req/min on free tier — has cooldown)
   if (Date.now() >= _massiveRateLimitedUntil) {
@@ -296,7 +297,7 @@ async function fetchTradfiCandles(symbol, limit = 300) {
     if (massiveCandles && massiveCandles.length >= 5) return massiveCandles;
   }
 
-  // Twelve Data (rate limited 8 req/min, 800/day — last resort)
+  // Twelve Data (rate limited 8 req/min, 800/day — absolute last resort)
   if (_tdCreditsUsed < _tdCreditsLimit) {
     let tdCandles = await fetchTwelveDataCandles(symbol, limit);
     if (tdCandles && tdCandles.length >= 5) return tdCandles;
@@ -1013,10 +1014,11 @@ export async function fetchTradMarketData(onProgress, onPartialResults) {
     }
   });
 
-  // Concurrency: 8 workers. Rate-limited sources (Massive ~5/min, TD ~8/min)
-  // handle their own throttling via cooldown checks. Free sources (Lighter,
-  // OKX, Kraken) have no limits and will resolve instantly.
-  await fetchWithPool(tasks, 8);
+  // Concurrency: 12 workers. The Yahoo Worker proxy has no rate limit and
+  // handles the bulk of tickers. With 12 workers, 374 tickers at ~0.3s each
+  // = ~10 seconds total. Rate-limited sources (Massive, TD) are only hit
+  // as fallbacks and handle their own throttling.
+  await fetchWithPool(tasks, 12);
 
   return buildTradResult(rawResults, sourceTracker);
 }

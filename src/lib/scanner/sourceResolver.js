@@ -77,21 +77,26 @@ const CRYPTO_SOURCES = [
 ];
 
 // ─── Tradfi sources (in priority order) ─────────────────────────────────────
-// Massive/Polygon has the broadest tradfi coverage (all US stocks, ETFs, forex,
-// commodities, indices) — preferred when API key is configured.
+// Yahoo Finance Worker is the primary source for ALL tradfi tickers — it has
+// no rate limits, covers every US stock/ETF, and is CORS-enabled via the proxy.
+// Lighter and OKX are tried first for tickers they support (faster response),
+// but Yahoo is the workhorse for the long tail.
 const TRADFI_SOURCES = [
-  // OKX SWAP perps for the 7 most liquid names (no auth needed, high liquidity)
+  // Lighter for tickers it supports (fast, no rate limit, ~95 tradfi markets)
+  // Has supports() check via LIGHTER_MARKET_IDS — only matches ~95 of 374 tickers
+  { id: 'lighter',         tier: 1, fetch: lighter.fetchCandles },
+  // OKX SWAP perps for the 16 most liquid names (no auth, high liquidity)
   { id: 'okx_swap',        tier: 1, fetch: okxTradfi.fetchCandles,
     supports: (s) => OKX_TRADFI.has(s.toUpperCase()) },
-  // Lighter for everything else (214-market universe — stocks, ETFs, FX, commodities)
-  // No supports() check — try for ALL tradfi symbols. fetchCandles returns null
-  // if the symbol isn't found, and the resolver falls through to the next source.
-  { id: 'lighter',         tier: 1, fetch: lighter.fetchCandles },
+  // Yahoo Finance via Cloudflare Worker — unlimited rate, ALL US stocks/ETFs
+  // This is the primary source for the ~280 tickers not on Lighter/OKX.
+  // Placed at tier 1 (same as Lighter/OKX) so it's tried immediately after them.
+  { id: 'yahoo_proxy',     tier: 1, fetch: yahooCrypto.fetchCandles,
+    bestFor: ['1D','1w','1W'] },
   // Binance xStocks (NVDA/TSLA backup)
   { id: 'binance_xstocks', tier: 2, fetch: binanceXStocks.fetchCandles,
     supports: (s) => binanceXStocks.isTradfi?.(s) ?? false },
   // Massive/Polygon free tier — limited (only /prev works reliably for most assets)
-  // Keep as last resort; useful for tickers not on any exchange (obscure stocks/ETFs)
   { id: 'massive',         tier: 3, fetch: massive.fetchCandles,
     supports: () => massive.isConfigured() },
 ];
@@ -182,10 +187,14 @@ export async function fetchCandles(symbol, opts = {}) {
 
   for (const src of candidates) {
     try {
-      // 8-second timeout per source to prevent hanging
+      // 5-second timeout per source. Most exchanges respond in <1s; 5s is
+      // generous enough for occasional latency but prevents slow sources
+      // from blocking the pool. With 10 workers and 5s max per source,
+      // worst case is 378 * 5 * 7sources / 10workers ≈ 22 min, but in
+      // practice most symbols resolve in <2s from the first source.
       const fetchPromise = src.fetch(symbol, timeframe, limit);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 8000)
+        setTimeout(() => reject(new Error('timeout')), 5000)
       );
       const candles = await Promise.race([fetchPromise, timeoutPromise]);
       if (candles && candles.length >= 5) {

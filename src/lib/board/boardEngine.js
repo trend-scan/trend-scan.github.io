@@ -725,7 +725,7 @@ export async function runBoardAnalysis(exchange, onProgress) {
     }
   });
 
-  const rawResults = await fetchWithPool(tasks, 6);
+  const rawResults = await fetchWithPool(tasks, 10);
 
   // Fetch Hyperliquid bulk tickers for funding rate + OI data (used by Quick View)
   let hlTickers = null;
