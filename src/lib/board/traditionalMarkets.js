@@ -1027,16 +1027,79 @@ async function fetchWithPool(tasks, concurrency = 5) {
 }
 
 // ── Main Entry Point ──────────────────────────────────────────────────────────
-export async function fetchTradMarketData(onProgress, onPartialResults) {
+
+/**
+ * Fetch live tradfi market data.
+ *
+ * @param {function} [onProgress] - called with {done, total} as assets complete
+ * @param {function} [onPartialResults] - called with partial tradData every 10 assets
+ * @param {object} [existingData] - existing tradData (from snapshot) to seed
+ *   rawResults so assets not yet refreshed retain their snapshot metrics.
+ *   This prevents the "clear and refill" problem where all data disappears
+ *   during a refresh and slowly reappears.
+ * @returns {Promise<object>} complete tradData result
+ */
+export async function fetchTradMarketData(onProgress, onPartialResults, existingData) {
   const assets = TRAD_UNIVERSE;
   onProgress?.({ done: 0, total: assets.length });
 
   let done = 0;
-  const sourceTracker = {};  // symbol → source id (for UI display)
-  const rawResults = [];
+  const sourceTracker = {};
 
-  // Sort assets: Lighter tickers first (fastest), then non-Lighter (slower)
+  // ── Seed rawResults with existing data (snapshot or previous live) ───────
+  // Build a map of symbol → {asset, metrics, source} from existingData so we
+  // can look up by symbol. This ensures every asset starts with its existing
+  // metrics and only gets overwritten when fresh live data arrives.
+  const existingMap = new Map();
+  if (existingData?.assets) {
+    for (const a of existingData.assets) {
+      existingMap.set(a.symbol, {
+        asset: { symbol: a.symbol, name: a.name, category: a.category, subtheme: a.subtheme, tier: a.tier, type: a.type },
+        metrics: {
+          price: a.price, ma20: a.ma20, ma50: a.ma50, ma200: a.ma200,
+          ret1d: a.ret1d, ret5d: a.ret5d, ret20d: a.ret20d, ret60d: a.ret60d,
+          above20: a.above20, above50: a.above50, above200: a.above200,
+          distMa20: a.distMa20, distMa50: a.distMa50, distMa200: a.distMa200,
+          atr14: a.atr14, atrExt50ma: a.atrExt50ma, volRatio: a.volRatio,
+          adrPct: a.adrPct, trendTenure: a.trendTenure,
+          high52w: a.high52w, low52w: a.low52w, pctFrom52wHigh: a.pctFrom52wHigh,
+          rsi14: a.rsi14, sparkline: a.sparkline, rs_qqq_20d: a.rs_qqq_20d,
+        },
+        source: a.source || 'snapshot',
+      });
+    }
+  }
+
+  // Seed rawResults with existing data for ALL assets — not just the ones
+  // in existingData.assets. For assets without existing data, push a
+  // null-metrics placeholder so the array is pre-sized correctly.
+  const rawResults = [];
+  const resultIndexBySymbol = new Map();  // symbol → index in rawResults
+
+  for (const asset of assets) {
+    const existing = existingMap.get(asset.symbol);
+    if (existing) {
+      resultIndexBySymbol.set(asset.symbol, rawResults.length);
+      rawResults.push(existing);
+      if (existing.source !== 'snapshot') {
+        sourceTracker[asset.symbol] = existing.source;
+      }
+    } else {
+      resultIndexBySymbol.set(asset.symbol, rawResults.length);
+      rawResults.push({ asset, metrics: null, source: 'none' });
+    }
+  }
+
+  // ── Sort assets for fetching: Lighter first, then by whether existing ────
+  // Prioritize assets that DON'T have existing data (so gaps fill first),
+  // then Lighter tickers (fastest), then the rest.
   const sortedAssets = [...assets].sort((a, b) => {
+    const aExisting = existingMap.has(a.symbol);
+    const bExisting = existingMap.has(b.symbol);
+    // Fetch missing assets first
+    if (!aExisting && bExisting) return -1;
+    if (aExisting && !bExisting) return 1;
+    // Among same-priority, Lighter first
     const aLighter = !!LIGHTER_MARKET_IDS[a.symbol.toUpperCase()];
     const bLighter = !!LIGHTER_MARKET_IDS[b.symbol.toUpperCase()];
     if (aLighter && !bLighter) return -1;
@@ -1047,32 +1110,42 @@ export async function fetchTradMarketData(onProgress, onPartialResults) {
   const tasks = sortedAssets.map(asset => async () => {
     try {
       const candles = await fetchTradfiCandles(asset.symbol, 300);
-      // Determine which source actually returned the data
       let source = 'none';
       if (candles && candles.length >= 5) {
-        // Check which source returned by comparing response patterns
-        // Lighter candles have ts in milliseconds, Yahoo in seconds (already converted)
-        // OKX returns volCcy field. For simplicity, infer from LIGHTER_MARKET_IDS
-        // and fall back to 'yahoo' for the rest (the primary source for non-Lighter)
         source = LIGHTER_MARKET_IDS[asset.symbol.toUpperCase()] ? 'lighter' : 'yahoo';
       }
       done++;
       onProgress?.({ done, total: assets.length });
       if (source !== 'none') sourceTracker[asset.symbol] = source;
-      if (!candles || candles.length < 5) {
-        rawResults.push({ asset, metrics: null, source: 'none' });
-        return;
+
+      // Update the existing entry in-place rather than pushing a new one.
+      // This preserves all other assets' data while replacing this one.
+      const idx = resultIndexBySymbol.get(asset.symbol);
+      if (idx != null) {
+        if (!candles || candles.length < 5) {
+          // Keep existing metrics if live fetch failed — don't overwrite with null
+          if (rawResults[idx].metrics == null) {
+            rawResults[idx] = { asset, metrics: null, source: 'none' };
+          }
+          // If we already had metrics (from snapshot), keep them with source='snapshot'
+        } else {
+          rawResults[idx] = { asset, metrics: computeTradMetrics(candles), source };
+        }
       }
-      rawResults.push({ asset, metrics: computeTradMetrics(candles), source });
-      // Deliver partial results every 10 completed assets so the UI can update
+
+      // Deliver partial results every 10 completed assets
       if (onPartialResults && done % 10 === 0) {
-        onPartialResults(buildTradResult(rawResults, sourceTracker));
+        onPartialResults(buildTradResult([...rawResults], { ...sourceTracker }));
       }
     } catch (e) {
       done++;
       onProgress?.({ done, total: assets.length });
       console.warn(`[tradData] ${asset.symbol} failed:`, e.message);
-      rawResults.push({ asset, metrics: null, source: 'error' });
+      // Keep existing metrics on error — don't overwrite with null
+      const idx = resultIndexBySymbol.get(asset.symbol);
+      if (idx != null && rawResults[idx].metrics == null) {
+        rawResults[idx] = { asset, metrics: null, source: 'error' };
+      }
     }
   });
 

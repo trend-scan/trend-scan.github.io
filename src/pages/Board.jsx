@@ -92,12 +92,16 @@ export default function Board() {
   const runTradAnalysis = useCallback(async () => {
     setTradLoading(true);
     try {
+      // Pass existing tradData (snapshot or previous live) so the fetcher
+      // can seed rawResults with it — assets not yet refreshed retain
+      // their existing metrics instead of disappearing.
       const result = await fetchTradMarketData(
         undefined,
         (partial) => {
           setTradData(partial);
           setTradDataSource('live');
-        }
+        },
+        tradDataRef.current  // seed with existing data
       );
       setTradData(result);
       setTradDataSource('live');
