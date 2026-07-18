@@ -1,6 +1,28 @@
 import { fetchWithTimeout } from './fetchWithTimeout';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// ─── Geo-blocked error ───────────────────────────────────────────────────────
+// Custom Error subclass for HTTP 451 (geo-block) responses. Using a subclass
+// instead of attaching properties to a plain Error keeps TypeScript happy
+// (TS's built-in Error type doesn't allow arbitrary properties) and gives
+// callers a clean way to distinguish geo-blocks from other failures:
+//
+//   try { ... } catch (e) {
+//     if (e instanceof GeoBlockedError) {
+//       showBanner(`${e.sourceId} is geo-blocked. Enable VPN or use Auto mode.`);
+//     }
+//   }
+//
+// Exported so the Board UI / Scanner can instanceof-check caught errors.
+export class GeoBlockedError extends Error {
+  constructor(message, sourceId) {
+    super(message);
+    this.name = 'GeoBlockedError';
+    this.code = 'GEO_BLOCKED';
+    this.sourceId = sourceId;
+  }
+}
+
 // How many candles make up one "day" for each timeframe
 export const CANDLES_PER_DAY = {
   '15m': 96,
@@ -200,10 +222,10 @@ async function fetchBinanceCandles(symbol, timeframe = '4H', limit = 500) {
     // "Binance is geo-blocked in your region — use Auto or pick another source"
     // instead of silently returning null and looking like a fetch failure.
     if (res.status === 451) {
-      const err = new Error(`Binance is geo-blocked in your region (HTTP 451). Use Auto mode or pick another source.`);
-      err.code = 'GEO_BLOCKED';
-      err.sourceId = 'binance';
-      throw err;
+      throw new GeoBlockedError(
+        `Binance is geo-blocked in your region (HTTP 451). Use Auto mode or pick another source.`,
+        'binance'
+      );
     }
     return null;
   }
@@ -227,10 +249,10 @@ async function fetchBinancePerpsCandles(symbol, timeframe = '4H', limit = 500) {
   const res = await fetchWithTimeout(url);
   if (!res.ok) {
     if (res.status === 451) {
-      const err = new Error(`Binance Perps is geo-blocked in your region (HTTP 451). Use Auto mode or pick another source.`);
-      err.code = 'GEO_BLOCKED';
-      err.sourceId = 'binance_perps';
-      throw err;
+      throw new GeoBlockedError(
+        `Binance Perps is geo-blocked in your region (HTTP 451). Use Auto mode or pick another source.`,
+        'binance_perps'
+      );
     }
     return null;
   }
