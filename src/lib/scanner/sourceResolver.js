@@ -50,19 +50,20 @@ function classifySymbol(symbol) {
 // supports() checks but they use a cached universe (fetched once, then
 // served from memory). Yahoo has no supports() check — it tries everything.
 const CRYPTO_SOURCES = [
+  // Tier 1: Fast, no geo-blocks, broad coverage — raced in parallel (top 3)
   { id: 'okx_perps',     tier: 1, fetch: okxCrypto.fetchCandles,     bestFor: ['all'] },
-  { id: 'hyperliquid',   tier: 1, fetch: hyperliquid.fetchCandles,   bestFor: ['15m','30m','1H','4H','1w'] },
-  { id: 'bybit',         tier: 2, fetch: bybit.fetchCandles,         bestFor: ['all'] },
+  { id: 'bybit',         tier: 1, fetch: bybit.fetchCandles,         bestFor: ['all'] },
+  { id: 'yahoo_crypto',  tier: 1, fetch: yahooCrypto.fetchCandles,   bestFor: ['1D','1w','1W'] },
+  // Tier 2: Tried sequentially if all tier-1 fail
+  { id: 'hyperliquid',   tier: 2, fetch: hyperliquid.fetchCandles,   bestFor: ['15m','30m','1H','4H','1w'] },
   { id: 'binance_spot',  tier: 2, fetch: binanceSpot.fetchCandles,
     supports: async (s) => binanceSpot.isSupported(s),
     bestFor: ['all'] },
   { id: 'binance_perps', tier: 2, fetch: binancePerps.fetchCandles,
     supports: async (s) => binancePerps.isSupported(s),
     bestFor: ['all'] },
-  { id: 'yahoo_crypto',  tier: 3, fetch: yahooCrypto.fetchCandles,
-    bestFor: ['1D','1w','1W'] },
-  { id: 'coingecko',     tier: 4, fetch: coingecko.fetchCandles,     bestFor: ['1D','1w'] },
-  { id: 'massive',       tier: 5, fetch: massive.fetchCandles,       bestFor: ['1D'],
+  { id: 'coingecko',     tier: 3, fetch: coingecko.fetchCandles,     bestFor: ['1D','1w'] },
+  { id: 'massive',       tier: 4, fetch: massive.fetchCandles,       bestFor: ['1D'],
     supports: () => massive.isConfigured() },
 ];
 
@@ -193,16 +194,30 @@ export async function fetchCandles(symbol, opts = {}) {
   // workers = 55s of wasted timeout waiting.
 
   if (candidates.length > 0) {
-    const racePromises = candidates.map(src => {
+    // Race only the TOP 3 sources by tier (not all 7+).
+    // Racing all sources simultaneously causes browser connection
+    // exhaustion: 10 workers × 7 sources = 70 concurrent requests,
+    // but browsers limit to 6 connections per host. Requests queue
+    // up and timeout, causing cascade failures.
+    //
+    // By racing only the top 3 (e.g. OKX, HL, Bybit for crypto;
+    // Lighter, OKX, Yahoo for tradfi), we keep concurrent requests
+    // manageable: 10 × 3 = 30, with most resolving in <0.5s so
+    // connections are freed quickly.
+    //
+    // If all top 3 fail, fall through to the remaining sources
+    // sequentially (they're the fallback path).
+    const topSources = candidates.slice(0, 3);
+    const remainingSources = candidates.slice(3);
+
+    const racePromises = topSources.map(src => {
       const fetchP = src.fetch(symbol, timeframe, limit).then(candles => {
         if (candles && candles.length >= 5) {
           return { source: src.id, candles };
         }
-        // Return a rejected promise so Promise.any skips it
         throw new Error('no data');
       }).catch(() => { throw new Error('fetch failed'); });
 
-      // 5s timeout — also rejects so Promise.any skips it
       const timeoutP = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 5000)
       );
@@ -214,15 +229,28 @@ export async function fetchCandles(symbol, opts = {}) {
     });
 
     try {
-      // Promise.any returns the first fulfilled promise — no waiting
-      // for the others to complete. If a source returns in 0.3s, we
-      // get the result immediately even if other sources are still
-      // pending or will eventually timeout.
       const winner = await Promise.any(racePromises);
       return winner;
     } catch {
-      // All sources failed — fall through to return null
-      // (AggregateError from Promise.any when all reject)
+      // All top sources failed — try remaining sources sequentially
+    }
+
+    // Sequential fallback for remaining sources
+    for (const src of remainingSources) {
+      try {
+        const fetchPromise = src.fetch(symbol, timeframe, limit);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 5000)
+        );
+        const candles = await Promise.race([fetchPromise, timeoutPromise]);
+        if (candles && candles.length >= 5) {
+          recordSuccess(src.id, symbol);
+          return { source: src.id, candles };
+        }
+        recordFailure(src.id, symbol);
+      } catch (e) {
+        recordFailure(src.id, symbol);
+      }
     }
   }
 

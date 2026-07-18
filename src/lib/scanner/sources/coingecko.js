@@ -205,30 +205,35 @@ const SYMBOL_TO_ID = {
 };
 
 let _idCache = null;
+let _idMapPromise = null;  // deduplicates concurrent loadIdMap() calls
 
 async function loadIdMap() {
   if (_idCache) return _idCache;
-  try {
-    const res = await fetchWithTimeout(`${BASE}/coins/list`);
-    if (!res.ok) {
-      // Don't cache on failure — return fallback without setting _idCache
-      // so the next call can retry
+  // If a fetch is already in progress, wait for it instead of starting another
+  if (_idMapPromise) return _idMapPromise;
+
+  _idMapPromise = (async () => {
+    try {
+      const res = await fetchWithTimeout(`${BASE}/coins/list`);
+      if (!res.ok) {
+        return SYMBOL_TO_ID;
+      }
+      const list = await res.json();
+      const apiMap = {};
+      for (const c of list) {
+        const sym = c.symbol.toUpperCase();
+        if (!apiMap[sym]) apiMap[sym] = c.id;
+      }
+      _idCache = { ...apiMap, ...SYMBOL_TO_ID };
+      return _idCache;
+    } catch {
       return SYMBOL_TO_ID;
+    } finally {
+      _idMapPromise = null;
     }
-    const list = await res.json();
-    const apiMap = {};
-    // Pick the first match per symbol (CoinGecko lists multiple per symbol)
-    for (const c of list) {
-      const sym = c.symbol.toUpperCase();
-      if (!apiMap[sym]) apiMap[sym] = c.id;
-    }
-    // Cache the MERGED result (SYMBOL_TO_ID overrides take precedence)
-    _idCache = { ...apiMap, ...SYMBOL_TO_ID };
-    return _idCache;
-  } catch {
-    // Don't cache on error — allow retry
-    return SYMBOL_TO_ID;
-  }
+  })();
+
+  return _idMapPromise;
 }
 
 /**
