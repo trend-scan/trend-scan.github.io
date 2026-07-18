@@ -11,6 +11,8 @@ import AllocationPanel from '../components/regime/AllocationPanel';
 import SignalTable from '../components/regime/SignalTable';
 import MacroCharts from '../components/regime/MacroCharts';
 import ChangeBanner from '../components/regime/ChangeBanner';
+import MacroNarrativeBanner from '../components/regime/MacroNarrativeBanner';
+import CrossAssetDivergenceChart from '../components/regime/CrossAssetDivergenceChart';
 import { computeSeasonality, getCurrentMonthBaseline, formatSeasonalityBaseline } from '../lib/regime/seasonality';
 import { fetchAllRegimeData } from '../lib/regime/regimeSources';
 import {
@@ -389,6 +391,9 @@ export default function MacroRegime() {
         {/* Day-over-day change banner (shows what shifted since last visit) */}
         <ChangeBanner regime={regime} />
 
+        {/* FactorWatch narrative banner (shakeout / junk rally signals) */}
+        {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && <MacroNarrativeBanner />}
+
         {/* Data coverage notice */}
         {!regime?.fredAvailable && (
           <FredNotice
@@ -466,6 +471,13 @@ export default function MacroRegime() {
         <div className="mb-6">
           <MacroCharts regime={regime} />
         </div>
+
+        {/* FactorWatch Cross-Asset Divergence Chart */}
+        {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && (
+          <div className="mb-6">
+            <CrossAssetDivergenceChart />
+          </div>
+        )}
 
         {/* Seasonality Baselines (Ken French) */}
         {seasonality && (

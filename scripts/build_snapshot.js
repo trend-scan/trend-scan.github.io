@@ -31,6 +31,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { fetchFactorWatch } from './scrapers/factorWatch.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -504,7 +505,7 @@ async function main() {
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
   console.log('');
 
-  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows] = await Promise.all([
+  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
@@ -512,6 +513,7 @@ async function main() {
     fetchCBOEPutCall(),
     fetchTradfiSnapshot(),
     fetchFarsideETFFlows(),
+    fetchFactorWatch(),
   ]);
 
   // If FRED data is empty (API failure), use previous snapshot's FRED data
@@ -521,10 +523,49 @@ async function main() {
     fred = _prevSnapshot.fred;
   }
 
+  // If FactorWatch scrape failed, fall back to previous snapshot's data
+  // (if it's from today). If stale, leave as null — UI degrades gracefully.
+  if (!factorWatch && _prevSnapshot?.factor_watch) {
+    const prevAge = Date.now() - new Date(_prevSnapshot.factor_watch.timestamp).getTime();
+    if (prevAge < 24 * 60 * 60 * 1000) {
+      console.log('  ⚠ FactorWatch scrape failed — using previous snapshot (stale but <24h)');
+      factorWatch = _prevSnapshot.factor_watch;
+    } else {
+      console.log('  ⚠ FactorWatch scrape failed and previous data is >24h old — setting to null');
+    }
+  }
+
+  // Accumulate FactorWatch history for the CrossAssetDivergenceChart.
+  // Append today's data point (if not already present for this date),
+  // cap at 90 entries. This enables a 90-day time series chart.
+  let factorWatchHistory = _prevSnapshot?.factor_watch_history || [];
+  if (factorWatch?.sp500?.factors?.momentum && factorWatch?.fw3000?.factors?.momentum) {
+    const today = factorWatch.as_of || new Date().toISOString().slice(0, 10);
+    const sp500Mom5dSigma = factorWatch.sp500.factors.momentum['5d_sigma'];
+    const fw3000Mom5dSigma = factorWatch.fw3000.factors.momentum['5d_sigma'];
+    const sp500Mom20dSigma = factorWatch.sp500.factors.momentum['20d_sigma'];
+    const fw3000Mom20dSigma = factorWatch.fw3000.factors.momentum['20d_sigma'];
+
+    // Don't duplicate if today's entry already exists
+    if (!factorWatchHistory.find(h => h.date === today)) {
+      factorWatchHistory.push({
+        date: today,
+        sp500_mom_5d_sigma: sp500Mom5dSigma,
+        fw3000_mom_5d_sigma: fw3000Mom5dSigma,
+        sp500_mom_20d_sigma: sp500Mom20dSigma,
+        fw3000_mom_20d_sigma: fw3000Mom20dSigma,
+      });
+      // Cap at 90 entries
+      if (factorWatchHistory.length > 90) {
+        factorWatchHistory = factorWatchHistory.slice(-90);
+      }
+    }
+  }
+
   const generatedAt = new Date().toISOString();
 
   // Small snapshot — loaded by every page (FRED proxy, CoinGecko fallback,
-  // Fear&Greed, Ken French seasonality, CBOE put/call, ETF flows).
+  // Fear&Greed, Ken French seasonality, CBOE put/call, ETF flows, FactorWatch).
   // Keeping this lean is critical for first paint.
   const snapshot = {
     generated_at: generatedAt,
@@ -534,6 +575,8 @@ async function main() {
     ken_french: kenFrench,
     cboe_put_call: cboe,
     etf_flows: etfFlows,
+    factor_watch: factorWatch,
+    factor_watch_history: factorWatchHistory,
   };
 
   // Large snapshot — only loaded when Board or Macro needs tradfi OHLCV.
@@ -556,6 +599,7 @@ async function main() {
   console.log(`  Ken French months:      ${kenFrench.length}`);
   console.log(`  Tradfi OHLCV tickers:   ${Object.keys(tradfiOHLCV).length}`);
   console.log(`  ETF flow assets:        ${Object.keys(etfFlows).length} (BTC, ETH, SOL, HYPE)`);
+  console.log(`  FactorWatch:            ${factorWatch ? '✓ populated' : 'null'} (history: ${factorWatchHistory.length} days)`);
   console.log(`  snapshot.json:          ${snapshotBytes.toLocaleString()} bytes`);
   console.log(`  snapshot.tradfi.json:   ${tradfiBytes.toLocaleString()} bytes`);
 

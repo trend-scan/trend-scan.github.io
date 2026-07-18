@@ -17,6 +17,11 @@ interface ImportMetaEnv {
   // See cloudflare/yahoo-proxy-worker.js. If unset, falls back to the
   // hardcoded worker URL below (acceptable — not a secret).
   readonly VITE_YAHOO_PROXY_URL?: string;
+  // Feature flag for FactorWatch integration. Set to 'true' in GitHub Actions
+  // secrets to enable the TradFi factor signals, narrative banner, divergence
+  // chart, and revision arbitrage table. Defaults to off — all FactorWatch
+  // UI components check this flag and render nothing when it's not 'true'.
+  readonly VITE_ENABLE_FACTORWATCH?: string;
 }
 
 interface ImportMeta {

@@ -13,6 +13,8 @@ import React, { useState, useEffect } from 'react';
 import { computeFactorScores, buildQuintilePortfolios, computeSpreadMonitor, detectFactorRotation } from '@/lib/scanner/factorEngine';
 import { fetchCandlesBatch } from '@/lib/scanner/sourceResolver';
 import { fetchMarketData } from '@/lib/scanner/sources/coingecko';
+import TradFiThematicProxy from './TradFiThematicProxy';
+import RevisionArbitrageTable from './RevisionArbitrageTable';
 
 const HORIZONS = [
   { days: 1,  label: '1D' },
@@ -220,6 +222,9 @@ export default function FactorMonitor() {
 
   return (
     <div className="font-mono px-5 md:px-8 py-5 space-y-5">
+      {/* FactorWatch TradFi Thematic Proxies (above crypto board) */}
+      {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && <TradFiThematicProxy />}
+
       {/* Header strip */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -337,6 +342,9 @@ export default function FactorMonitor() {
         |z| ≥ 2 highlighted · Factor scores winsorized at 2.5%/97.5% then z-scored ·
         Inspired by <a href="https://factorwatch.ai/methodology.html" target="_blank" rel="noopener" style={{ color: 'var(--scanner-accent)' }}>factorwatch.ai</a>
       </div>
+
+      {/* FactorWatch Revision Arbitrage Table (below crypto board) */}
+      {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && <RevisionArbitrageTable />}
     </div>
   );
 }

@@ -89,6 +89,10 @@ jobs:
           VITE_ALPHAVANTAGE_KEY: ${{ secrets.VITE_ALPHAVANTAGE_KEY }}
           VITE_TWELVEDATA_KEY: ${{ secrets.VITE_TWELVEDATA_KEY }}
           VITE_YAHOO_PROXY_URL: ${{ secrets.VITE_YAHOO_PROXY_URL }}
+          # FactorWatch feature flag — set to 'true' to enable TradFi factor
+          # signals, narrative banner, divergence chart, and revision table.
+          # Defaults to off — components render nothing when not 'true'.
+          VITE_ENABLE_FACTORWATCH: ${{ secrets.VITE_ENABLE_FACTORWATCH }}
         run: npm run build
 
       - name: Copy snapshot files into build output
