@@ -161,7 +161,9 @@ export default function QuickViewBar({ quickView }) {
             <div className="flex items-center gap-1.5">
               <span className="text-[8px] font-bold" style={{ color: 'var(--scanner-text3)' }}>#{i+1}</span>
               <span className="text-[10px] font-bold" style={{ color: 'var(--scanner-text)' }}>{t.symbol}</span>
-              {t.direction === 'up' ? '▲' : '▼'}
+              <span style={{ color: t.direction === 'up' ? 'var(--scanner-green)' : 'var(--scanner-red)' }}>
+                {t.direction === 'up' ? '▲' : '▼'}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] tabular-nums" style={{ color: 'var(--scanner-text3)' }}>
