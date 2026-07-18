@@ -5,12 +5,17 @@
  * so both FactorWatch (TradFi) and self-computed (crypto) factors speak the
  * same signal language: CONSTRUCTIVE / SELECTIVE / DEFENSIVE / WAIT.
  *
+ * Phase 3 update: Now reads factor_watch_leader_history from the snapshot
+ * to compute real rotation detection (3-session confirm). Previously
+ * passed rotation: null which made all stances always resolve to WAIT.
+ *
  * The legacy boolean signals (isShakeout, isJunkRally) are retained for
  * backward compatibility with MacroNarrativeBanner, but are now derived
  * from the unified stance output rather than standalone heuristics.
  */
 
 import { computeFactorStance } from '../factors/compositeEngine';
+import { detectRotation } from '../factors/rotationDetector';
 
 export const SIGNAL_THRESHOLDS = {
   SHAKEOUT_MOM_SIGMA: -2.0,
@@ -22,13 +27,11 @@ export const SIGNAL_THRESHOLDS = {
 /**
  * Compute unified factor signals from FactorWatch data.
  *
- * Maps FactorWatch's equity factor data to the shared computeFactorStance
- * interface so TradFi and crypto factors use the same signal engine.
- *
  * @param {object|null} fwData - the factor_watch object from snapshot.json
+ * @param {Array} [leaderHistory] - factor_watch_leader_history from snapshot
  * @returns {object|null} unified signal state
  */
-export function computeFactorSignals(fwData) {
+export function computeFactorSignals(fwData, leaderHistory = []) {
   if (!fwData?.sp500?.factors?.momentum) return null;
 
   const spMom = fwData.sp500.factors.momentum;
@@ -47,20 +50,24 @@ export function computeFactorSignals(fwData) {
     else liquidityFunnel = 'BROAD_RISK_ON';
   }
 
+  // ── Rotation detection from server-side leader history ──────────────────
+  // Same pattern as crypto factors: detectRotation() uses 3-session confirm
+  // + 10-session fresh rule on the {date, leader} history.
+  const fwRotation = detectRotation(leaderHistory);
+
   // ── Unified stance via computeFactorStance ──────────────────────────────
   // Map FactorWatch data to the stance engine's inputs:
   //   spreadZ      = momentum 5d σ (the factor's z-scored spread)
   //   spreadPctile = approximated from σ (σ=2 ≈ 97th pctile, σ=-2 ≈ 3rd)
   //   confirmation = revision spread / 100 (normalized to 0-1 scale)
-  //                  +20% revision spread → 0.2 confirmation (moderate)
-  //                  +54% revision spread → 0.54 confirmation (strong)
+  //   rotation     = real rotation from server-side leader history
 
   const momentumStance = computeFactorStance({
     spreadZ: spMomSigma5d,
     spreadPctile: spMomSigma5d != null
       ? Math.max(0.5, Math.min(99.5, 50 + spMomSigma5d * 15))
       : 50,
-    rotation: null,  // FW rotation detection would need history — future work
+    rotation: fwRotation,
     crowdingScore: null,  // FW crowding would need cross-factor correlation
     confirmation: spMomRevSpread != null
       ? Math.max(0, Math.min(1, spMomRevSpread / 100))
@@ -74,7 +81,7 @@ export function computeFactorSignals(fwData) {
     spreadPctile: fwData.sp500.factors.size?.['5d_sigma'] != null
       ? Math.max(0.5, Math.min(99.5, 50 + fwData.sp500.factors.size['5d_sigma'] * 15))
       : 50,
-    rotation: null,
+    rotation: fwRotation,
     crowdingScore: null,
     confirmation: sizeRevSpread != null
       ? Math.max(0, Math.min(1, Math.abs(sizeRevSpread) / 100))
@@ -83,31 +90,24 @@ export function computeFactorSignals(fwData) {
   });
 
   // ── Legacy boolean signals (derived from unified stances) ───────────────
-  // Shakeout: momentum is flushing (negative σ) but analysts are still
-  // upgrading (positive revision spread). In stance terms: the factor is
-  // stretched negative but has strong confirmation → DEFENSIVE with caveat.
   const isShakeout = spMomSigma5d != null
     && spMomSigma5d <= SIGNAL_THRESHOLDS.SHAKEOUT_MOM_SIGMA
     && spMomRevSpread != null
     && spMomRevSpread >= SIGNAL_THRESHOLDS.SHAKEOUT_REV_SPREAD;
 
-  // Junk Rally: size revision spread is deeply negative (analysts upgrading
-  // laggards over leaders). In stance terms: size has negative confirmation
-  // → mean-reversion signal.
   const isJunkRally = sizeRevSpread != null
     && sizeRevSpread <= SIGNAL_THRESHOLDS.JUNK_RALLY_SIZE_SPREAD;
 
   return {
-    // Legacy boolean signals (backward compatible with MacroNarrativeBanner)
     isShakeout,
     isJunkRally,
     liquidityFunnel,
 
-    // Unified stances (new — speaks the same language as crypto factors)
+    // Unified stances (now with real rotation detection)
     momentumStance,
     sizeStance,
+    fwRotation,
 
-    // The primary signal to display (highest confidence)
     primaryStance: [momentumStance, sizeStance]
       .sort((a, b) => b.confidence - a.confidence)[0],
 

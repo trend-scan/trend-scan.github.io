@@ -551,6 +551,11 @@ async function main() {
   // Append today's data point (if not already present for this date),
   // cap at 90 entries. This enables a 90-day time series chart.
   let factorWatchHistory = _prevSnapshot?.factor_watch_history || [];
+  // Also accumulate FactorWatch factor leadership history for rotation detection.
+  // Tracks which factor leads by 20d return on the S&P 500 each day.
+  // Same pattern as crypto_factor_history — enables detectRotation() for TradFi.
+  let fwLeaderHistory = _prevSnapshot?.factor_watch_leader_history || [];
+
   if (factorWatch?.sp500?.factors?.momentum && factorWatch?.fw3000?.factors?.momentum) {
     const today = factorWatch.as_of || new Date().toISOString().slice(0, 10);
     const sp500Mom5dSigma = factorWatch.sp500.factors.momentum['5d_sigma'];
@@ -567,9 +572,30 @@ async function main() {
         sp500_mom_20d_sigma: sp500Mom20dSigma,
         fw3000_mom_20d_sigma: fw3000Mom20dSigma,
       });
-      // Cap at 90 entries
       if (factorWatchHistory.length > 90) {
         factorWatchHistory = factorWatchHistory.slice(-90);
+      }
+    }
+
+    // Determine today's FactorWatch leader: the factor with the highest
+    // 20d return on the S&P 500. This is the "leading factor" that
+    // detectRotation() tracks for 3-session confirmation.
+    if (!fwLeaderHistory.find(h => h.date === today)) {
+      const sp500Factors = factorWatch.sp500.factors || {};
+      let leader = null;
+      let leaderRet = -Infinity;
+      for (const [factorName, data] of Object.entries(sp500Factors)) {
+        const ret20d = data['20d_ret'];
+        if (ret20d != null && ret20d > leaderRet) {
+          leaderRet = ret20d;
+          leader = factorName;
+        }
+      }
+      if (leader) {
+        fwLeaderHistory.push({ date: today, leader });
+        if (fwLeaderHistory.length > 90) {
+          fwLeaderHistory = fwLeaderHistory.slice(-90);
+        }
       }
     }
   }
@@ -589,6 +615,7 @@ async function main() {
     etf_flows: etfFlows,
     factor_watch: factorWatch,
     factor_watch_history: factorWatchHistory,
+    factor_watch_leader_history: fwLeaderHistory,
     crypto_factors: cryptoFactors?.factorData || null,
     crypto_factor_history: cryptoFactors?.factorHistory || [],
     crypto_factor_spread_history: cryptoFactors?.spreadHistory || [],
