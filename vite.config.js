@@ -10,6 +10,14 @@ export default defineConfig(({ mode }) => {
     // Use 'info' in CI so bundle-size summaries are visible in workflow logs.
     // 'error' hides useful build output and makes size regressions invisible.
     logLevel: mode === 'production' ? 'info' : 'error',
+    // Explicitly define VITE_ENABLE_FACTORWATCH from process.env so GitHub
+    // Actions secrets are picked up at build time. Vite's loadEnv() only
+    // reads .env files, not process.env — this define bridges that gap.
+    define: {
+      'import.meta.env.VITE_ENABLE_FACTORWATCH': JSON.stringify(
+        process.env.VITE_ENABLE_FACTORWATCH || env.VITE_ENABLE_FACTORWATCH || ''
+      ),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
