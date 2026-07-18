@@ -63,9 +63,9 @@ async function _fetchCandlesForInst(instId, bar, limit) {
 /**
  * Fetch OHLC candles for a crypto symbol on OKX.
  *
- * Strategy: race SWAP (perps) and SPOT in parallel, take whichever returns
- * valid data first. Many smaller-cap tokens (LEO, KCS, NEXO, ZIG, etc.) are
- * only on spot — racing avoids waiting for SWAP to fail before trying SPOT.
+ * Strategy: try SWAP (perps) first — it's the fast path with most symbols.
+ * Only fall back to SPOT if SWAP returns nothing. This avoids making 2
+ * HTTP requests per symbol when 1 is sufficient, saving connection slots.
  *
  * @returns {Promise<Array<{ts,open,high,low,close,vol}>|null>}
  */
@@ -75,15 +75,21 @@ export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
 
   const bar = TIMEFRAME_BAR[timeframe] || '4H';
 
-  // Race SWAP and SPOT in parallel — whichever returns valid data first wins
-  const [perps, spot] = await Promise.all([
-    _fetchCandlesForInst(`${s}-USDT-SWAP`, bar, limit).catch(() => null),
-    _fetchCandlesForInst(`${s}-USDT`, bar, limit).catch(() => null),
-  ]);
+  // Try SWAP first (covers ~90% of symbols, fast)
+  try {
+    const perps = await _fetchCandlesForInst(`${s}-USDT-SWAP`, bar, limit);
+    if (perps && perps.length > 0) return perps;
+  } catch {
+    // SWAP failed — try SPOT
+  }
 
-  // Prefer perps (higher liquidity) if both returned
-  if (perps && perps.length > 0) return perps;
-  if (spot && spot.length > 0) return spot;
+  // Fall back to SPOT for tokens not listed as perps
+  try {
+    const spot = await _fetchCandlesForInst(`${s}-USDT`, bar, limit);
+    if (spot && spot.length > 0) return spot;
+  } catch {
+    // Both failed
+  }
 
   return null;
 }

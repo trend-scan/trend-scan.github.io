@@ -219,7 +219,7 @@ export async function fetchCandles(symbol, opts = {}) {
       }).catch(() => { throw new Error('fetch failed'); });
 
       const timeoutP = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 5000)
+        setTimeout(() => reject(new Error('timeout')), 4000)
       );
 
       return Promise.race([fetchP, timeoutP]).then(
@@ -240,7 +240,7 @@ export async function fetchCandles(symbol, opts = {}) {
       try {
         const fetchPromise = src.fetch(symbol, timeframe, limit);
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 5000)
+          setTimeout(() => reject(new Error('timeout')), 4000)
         );
         const candles = await Promise.race([fetchPromise, timeoutPromise]);
         if (candles && candles.length >= 5) {

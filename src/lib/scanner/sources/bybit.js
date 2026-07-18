@@ -33,22 +33,23 @@ const TIMEFRAME_INTERVAL = {
  */
 async function _fetchCandlesForCategory(symbol, interval, limit, category) {
   // Bybit uses 1000x/1000000x prefixes for low-priced tokens (same as Binance).
-  // Try the bare symbol first, then 1000X, then 1000000X.
+  // Try the bare symbol first, then 1000X, then 1000000X — but RACE them
+  // in parallel instead of sequentially to avoid wasting connection slots.
   const symUpper = symbol.toUpperCase();
   const candidates = [`${symUpper}USDT`];
-  // Only add prefixed variants if the bare symbol is short (likely low-priced token)
   if (symUpper.length <= 6) {
     candidates.push(`1000${symUpper}USDT`);
     candidates.push(`1000000${symUpper}USDT`);
   }
 
-  for (const sym of candidates) {
+  // Race all variants in parallel — first valid response wins
+  const results = await Promise.all(candidates.map(async sym => {
     const url = `${BASE}/kline?category=${category}&symbol=${sym}&interval=${interval}&limit=${Math.min(limit, 1000)}`;
     try {
       const res = await fetchWithTimeout(url);
-      if (!res.ok) continue;
+      if (!res.ok) return null;
       const d = await res.json();
-      if (d.retCode !== 0 || !d.result?.list?.length) continue;
+      if (d.retCode !== 0 || !d.result?.list?.length) return null;
 
       // Determine price multiplier if this is a 1000x/1000000x symbol
       let priceMultiplier = 1;
@@ -68,8 +69,13 @@ async function _fetchCandlesForCategory(symbol, interval, limit, category) {
       }));
       return candles;
     } catch {
-      continue;
+      return null;
     }
+  }));
+
+  // Return the first non-null result (bare symbol preferred via array order)
+  for (const result of results) {
+    if (result && result.length > 0) return result;
   }
   return null;
 }
