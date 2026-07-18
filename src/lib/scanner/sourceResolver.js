@@ -175,64 +175,55 @@ export async function fetchCandles(symbol, opts = {}) {
     return a.tier - b.tier;
   });
 
-  // ── Parallel fetch for tier-1 sources ────────────────────────────────────
-  // Instead of trying sources sequentially (OKX, then HL, then Bybit, etc.),
-  // race all tier-1 sources in parallel and take the first that returns.
-  // This eliminates the "wait for OKX to fail before trying HL" delay.
+  // ── Parallel fetch: race ALL sources simultaneously ──────────────────────
+  // Instead of racing tier-1 then falling through to tier-2 sequentially,
+  // race ALL candidate sources at once using Promise.any().
+  // This means:
+  //   - OKX returns in 0.3s for a symbol it has → done in 0.3s
+  //   - HL returns in 0.3s for a symbol OKX doesn't have → done in 0.3s
+  //   - Yahoo returns in 0.3s for a symbol neither has → done in 0.3s
+  //   - No waiting for timeouts on sources that don't have the symbol
   //
-  // For a symbol on HL but not OKX: was OKX_5s_timeout + HL_0.3s = 5.3s
-  // Now: max(OKX_5s_timeout, HL_0.3s) → HL wins at 0.3s. 17× faster.
+  // Promise.any() returns as soon as the FIRST promise resolves with a
+  // non-null value. Sources that fail or timeout are simply ignored.
+  // If ALL sources fail, we fall through to the null return.
   //
-  // If no tier-1 source returns within 5s, fall through to tier-2+ sources
-  // sequentially (these are fallbacks, not the hot path).
-  const tier1Sources = candidates.filter(s => s.tier === 1);
-  const fallbackSources = candidates.filter(s => s.tier > 1);
+  // This is the key fix: the old Promise.all() approach waited for ALL
+  // tier-1 sources to complete (including 5s timeouts) before trying
+  // tier-2. With 111 symbols needing tier-2, that's 111 × 5s / 10
+  // workers = 55s of wasted timeout waiting.
 
-  if (tier1Sources.length > 0) {
-    const racePromises = tier1Sources.map(src => {
+  if (candidates.length > 0) {
+    const racePromises = candidates.map(src => {
       const fetchP = src.fetch(symbol, timeframe, limit).then(candles => {
         if (candles && candles.length >= 5) {
-          return { source: src, candles };
+          return { source: src.id, candles };
         }
-        return null;
-      }).catch(() => null);
-      // 5s timeout per source
-      const timeoutP = new Promise(resolve => setTimeout(() => resolve(null), 5000));
-      return Promise.race([fetchP, timeoutP]).then(result => {
-        if (!result) recordFailure(src.id, symbol);
-        else recordSuccess(src.id, symbol);
-        return result;
-      });
-    });
+        // Return a rejected promise so Promise.any skips it
+        throw new Error('no data');
+      }).catch(() => { throw new Error('fetch failed'); });
 
-    const results = await Promise.all(racePromises);
-    const winner = results.find(r => r !== null);
-    if (winner) {
-      return { source: winner.source.id, candles: winner.candles };
-    }
-  }
-
-  // ── Sequential fallback for tier-2+ sources ──────────────────────────────
-  // These are backup sources (Binance, Yahoo, CoinGecko, Massive).
-  // Tried sequentially because they're the fallback path — the hot path
-  // (tier-1 parallel race) already failed.
-  for (const src of fallbackSources) {
-    try {
-      const fetchPromise = src.fetch(symbol, timeframe, limit);
-      const timeoutPromise = new Promise((_, reject) =>
+      // 5s timeout — also rejects so Promise.any skips it
+      const timeoutP = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 5000)
       );
-      const candles = await Promise.race([fetchPromise, timeoutPromise]);
-      if (candles && candles.length >= 5) {
-        recordSuccess(src.id, symbol);
-        return { source: src.id, candles };
-      }
-      recordFailure(src.id, symbol);
-    } catch (e) {
-      recordFailure(src.id, symbol);
-      if (!e.message.includes('timeout')) {
-        console.warn(`[resolver] ${src.id} failed for ${symbol}: ${e.message}`);
-      }
+
+      return Promise.race([fetchP, timeoutP]).then(
+        result => { recordSuccess(src.id, symbol); return result; },
+        error => { recordFailure(src.id, symbol); throw error; }
+      );
+    });
+
+    try {
+      // Promise.any returns the first fulfilled promise — no waiting
+      // for the others to complete. If a source returns in 0.3s, we
+      // get the result immediately even if other sources are still
+      // pending or will eventually timeout.
+      const winner = await Promise.any(racePromises);
+      return winner;
+    } catch {
+      // All sources failed — fall through to return null
+      // (AggregateError from Promise.any when all reject)
     }
   }
 
