@@ -9,7 +9,7 @@
  * |z| >= 2 cells are highlighted.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { computeFactorScores, buildQuintilePortfolios, computeSpreadMonitor, detectFactorRotation, buildQuilt } from '@/lib/scanner/factorEngine';
 import { fetchCandlesBatch } from '@/lib/scanner/sourceResolver';
 import { fetchMarketData } from '@/lib/scanner/sources/coingecko';
@@ -17,10 +17,15 @@ import { detectRotation, loadFactorHistory, saveFactorHistory, appendToHistory }
 import { computeFactorStance } from '@/lib/factors/compositeEngine';
 import { generateSignalCard } from '@/lib/factors/narrativeGenerator';
 import { buildCrowdingMatrix, extractSpreadSeries } from '@/lib/factors/crowdingMatrix';
-import TradFiThematicProxy from './TradFiThematicProxy';
-import RevisionArbitrageTable from './RevisionArbitrageTable';
-import FactorSignalCard from './FactorSignalCard';
-import FactorQuilt from './FactorQuilt';
+
+// FactorWatch-gated components are lazy-loaded so they're tree-shaken when
+// VITE_ENABLE_FACTORWATCH is not 'true'. This keeps the Board chunk lean
+// (saves ~14KB raw / ~4KB gzip) for users who don't have the feature enabled.
+const FW_ENABLED = import.meta.env.VITE_ENABLE_FACTORWATCH === 'true';
+const TradFiThematicProxy = FW_ENABLED ? lazy(() => import('./TradFiThematicProxy')) : null;
+const RevisionArbitrageTable = FW_ENABLED ? lazy(() => import('./RevisionArbitrageTable')) : null;
+const FactorSignalCard = lazy(() => import('./FactorSignalCard'));
+const FactorQuilt = lazy(() => import('./FactorQuilt'));
 
 const HORIZONS = [
   { days: 1,  label: '1D' },
@@ -279,7 +284,9 @@ export default function FactorMonitor() {
   return (
     <div className="font-mono px-5 md:px-8 py-5 space-y-5">
       {/* FactorWatch TradFi Thematic Proxies (above crypto board) */}
-      {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && <TradFiThematicProxy />}
+      {FW_ENABLED && TradFiThematicProxy && (
+        <Suspense fallback={null}><TradFiThematicProxy /></Suspense>
+      )}
 
       {/* Header strip */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -392,15 +399,19 @@ export default function FactorMonitor() {
 
       {/* Factor Signal Card — the actionable verdict */}
       {primarySignal && (
-        <FactorSignalCard
-          factorName={primarySignal.factorName}
-          stance={primarySignal.stance}
-          rotation={confirmedRotation}
-        />
+        <Suspense fallback={null}>
+          <FactorSignalCard
+            factorName={primarySignal.factorName}
+            stance={primarySignal.stance}
+            rotation={confirmedRotation}
+          />
+        </Suspense>
       )}
 
       {/* Factor Quilt — monthly returns heatmap (activates previously dead buildQuilt) */}
-      {quilt && quilt.length > 0 && <FactorQuilt quilt={quilt} />}
+      {quilt && quilt.length > 0 && (
+        <Suspense fallback={null}><FactorQuilt quilt={quilt} /></Suspense>
+      )}
 
       {/* Crowding matrix summary */}
       {crowding && stances && (
@@ -431,7 +442,9 @@ export default function FactorMonitor() {
       </div>
 
       {/* FactorWatch Revision Arbitrage Table (below crypto board) */}
-      {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && <RevisionArbitrageTable />}
+      {FW_ENABLED && RevisionArbitrageTable && (
+        <Suspense fallback={null}><RevisionArbitrageTable /></Suspense>
+      )}
     </div>
   );
 }

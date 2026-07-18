@@ -86,6 +86,34 @@ If you have a paid Polygon plan and want to use it as a (high-priority) source:
 
 This is **optional** — the resolver works fine with just the free sources.
 
+### 6. (Optional) Enable FactorWatch integration
+
+FactorWatch (factorwatch.ai) provides professional-grade TradFi equity factor data — 7 factors × 5 timeframes with z-scores, estimate revision spreads, and 19 thematic baskets for both S&P 500 and FW 3000 universes.
+
+When enabled, the site adds:
+- **Macro Regime page:** narrative banner (shakeout/junk rally signals) + cross-asset divergence chart (S&P vs FW 3000 momentum σ)
+- **Board Factor Monitor tab:** TradFi thematic proxy cards (baskets → crypto theme mapping) + revision arbitrage table (analyst upgrade/downgrade spreads)
+- **Snapshot:** `factor_watch` section (current data) + `factor_watch_history` (90-day rolling accumulation for the divergence chart)
+
+The scraper runs server-side in GitHub Actions (3 pages from factorwatch.ai, 2s delay between requests). No client-side fetch to factorwatch.ai — all data is baked into `snapshot.json`.
+
+To enable:
+
+1. Repo → Settings → Secrets → Actions
+2. Add secret `VITE_ENABLE_FACTORWATCH` with value `true`
+3. The next deploy will activate all FactorWatch components
+
+To disable: set the secret to `false` or delete it. All components check the flag and render nothing when it's not `'true'`. The FactorWatch-gated components are lazy-loaded (`React.lazy`) so they're tree-shaken from the bundle when the flag is off.
+
+**Factor Signal Engine** (always active, not gated): The crypto Factor Monitor also includes a shared factor signal engine (`src/lib/factors/`) that provides:
+- Rotation detection (3-session confirm / 10-session fresh, generalized from the regime engine)
+- Composite stance scoring (CONSTRUCTIVE / SELECTIVE / DEFENSIVE / WAIT + 0-10 confidence)
+- Crowding matrix (pairwise correlation of 90-day spread returns)
+- Narrative generation (plain-English signal sentences)
+- Factor quilt (monthly returns heatmap)
+
+This engine runs on the crypto factor data the Factor Monitor already computes — no FactorWatch integration needed.
+
 ## Source priority (auto mode)
 
 ### Crypto OHLC

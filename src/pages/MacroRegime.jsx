@@ -11,8 +11,14 @@ import AllocationPanel from '../components/regime/AllocationPanel';
 import SignalTable from '../components/regime/SignalTable';
 import MacroCharts from '../components/regime/MacroCharts';
 import ChangeBanner from '../components/regime/ChangeBanner';
-import MacroNarrativeBanner from '../components/regime/MacroNarrativeBanner';
-import CrossAssetDivergenceChart from '../components/regime/CrossAssetDivergenceChart';
+import { lazy as fwLazy, Suspense as FwSuspense } from 'react';
+
+// FactorWatch-gated components are lazy-loaded so they're tree-shaken when
+// VITE_ENABLE_FACTORWATCH is not 'true'. Uses separate aliases to avoid
+// clashing with the page-level lazy/Suspense already in App.jsx.
+const FW_REGIME_ENABLED = import.meta.env.VITE_ENABLE_FACTORWATCH === 'true';
+const MacroNarrativeBanner = FW_REGIME_ENABLED ? fwLazy(() => import('../components/regime/MacroNarrativeBanner')) : null;
+const CrossAssetDivergenceChart = FW_REGIME_ENABLED ? fwLazy(() => import('../components/regime/CrossAssetDivergenceChart')) : null;
 import { computeSeasonality, getCurrentMonthBaseline, formatSeasonalityBaseline } from '../lib/regime/seasonality';
 import { fetchAllRegimeData } from '../lib/regime/regimeSources';
 import {
@@ -392,7 +398,9 @@ export default function MacroRegime() {
         <ChangeBanner regime={regime} />
 
         {/* FactorWatch narrative banner (shakeout / junk rally signals) */}
-        {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && <MacroNarrativeBanner />}
+        {FW_REGIME_ENABLED && MacroNarrativeBanner && (
+          <FwSuspense fallback={null}><MacroNarrativeBanner /></FwSuspense>
+        )}
 
         {/* Data coverage notice */}
         {!regime?.fredAvailable && (
@@ -473,9 +481,9 @@ export default function MacroRegime() {
         </div>
 
         {/* FactorWatch Cross-Asset Divergence Chart */}
-        {import.meta.env.VITE_ENABLE_FACTORWATCH === 'true' && (
+        {FW_REGIME_ENABLED && CrossAssetDivergenceChart && (
           <div className="mb-6">
-            <CrossAssetDivergenceChart />
+            <FwSuspense fallback={null}><CrossAssetDivergenceChart /></FwSuspense>
           </div>
         )}
 
