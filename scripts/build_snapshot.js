@@ -424,17 +424,27 @@ function readTradUniverseSymbols() {
   }
 }
 
-// Yahoo symbol formatting (BRK.B → BRK-B, forex, metals, indices)
+// Yahoo symbol formatting — mirrors the client-side toYahooSymbol in traditionalMarkets.js
+const YAHOO_FOREX_MAP = {
+  'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','USDCHF':'CHF=X',
+  'USDCAD':'CAD=X','AUDUSD':'AUDUSD=X','NZDUSD':'NZDUSD=X','USDKRW':'KRW=X','USDHKD':'HKD=X',
+};
+const YAHOO_INTL_MAP = {
+  'TENCENT':'0700.HK','XIAOMI':'1810.HK','SAMSUNG':'005930.KS','SAMSUNGUSD':'005930.KS',
+  'SKHYNIX':'000660.KS','SKHYNIXUSD':'000660.KS','SKHY':'000660.KS',
+  'HYUNDAI':'005380.KS','HYUNDAIUSD':'005380.KS','KRCOMP':'^KS11','POPMART':'9992.HK',
+  'SMIC':'0981.HK','BYD':'1211.HK',
+};
+const YAHOO_SPECIAL_MAP = {
+  'XAU':'GC=F','XAG':'SI=F','XCU':'HG=F','XPD':'PA=F','XPT':'PL=F',
+  'WTI':'CL=F','BRENTOIL':'BZ=F','NATGAS':'NG=F',
+  'US500':'^GSPC','US100':'^NDX','SPX':'^GSPC',
+};
 function toYahooSymbol(symbol) {
   const s = symbol.toUpperCase();
-  // Forex pairs
-  const forexMap = { 'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','USDCHF':'CHF=X',
-    'USDCAD':'CAD=X','AUDUSD':'AUDUSD=X','NZDUSD':'NZDUSD=X','USDKRW':'KRW=X','USDHKK':'HKD=X' };
-  if (forexMap[s]) return forexMap[s];
-  // Metals (use futures)
-  if (s === 'XAU') return 'GC=F';
-  if (s === 'XAG') return 'SI=F';
-  // BRK.B → BRK-B (Yahoo uses dashes)
+  if (YAHOO_FOREX_MAP[s]) return YAHOO_FOREX_MAP[s];
+  if (YAHOO_INTL_MAP[s]) return YAHOO_INTL_MAP[s];
+  if (YAHOO_SPECIAL_MAP[s]) return YAHOO_SPECIAL_MAP[s];
   if (s.includes('.')) return s.replace('.', '-');
   return s;
 }

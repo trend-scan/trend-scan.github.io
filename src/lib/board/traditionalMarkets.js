@@ -63,16 +63,49 @@ function getYahooProxyUrl() {
   return import.meta.env?.VITE_YAHOO_PROXY_URL || 'https://trendscan-yahoo-proxy.drew-724.workers.dev';
 }
 
-// Yahoo symbol formatting (BRK.B → BRK-B, forex, metals, indices)
+// Yahoo symbol formatting (BRK.B → BRK-B, forex, metals, indices, international)
 const YAHOO_FOREX_MAP = {
   'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','USDCHF':'CHF=X',
   'USDCAD':'CAD=X','AUDUSD':'AUDUSD=X','NZDUSD':'NZDUSD=X','USDKRW':'KRW=X','USDHKD':'HKD=X',
 };
+
+// International tickers need Yahoo exchange suffixes (e.g. Tencent → 0700.HK)
+const YAHOO_INTL_MAP = {
+  'TENCENT':    '0700.HK',
+  'XIAOMI':     '1810.HK',
+  'SAMSUNG':    '005930.KS',
+  'SAMSUNGUSD': '005930.KS',  // same Yahoo symbol, USD-quoted variant handled by Lighter
+  'SKHYNIX':    '000660.KS',
+  'SKHYNIXUSD': '000660.KS',
+  'SKHY':       '000660.KS',
+  'HYUNDAI':    '005380.KS',
+  'HYUNDAIUSD': '005380.KS',
+  'KRCOMP':     '^KS11',      // Korea Composite index
+  'POPMART':    '9992.HK',
+  'SMIC':       '0981.HK',
+  'BYD':        '1211.HK',    // BYD on Hong Kong exchange
+};
+
+// Commodities and indices that need futures or index symbols
+const YAHOO_SPECIAL_MAP = {
+  'XAU': 'GC=F',       // Gold futures
+  'XAG': 'SI=F',       // Silver futures
+  'XCU': 'HG=F',       // Copper futures
+  'XPD': 'PA=F',       // Palladium futures
+  'XPT': 'PL=F',       // Platinum futures
+  'WTI': 'CL=F',       // Crude oil WTI futures
+  'BRENTOIL': 'BZ=F',  // Brent crude futures
+  'NATGAS': 'NG=F',    // Natural gas futures
+  'US500': '^GSPC',    // S&P 500 index
+  'US100': '^NDX',     // Nasdaq 100 index
+  'SPX': '^GSPC',      // S&P 500 spot (same as US500)
+};
+
 function toYahooSymbol(symbol) {
   const s = symbol.toUpperCase();
   if (YAHOO_FOREX_MAP[s]) return YAHOO_FOREX_MAP[s];
-  if (s === 'XAU') return 'GC=F';  // Gold futures
-  if (s === 'XAG') return 'SI=F';  // Silver futures
+  if (YAHOO_INTL_MAP[s]) return YAHOO_INTL_MAP[s];
+  if (YAHOO_SPECIAL_MAP[s]) return YAHOO_SPECIAL_MAP[s];
   if (s.includes('.')) return s.replace('.', '-');  // BRK.B → BRK-B
   return s;
 }

@@ -180,8 +180,17 @@ export default function MacroTab({ tradData, isLoading, snapshotLoading, onRefre
         <div className="flex items-center gap-4 flex-wrap">
           <div>
             <span className="text-[8px] uppercase tracking-wider" style={{ color: 'var(--scanner-text3)' }}>Last Updated</span>
-            <div className="text-[11px] font-semibold" style={{ color: tradRegime.total > 0 ? 'var(--scanner-text)' : 'var(--scanner-red)' }}>
+            <div className="text-[11px] font-semibold" style={{
+              color: tradRegime.total > 0
+                ? (fetchedAt && (Date.now() - new Date(fetchedAt).getTime() > 3 * 24 * 60 * 60 * 1000)
+                   ? 'var(--scanner-red)'  // stale: > 3 days old
+                   : 'var(--scanner-text)')
+                : 'var(--scanner-red)'
+            }}>
               {tradRegime.total > 0 ? timeAgo(fetchedAt) : '—'}
+              {fetchedAt && (Date.now() - new Date(fetchedAt).getTime() > 3 * 24 * 60 * 60 * 1000) && (
+                <span className="ml-1 text-[8px]" style={{ color: 'var(--scanner-red)' }}>⚠ stale</span>
+              )}
             </div>
           </div>
           <div>
