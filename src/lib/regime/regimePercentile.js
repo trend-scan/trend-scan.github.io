@@ -17,7 +17,7 @@
  *   // z = 1.8σ, pctile = 96.4 → "above 96.4% of historical 90d windows"
  */
 
-import { adaptiveZ, mean, stddev } from './regimeCalculations';
+import { adaptiveZ, mean, stddev } from './regimeCalculations.js';
 
 /**
  * Compute adaptive z-score AND its percentile against trailing overlapping windows.

@@ -15,7 +15,7 @@
  *    1 session ago → WAIT, confidence 3/10."
  */
 
-import { STANCE_COLORS } from './compositeEngine';
+import { STANCE_COLORS } from './compositeEngine.js';
 
 /**
  * Generate a narrative summary for a single factor stance.
