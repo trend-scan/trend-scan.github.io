@@ -10,11 +10,17 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { computeFactorScores, buildQuintilePortfolios, computeSpreadMonitor, detectFactorRotation } from '@/lib/scanner/factorEngine';
+import { computeFactorScores, buildQuintilePortfolios, computeSpreadMonitor, detectFactorRotation, buildQuilt } from '@/lib/scanner/factorEngine';
 import { fetchCandlesBatch } from '@/lib/scanner/sourceResolver';
 import { fetchMarketData } from '@/lib/scanner/sources/coingecko';
+import { detectRotation, loadFactorHistory, saveFactorHistory, appendToHistory } from '@/lib/factors/rotationDetector';
+import { computeFactorStance } from '@/lib/factors/compositeEngine';
+import { generateSignalCard } from '@/lib/factors/narrativeGenerator';
+import { buildCrowdingMatrix, extractSpreadSeries } from '@/lib/factors/crowdingMatrix';
 import TradFiThematicProxy from './TradFiThematicProxy';
 import RevisionArbitrageTable from './RevisionArbitrageTable';
+import FactorSignalCard from './FactorSignalCard';
+import FactorQuilt from './FactorQuilt';
 
 const HORIZONS = [
   { days: 1,  label: '1D' },
@@ -132,15 +138,58 @@ export default function FactorMonitor() {
         const benchmarkSymbols = universe.map(u => u.symbol);
         const spreadMonitor = computeSpreadMonitor(portfoliosByFactor, candlesBySymbol, benchmarkSymbols);
 
-        // 8. Compute rotation
-        const rotation = detectFactorRotation(portfoliosByFactor, candlesBySymbol);
+        // 8. Compute rotation (snapshot-based, for current leader)
+        const snapshotRotation = detectFactorRotation(portfoliosByFactor, candlesBySymbol);
+
+        // 8b. Compute crowding matrix from spread series
+        const spreadSeries = extractSpreadSeries(portfoliosByFactor, candlesBySymbol, 90);
+        const crowding = buildCrowdingMatrix(spreadSeries, 90);
+
+        // 8c. Persist factor leadership history and compute confirmed rotation
+        const HISTORY_KEY = 'trendscan_crypto_factor_history';
+        const today = new Date().toISOString().slice(0, 10);
+        let history = loadFactorHistory(HISTORY_KEY);
+        history = appendToHistory(history, today, snapshotRotation.leader_20d);
+        saveFactorHistory(HISTORY_KEY, history);
+        const confirmedRotation = detectRotation(history);
+
+        // 8d. Build quilt (activates previously dead code)
+        const quilt = buildQuilt(portfoliosByFactor, candlesBySymbol);
+
+        // 8e. Compute factor stances for all factors
+        const stances = {};
+        for (const row of Object.values(spreadMonitor)) {
+          const spread20d = row.spread_20d || row.rel_20d || {};
+          const stance = computeFactorStance({
+            spreadZ: spread20d.z,
+            spreadPctile: spread20d.pctile,
+            rotation: confirmedRotation.currentLabel === row.factor ? confirmedRotation : null,
+            crowdingScore: crowding.maxCorrelation(row.factor),
+            factorName: row.factor,
+          });
+          stances[row.factor] = stance;
+        }
+
+        // 8f. Find the primary signal (highest confidence)
+        const primaryFactor = Object.entries(stances)
+          .sort(([,a], [,b]) => b.confidence - a.confidence)[0];
+        const primarySignal = primaryFactor ? {
+          factorName: primaryFactor[0],
+          stance: primaryFactor[1],
+          rotation: confirmedRotation,
+        } : null;
 
 
 
         if (!cancelled) {
           setData({
             spreadMonitor: Object.values(spreadMonitor),
-            rotation,
+            rotation: snapshotRotation,
+            confirmedRotation,
+            crowding,
+            quilt,
+            stances,
+            primarySignal,
             universeSize: universe.length,
             q5Size: Math.floor(universe.length / 5),
           });
@@ -218,7 +267,14 @@ export default function FactorMonitor() {
     );
   }
 
-  const { spreadMonitor, rotation, universeSize, q5Size } = data;
+  const { spreadMonitor, rotation, confirmedRotation, crowding, quilt, stances, primarySignal, universeSize, q5Size } = data;
+
+  // Generate narrative for the primary signal
+  const signalCard = primarySignal ? generateSignalCard({
+    factorName: primarySignal.factorName,
+    stance: primarySignal.stance,
+    rotation: primarySignal.rotation,
+  }) : null;
 
   return (
     <div className="font-mono px-5 md:px-8 py-5 space-y-5">
@@ -334,12 +390,43 @@ export default function FactorMonitor() {
         </div>
       </div>
 
+      {/* Factor Signal Card — the actionable verdict */}
+      {primarySignal && (
+        <FactorSignalCard
+          factorName={primarySignal.factorName}
+          stance={primarySignal.stance}
+          rotation={confirmedRotation}
+        />
+      )}
+
+      {/* Factor Quilt — monthly returns heatmap (activates previously dead buildQuilt) */}
+      {quilt && quilt.length > 0 && <FactorQuilt quilt={quilt} />}
+
+      {/* Crowding matrix summary */}
+      {crowding && stances && (
+        <div className="text-[8px] leading-relaxed pt-2" style={{ color: 'var(--scanner-text3)' }}>
+          <strong>Crowding:</strong> {' '}
+          {Object.keys(stances).map(factor => {
+            const maxCorr = crowding.maxCorrelation(factor);
+            return (
+              <span key={factor}>
+                {factor}: max corr {maxCorr.toFixed(2)}
+                {maxCorr > 0.7 ? ' ⚠' : ''}
+                {' · '}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
       {/* Methodology footer */}
       <div className="text-[8px] leading-relaxed pt-3 border-t" style={{ borderColor: 'var(--scanner-border2)', color: 'var(--scanner-text3)', opacity: 0.6 }}>
         <strong>Methodology:</strong> Top 100 by market cap · quintile portfolios rebalanced monthly ·
         long-only (Q5, equal-weighted) · spread (Q5 − Q1, equal-weighted) ·
         z-scores vs trailing 252 overlapping h-day windows ·
         |z| ≥ 2 highlighted · Factor scores winsorized at 2.5%/97.5% then z-scored ·
+        Rotation: 3-session confirm / 10-session fresh (factorwatch §6) ·
+        Crowding: pairwise Pearson correlation of 90d spread returns ·
         Inspired by <a href="https://factorwatch.ai/methodology.html" target="_blank" rel="noopener" style={{ color: 'var(--scanner-accent)' }}>factorwatch.ai</a>
       </div>
 

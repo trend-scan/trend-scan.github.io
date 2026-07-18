@@ -9,9 +9,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 import SpaAwareRedirect from './components/SpaAwareRedirect';
 import LegalDisclaimer from './components/LegalDisclaimer';
 
-// Route-level code splitting — each page loads its own JS chunk on demand.
-// Scanner (recharts + scanner engine) stays in the initial bundle since it's
-// the default route. Board and MacroRegime are lazy-loaded.
 const Scanner = lazy(() => import('./pages/Scanner'));
 const Board = lazy(() => import('./pages/Board'));
 const MacroRegime = lazy(() => import('./pages/MacroRegime'));
@@ -36,11 +33,11 @@ function App() {
         <NavBar />
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<ErrorBoundary name="Scanner"><Scanner /></ErrorBoundary>} />
-            <Route path="/board" element={<ErrorBoundary name="Market Board"><Board /></ErrorBoundary>} />
-            <Route path="/macro" element={<ErrorBoundary name="Macro Regime"><MacroRegime /></ErrorBoundary>} />
-            <Route path="*" element={<PageNotFound />} />
-          </Routes>
+          <Route path="/" element={<ErrorBoundary name="Scanner"><Scanner /></ErrorBoundary>} />
+          <Route path="/board" element={<ErrorBoundary name="Market Board"><Board /></ErrorBoundary>} />
+          <Route path="/macro" element={<ErrorBoundary name="Macro Regime"><MacroRegime /></ErrorBoundary>} />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
         </Suspense>
         <LegalDisclaimer />
       </Router>

@@ -1,12 +1,5 @@
 /**
- * RevisionArbitrageTable — displays FactorWatch estimate revision spreads
- * for the 7 equity factors.
- *
- * Shows the "Top − bottom" spread for each factor, indicating where analysts
- * are directing upgrades. Negative spreads mean analysts are upgrading
- * lagging/distressed assets over market leaders — a mean-reversion signal.
- *
- * Placed BELOW the existing crypto factor board in the FactorMonitor tab.
+ * RevisionArbitrageTable — displays FactorWatch estimate revision spreads.
  */
 
 import { useFactorSignals } from '@/hooks/useFactorSignals';
@@ -35,7 +28,6 @@ export default function RevisionArbitrageTable() {
   const signals = useFactorSignals();
   const sp500Revisions = signals?.factorWatch?.sp500?.revisions;
   const fw3000Revisions = signals?.factorWatch?.fw3000?.revisions;
-
   if (!sp500Revisions && !fw3000Revisions) return null;
 
   return (
@@ -69,28 +61,16 @@ export default function RevisionArbitrageTable() {
                 <tr key={key} style={{ borderBottom: '1px solid var(--scanner-border)' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td className="py-2 px-3">
-                    <span className="text-[10px] font-semibold" style={{ color: 'var(--scanner-text)' }}>{label}</span>
-                  </td>
+                  <td className="py-2 px-3"><span className="text-[10px] font-semibold" style={{ color: 'var(--scanner-text)' }}>{label}</span></td>
                   {sp500Revisions && (
                     <>
-                      <td className="py-2 px-3 text-right">
-                        <span className="text-[10px] tabular-nums" style={{ color: spreadColor(sp?.top) }}>{fmtPct(sp?.top)}</span>
-                      </td>
-                      <td className="py-2 px-3 text-right">
-                        <span className="text-[10px] tabular-nums" style={{ color: spreadColor(sp?.bot) }}>{fmtPct(sp?.bot)}</span>
-                      </td>
-                      <td className="py-2 px-3 text-right">
-                        <span className="text-[11px] font-bold tabular-nums" style={{ color: spreadColor(sp?.spread) }}>
-                          {fmtPct(sp?.spread)}
-                        </span>
-                      </td>
+                      <td className="py-2 px-3 text-right"><span className="text-[10px] tabular-nums" style={{ color: spreadColor(sp?.top) }}>{fmtPct(sp?.top)}</span></td>
+                      <td className="py-2 px-3 text-right"><span className="text-[10px] tabular-nums" style={{ color: spreadColor(sp?.bot) }}>{fmtPct(sp?.bot)}</span></td>
+                      <td className="py-2 px-3 text-right"><span className="text-[11px] font-bold tabular-nums" style={{ color: spreadColor(sp?.spread) }}>{fmtPct(sp?.spread)}</span></td>
                     </>
                   )}
                   {fw3000Revisions && (
-                    <td className="py-2 px-3 text-right">
-                      <span className="text-[10px] tabular-nums" style={{ color: spreadColor(fw?.spread) }}>{fmtPct(fw?.spread)}</span>
-                    </td>
+                    <td className="py-2 px-3 text-right"><span className="text-[10px] tabular-nums" style={{ color: spreadColor(fw?.spread) }}>{fmtPct(fw?.spread)}</span></td>
                   )}
                 </tr>
               );
@@ -99,8 +79,7 @@ export default function RevisionArbitrageTable() {
         </table>
       </div>
       <div className="text-[7.5px] mt-1.5" style={{ color: 'var(--scanner-text3)' }}>
-        Top − bottom spread = analysts upgrading leaders (+) vs lagging assets (−). Negative = smart money rotating to laggards.
-        Data: <a href="https://factorwatch.ai" target="_blank" rel="noopener" style={{ textDecoration: 'underline' }}>factorwatch.ai</a>
+        Top − bottom spread = analysts upgrading leaders (+) vs lagging assets (−). Data: <a href="https://factorwatch.ai" target="_blank" rel="noopener" style={{ textDecoration: 'underline' }}>factorwatch.ai</a>
       </div>
     </section>
   );
