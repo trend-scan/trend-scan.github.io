@@ -1,6 +1,6 @@
 /**
  * OKX SWAP perps + SPOT (crypto) — free, no API key, CORS-enabled
- * HIGH liquidity, no geographical restrictions, no rate limit issues.
+ * HIGH liquidity, no geographical restrictions in most regions.
  *
  * This module handles crypto perps (BTC, ETH, SOL, etc.) with automatic
  * fallback to OKX spot for tokens that aren't listed as perps (e.g.
@@ -9,11 +9,18 @@
  *
  * Tradfi perps (SPY, QQQ, XAU, etc.) are in okxTradfi.js.
  *
+ * Universe cache: fetches the SWAP + SPOT instrument lists once on first
+ * use, then serves from memory. This lets `isSupported()` instantly skip
+ * symbols OKX doesn't have — avoiding 2 wasted HTTP requests per missing
+ * symbol (SWAP 404 + SPOT 404 = ~600ms wasted per symbol).
+ *
  * Docs: https://www.okx.com/docs-v5/en/#rest-api-market-data-get-candlesticks
  */
 
 import { fetchWithTimeout } from '../fetchWithTimeout';
+import { markGloballyBlocked } from '../sourceHealth';
 
+const SOURCE_ID = 'okx_perps';
 const BASE = 'https://www.okx.com/api/v5';
 
 const TIMEFRAME_BAR = {
@@ -35,6 +42,83 @@ export function isCryptoSymbol(symbol) {
   return !TRADFI_TICKERS.has(s);
 }
 
+// ─── Universe cache ──────────────────────────────────────────────────────────
+// Fetches SWAP + SPOT instrument lists once, caches for 10 min.
+// Used by isSupported() for instant lookup (no HTTP request per symbol).
+
+let _universe = null;          // Set of bare symbols (e.g. 'BTC', 'ETH')
+let _universeTime = 0;
+let _universePromise = null;   // deduplicates concurrent loadUniverse() calls
+const UNIVERSE_TTL_MS = 10 * 60 * 1000;
+
+async function loadUniverse() {
+  const now = Date.now();
+  if (_universe && now - _universeTime < UNIVERSE_TTL_MS) return _universe;
+  if (_universePromise) return _universePromise;
+
+  _universePromise = (async () => {
+    try {
+      // Fetch SWAP and SPOT instruments in parallel
+      const [swapRes, spotRes] = await Promise.all([
+        fetchWithTimeout(`${BASE}/public/instruments?instType=SWAP`),
+        fetchWithTimeout(`${BASE}/public/instruments?instType=SPOT`),
+      ]);
+
+      const symbols = new Set();
+
+      // SWAP: instId format is 'BTC-USDT-SWAP' — extract bare symbol
+      if (swapRes.ok) {
+        const swapData = await swapRes.json();
+        if (swapData.code === '0' && Array.isArray(swapData.data)) {
+          for (const inst of swapData.data) {
+            if (inst.settleCcy === 'USDT' && inst.instId) {
+              const bare = inst.instId.split('-')[0];  // 'BTC-USDT-SWAP' → 'BTC'
+              if (bare) symbols.add(bare);
+            }
+          }
+        }
+      }
+
+      // SPOT: instId format is 'BTC-USDT' — extract bare symbol
+      if (spotRes.ok) {
+        const spotData = await spotRes.json();
+        if (spotData.code === '0' && Array.isArray(spotData.data)) {
+          for (const inst of spotData.data) {
+            if (inst.quoteCcy === 'USDT' && inst.instId) {
+              const bare = inst.instId.split('-')[0];  // 'BTC-USDT' → 'BTC'
+              if (bare) symbols.add(bare);
+            }
+          }
+        }
+      }
+
+      if (symbols.size > 0) {
+        _universe = symbols;
+        _universeTime = Date.now();
+      }
+      return _universe;
+    } catch {
+      return _universe || null;
+    } finally {
+      _universePromise = null;
+    }
+  })();
+
+  return _universePromise;
+}
+
+/**
+ * Check if OKX supports this symbol (SWAP or SPOT).
+ * Uses cached universe — instant after first load, no HTTP request per call.
+ * @param {string} symbol
+ * @returns {Promise<boolean>}
+ */
+export async function isSupported(symbol) {
+  const universe = await loadUniverse();
+  if (!universe) return true;  // optimistic if universe fetch failed
+  return universe.has(symbol.toUpperCase());
+}
+
 /**
  * Internal: fetch candles from OKX for a specific instrument type.
  * @param {string} instId  e.g. 'BTC-USDT-SWAP' or 'BTC-USDT'
@@ -45,7 +129,12 @@ export function isCryptoSymbol(symbol) {
 async function _fetchCandlesForInst(instId, bar, limit) {
   const url = `${BASE}/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${Math.min(limit, 300)}`;
   const res = await fetchWithTimeout(url);
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // Only 451 triggers global block (definitive geo-block signal).
+    // 403/429/5xx are NOT geo-blocks — could be rate limit, WAF, or transient.
+    if (res.status === 451) markGloballyBlocked(SOURCE_ID);
+    return null;
+  }
   const d = await res.json();
   if (d.code !== '0' || !Array.isArray(d.data) || d.data.length === 0) return null;
   // OKX returns newest-first; reverse for chronological order
@@ -63,9 +152,8 @@ async function _fetchCandlesForInst(instId, bar, limit) {
 /**
  * Fetch OHLC candles for a crypto symbol on OKX.
  *
- * Strategy: try SWAP (perps) first — it's the fast path with most symbols.
- * Only fall back to SPOT if SWAP returns nothing. This avoids making 2
- * HTTP requests per symbol when 1 is sufficient, saving connection slots.
+ * Strategy: try SWAP (perps) first, fall back to SPOT if SWAP returns nothing.
+ * Sequential — ~90% of symbols are on SWAP, so SPOT is only tried when needed.
  *
  * @returns {Promise<Array<{ts,open,high,low,close,vol}>|null>}
  */
@@ -75,21 +163,19 @@ export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
 
   const bar = TIMEFRAME_BAR[timeframe] || '4H';
 
-  // Try SWAP first (covers ~90% of symbols, fast)
-  try {
-    const perps = await _fetchCandlesForInst(`${s}-USDT-SWAP`, bar, limit);
-    if (perps && perps.length > 0) return perps;
-  } catch {
-    // SWAP failed — try SPOT
-  }
+  // Quick universe check — skip both SWAP and SPOT requests if OKX doesn't
+  // have this symbol at all. Saves ~600ms per missing symbol (2 HTTP 200s
+  // with error code in body).
+  const universe = await loadUniverse();
+  if (universe && !universe.has(s)) return null;
+
+  // Try SWAP first (covers ~90% of symbols)
+  const perps = await _fetchCandlesForInst(`${s}-USDT-SWAP`, bar, limit);
+  if (perps && perps.length > 0) return perps;
 
   // Fall back to SPOT for tokens not listed as perps
-  try {
-    const spot = await _fetchCandlesForInst(`${s}-USDT`, bar, limit);
-    if (spot && spot.length > 0) return spot;
-  } catch {
-    // Both failed
-  }
+  const spot = await _fetchCandlesForInst(`${s}-USDT`, bar, limit);
+  if (spot && spot.length > 0) return spot;
 
   return null;
 }
@@ -132,5 +218,5 @@ export const sourceMeta = {
   requiresApiKey: false,
   maxCandlesPerCall: 300,
   geographicalLimits: 'none',
-  notes: 'Tries SWAP (perps) first, falls back to SPOT for tokens not listed as perps.',
+  notes: 'Tries SWAP (perps) first, falls back to SPOT for tokens not listed as perps. Universe cache enables instant supports() check.',
 };

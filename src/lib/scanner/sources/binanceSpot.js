@@ -14,7 +14,9 @@
  */
 
 import { fetchWithTimeout } from '../fetchWithTimeout';
+import { markGloballyBlocked } from '../sourceHealth';
 
+const SOURCE_ID = 'binance_spot';
 const BASE = 'https://api.binance.com/api/v3';
 
 const TIMEFRAME_INTERVAL = {
@@ -43,7 +45,11 @@ async function loadUniverse() {
   _universePromise = (async () => {
     try {
       const res = await fetchWithTimeout(`${BASE}/exchangeInfo`);
-      if (!res.ok) return _universe || null;
+      if (!res.ok) {
+        // Only 451 triggers global block (definitive geo-block signal).
+        if (res.status === 451) markGloballyBlocked(SOURCE_ID);
+        return _universe || null;
+      }
       const d = await res.json();
       _universe = new Set();
       for (const inst of d.symbols || []) {
@@ -92,7 +98,11 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const url = `${BASE}/klines?symbol=${encodeURIComponent(sym)}USDT&interval=${interval}&limit=${limit}`;
   try {
     const res = await fetchWithTimeout(url);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // Only 451 triggers global block (definitive geo-block signal).
+      if (res.status === 451) markGloballyBlocked(SOURCE_ID);
+      return null;
+    }
     const arr = await res.json();
     if (!Array.isArray(arr) || arr.length === 0) return null;
 

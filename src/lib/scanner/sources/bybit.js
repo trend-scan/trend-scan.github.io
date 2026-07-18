@@ -9,7 +9,9 @@
  */
 
 import { fetchWithTimeout } from '../fetchWithTimeout';
+import { markGloballyBlocked } from '../sourceHealth';
 
+const SOURCE_ID = 'bybit';
 const BASE = 'https://api.bybit.com/v5/market';
 
 const TIMEFRAME_INTERVAL = {
@@ -33,33 +35,41 @@ const TIMEFRAME_INTERVAL = {
  */
 async function _fetchCandlesForCategory(symbol, interval, limit, category) {
   // Bybit uses 1000x/1000000x prefixes for low-priced tokens (same as Binance).
-  // Try the bare symbol first, then 1000X, then 1000000X — but RACE them
-  // in parallel instead of sequentially to avoid wasting connection slots.
+  // Try the bare symbol first; only fall back to prefixed variants if bare fails.
+  // Sequential — not parallel — to minimize connection usage. The bare symbol
+  // works for ~95% of tokens, so we usually make just 1 request.
   const symUpper = symbol.toUpperCase();
-  const candidates = [`${symUpper}USDT`];
+  const variants = [`${symUpper}USDT`];
   if (symUpper.length <= 6) {
-    candidates.push(`1000${symUpper}USDT`);
-    candidates.push(`1000000${symUpper}USDT`);
+    variants.push(`1000${symUpper}USDT`);
+    variants.push(`1000000${symUpper}USDT`);
   }
 
-  // Race all variants in parallel — first valid response wins
-  const results = await Promise.all(candidates.map(async sym => {
+  for (const sym of variants) {
     const url = `${BASE}/kline?category=${category}&symbol=${sym}&interval=${interval}&limit=${Math.min(limit, 1000)}`;
     try {
       const res = await fetchWithTimeout(url);
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // Only 451 triggers global block (definitive geo-block signal).
+        // On 451, don't try other variants — the whole source is blocked.
+        if (res.status === 451) {
+          markGloballyBlocked(SOURCE_ID);
+          return null;
+        }
+        continue;
+      }
       const d = await res.json();
-      if (d.retCode !== 0 || !d.result?.list?.length) return null;
+      if (d.retCode !== 0 || !d.result?.list?.length) continue;
 
       // Determine price multiplier if this is a 1000x/1000000x symbol
       let priceMultiplier = 1;
       if (sym.startsWith('1000000')) priceMultiplier = 1000000;
       else if (sym.startsWith('1000')) priceMultiplier = 1000;
 
-      // Bybit returns newest-first strings; reverse + convert
+      // Bybit returns newest-first strings; reverse + convert.
       // For 1000x/1000000x symbols, divide OHLC by multiplier to get
       // per-token prices. Multiply volume by multiplier for actual token count.
-      const candles = d.result.list.slice().reverse().map(c => ({
+      return d.result.list.slice().reverse().map(c => ({
         ts: parseInt(c[0]),
         open: parseFloat(c[1]) / priceMultiplier,
         high: parseFloat(c[2]) / priceMultiplier,
@@ -67,15 +77,9 @@ async function _fetchCandlesForCategory(symbol, interval, limit, category) {
         close: parseFloat(c[4]) / priceMultiplier,
         vol: parseFloat(c[5]) * priceMultiplier,
       }));
-      return candles;
     } catch {
-      return null;
+      // Network error — try next variant
     }
-  }));
-
-  // Return the first non-null result (bare symbol preferred via array order)
-  for (const result of results) {
-    if (result && result.length > 0) return result;
   }
   return null;
 }

@@ -12,6 +12,7 @@ import FactorMonitor from '@/components/board/FactorMonitor';
 import QuickViewBar from '@/components/board/QuickViewBar';
 import { runBoardAnalysis } from '@/lib/board/boardEngine';
 import { fetchTradMarketData, buildTradDataFromSnapshot } from '@/lib/board/traditionalMarkets';
+import { getGloballyBlockedSources } from '@/lib/scanner/sourceResolver';
 
 const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'TradFi', 'Factor Monitor'];
 
@@ -51,6 +52,23 @@ export default function Board() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const apiKeyChecked = useRef(false);
   const hasLoaded = useRef(false);
+
+  // Track which sources are geo-blocked in the user's region (e.g. Binance
+  // returns HTTP 451 for US IPs). Display these as small chips so the user
+  // understands why coverage is lower than expected without VPN.
+  const [blockedSources, setBlockedSources] = useState([]);
+  useEffect(() => {
+    let mounted = true;
+    const update = () => {
+      if (mounted) setBlockedSources(getGloballyBlockedSources());
+    };
+    update();
+    // Poll every 15s — blocks expire on their own, but the UI won't re-render
+    // unless we re-check. 15s is frequent enough to show newly-blocked sources
+    // but not so frequent that it causes unnecessary re-renders.
+    const interval = setInterval(update, 15000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
 
   const handleProgress = useCallback((p) => {
     setProgress(p);
@@ -195,6 +213,21 @@ export default function Board() {
         <span className="text-[9px] tracking-wider" style={{ color: 'var(--scanner-text3)' }}>
           Universe: {data?.assetCount ?? 0} assets computed
         </span>
+        {blockedSources.length > 0 && (
+          <span
+            className="text-[9px] tracking-wider px-2 py-0.5"
+            title={`Sources geo-blocked in this region (HTTP 451). Enable VPN to restore coverage. Auto-retry in ${blockedSources[0]?.secondsLeft ?? 0}s.`}
+            style={{
+              color: 'var(--scanner-text3)',
+              background: 'rgba(255,165,0,0.08)',
+              border: '1px solid rgba(255,165,0,0.25)',
+              borderRadius: 2,
+            }}
+          >
+            ⚠ Geo-blocked: {blockedSources.map(s => s.sourceId).join(', ')}
+            <span className="ml-1 opacity-60">({blockedSources[0]?.secondsLeft ?? 0}s retry)</span>
+          </span>
+        )}
       </div>
 
       {/* Breadth header strip */}

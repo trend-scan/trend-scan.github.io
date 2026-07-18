@@ -195,7 +195,18 @@ async function fetchBinanceCandles(symbol, timeframe = '4H', limit = 500) {
   const interval = BINANCE_INTERVAL_MAP[timeframe] || '4h';
   const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${limit}`;
   const res = await fetchWithTimeout(url);
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // Surface a clear error for geo-block (HTTP 451) so the UI can show
+    // "Binance is geo-blocked in your region — use Auto or pick another source"
+    // instead of silently returning null and looking like a fetch failure.
+    if (res.status === 451) {
+      const err = new Error(`Binance is geo-blocked in your region (HTTP 451). Use Auto mode or pick another source.`);
+      err.code = 'GEO_BLOCKED';
+      err.sourceId = 'binance';
+      throw err;
+    }
+    return null;
+  }
   const data = await res.json();
   if (!Array.isArray(data) || !data.length) return null;
 
@@ -214,7 +225,15 @@ async function fetchBinancePerpsCandles(symbol, timeframe = '4H', limit = 500) {
   const interval = BINANCE_INTERVAL_MAP[timeframe] || '4h';
   const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${limit}`;
   const res = await fetchWithTimeout(url);
-  if (!res.ok) return null;
+  if (!res.ok) {
+    if (res.status === 451) {
+      const err = new Error(`Binance Perps is geo-blocked in your region (HTTP 451). Use Auto mode or pick another source.`);
+      err.code = 'GEO_BLOCKED';
+      err.sourceId = 'binance_perps';
+      throw err;
+    }
+    return null;
+  }
   const data = await res.json();
   if (!Array.isArray(data) || !data.length) return null;
 

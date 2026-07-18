@@ -322,82 +322,110 @@ async function fetchFearGreed() {
 // last 7 days of total net flow in the snapshot.
 
 const FARSIDE_PAGES = {
-  BTC: 'https://farside.co.uk/bitcoin-etf-flow-all-data/',
-  ETH: 'https://farside.co.uk/ethereum-etf-flow-all-data/',
-  SOL: 'https://farside.co.uk/sol/',
-  HYPE: 'https://farside.co.uk/hyp/',
+  BTC: ['https://farside.co.uk/bitcoin-etf-flow-all-data/', 'https://farside.co.uk/btc/'],
+  ETH: ['https://farside.co.uk/ethereum-etf-flow-all-data/'],
+  SOL: ['https://farside.co.uk/sol/'],
+  HYPE: ['https://farside.co.uk/hyp/'],
 };
 
 function parseFarsideTable(html) {
-  // Extract the first table from HTML, return array of { date, total } objects
+  // Extract all tables from HTML, return array of { date, total } objects.
+  // The BTC page has multiple tables (summary + detailed); we want the one
+  // with the most date-like rows.
   // The table has columns: Date, ETF1, ETF2, ..., Total
   // Values are in US$ millions. Negatives use parentheses: (59.1)
   // "-" means no data (market closed)
-  const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/);
-  if (!tableMatch) return [];
+  const tableMatches = html.match(/<table[^>]*>([\s\S]*?)<\/table>/g) || [];
+  if (tableMatches.length === 0) return [];
 
-  const rows = tableMatch[1].match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || [];
-  const result = [];
+  let bestResult = [];
+  let bestDateCount = 0;
 
-  for (const row of rows) {
-    const cells = (row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g) || [])
-      .map(c => c.replace(/<[^>]+>/g, '').trim());
+  for (const tableHtml of tableMatches) {
+    const rows = tableHtml.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || [];
+    const result = [];
 
-    if (cells.length < 2) continue;
+    for (const row of rows) {
+      const cells = (row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g) || [])
+        .map(c => c.replace(/<[^>]+>/g, '').trim());
 
-    // First cell is the date (e.g. "10 Jul 2026") or a label ("Total", "Average")
-    const first = cells[0];
-    if (!first || first === 'Fee' || first === 'Staking fee' || first === 'Seed') continue;
+      if (cells.length < 2) continue;
 
-    // Skip summary rows
-    if (['Total', 'Average', 'Maximum', 'Minimum'].includes(first)) continue;
+      // First cell is the date (e.g. "10 Jul 2026") or a label ("Total", "Average")
+      const first = cells[0];
+      if (!first || first === 'Fee' || first === 'Staking fee' || first === 'Seed') continue;
 
-    // Parse date (e.g. "10 Jul 2026" → ISO)
-    const dateMatch = first.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
-    if (!dateMatch) continue;
-    const [, day, month, year] = dateMatch;
-    const date = new Date(`${day} ${month} ${year}`).toISOString().slice(0, 10);
+      // Skip summary rows
+      if (['Total', 'Average', 'Maximum', 'Minimum'].includes(first)) continue;
 
-    // Last cell is the Total column
-    const totalStr = cells[cells.length - 1];
-    if (totalStr === '-' || totalStr === '') continue;
+      // Parse date (e.g. "10 Jul 2026" → ISO)
+      const dateMatch = first.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+      if (!dateMatch) continue;
+      const [, day, month, year] = dateMatch;
+      const date = new Date(`${day} ${month} ${year}`).toISOString().slice(0, 10);
 
-    // Parse value: "(59.1)" → -59.1, "86.8" → 86.8, "60,286" → 60286
-    const cleaned = totalStr.replace(/,/g, '');
-    let total;
-    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
-      total = -parseFloat(cleaned.slice(1, -1));
-    } else {
-      total = parseFloat(cleaned);
+      // Last cell is the Total column
+      const totalStr = cells[cells.length - 1];
+      if (totalStr === '-' || totalStr === '') continue;
+
+      // Parse value: "(59.1)" → -59.1, "86.8" → 86.8, "60,286" → 60286
+      const cleaned = totalStr.replace(/,/g, '');
+      let total;
+      if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+        total = -parseFloat(cleaned.slice(1, -1));
+      } else {
+        total = parseFloat(cleaned);
+      }
+      if (isNaN(total)) continue;
+
+      result.push({ date, total });
     }
-    if (isNaN(total)) continue;
 
-    result.push({ date, total });
+    // Pick the table with the most date rows (the detailed flow table)
+    if (result.length > bestDateCount) {
+      bestDateCount = result.length;
+      bestResult = result;
+    }
   }
 
-  return result;
+  return bestResult;
 }
 
 async function fetchFarsideETFFlows() {
   const out = {};
 
-  for (const [asset, url] of Object.entries(FARSIDE_PAGES)) {
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-      });
-      if (!res.ok) {
-        console.warn(`  ✗ Farside ${asset}: HTTP ${res.status}`);
-        continue;
+  for (const [asset, urls] of Object.entries(FARSIDE_PAGES)) {
+    const urlList = Array.isArray(urls) ? urls : [urls];
+    let success = false;
+
+    for (const url of urlList) {
+      try {
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+        });
+        if (!res.ok) {
+          console.warn(`  ✗ Farside ${asset}: HTTP ${res.status} from ${url}`);
+          continue;
+        }
+        const html = await res.text();
+        const flows = parseFarsideTable(html);
+        if (flows.length === 0) {
+          console.warn(`  ✗ Farside ${asset}: no data parsed from ${url}`);
+          continue;
+        }
+        // Keep last 7 days
+        const recent = flows.slice(-7);
+        out[asset] = recent;
+        console.log(`  ✓ Farside ${asset}: ${recent.length} days (latest: ${recent[recent.length-1]?.date} = $${recent[recent.length-1]?.total}M) from ${url}`);
+        success = true;
+        break;
+      } catch (e) {
+        console.warn(`  ✗ Farside ${asset}: ${e.message} from ${url}`);
       }
-      const html = await res.text();
-      const flows = parseFarsideTable(html);
-      // Keep last 7 days
-      const recent = flows.slice(-7);
-      out[asset] = recent;
-      console.log(`  ✓ Farside ${asset}: ${recent.length} days (latest: ${recent[recent.length-1]?.date} = $${recent[recent.length-1]?.total}M)`);
-    } catch (e) {
-      console.warn(`  ✗ Farside ${asset}: ${e.message}`);
+    }
+
+    if (!success) {
+      console.warn(`  ✗ Farside ${asset}: all URLs failed`);
     }
   }
 

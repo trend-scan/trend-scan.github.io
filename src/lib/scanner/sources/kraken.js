@@ -1,9 +1,17 @@
 /**
- * Kraken spot — free, no API key, CORS-enabled
- * Solid crypto spot source, no geographical restrictions.
+ * Kraken spot — free, no API key, CORS-enabled, NO geo-blocks.
+ * Reliable crypto spot source with ~300+ USDT/USD pairs.
  *
- * Used as a backup in the resolver chain. Kraken's instrument universe is
- * smaller than OKX/Bybit but very reliable.
+ * Dynamically loads the AssetPairs universe on first use (cached 10 min),
+ * building a complete map of bare symbol → Kraken pair name. This handles
+ * Kraken's quirks:
+ *   - BTC → XBT (Kraken uses XBT for Bitcoin)
+ *   - DOGE → XDG (Kraken uses XDG for Dogecoin)
+ *   - Some pairs use USDT, others use USD (prefers USDT when both exist)
+ *   - Some pairs have special names (e.g. "XXBTZUSD" for BTC/USD)
+ *
+ * The hardcoded SYMBOL_TO_PAIR map is kept as a fallback for when the
+ * AssetPairs endpoint is temporarily unavailable.
  *
  * Docs: https://docs.kraken.com/rest/#tag/Market-Data/operation/getOHLCData
  */
@@ -23,14 +31,15 @@ const TIMEFRAME_MINUTES = {
   '1W': 10080,
 };
 
-// Kraken uses special pair names for some assets
-const SYMBOL_TO_PAIR = {
+// Fallback hardcoded map for known special cases.
+// Used only if the AssetPairs endpoint fails to load.
+const SYMBOL_TO_PAIR_FALLBACK = {
   BTC: 'XBTUSDT',
   ETH: 'ETHUSDT',
   SOL: 'SOLUSDT',
   XRP: 'XRPUSDT',
   ADA: 'ADAUSDT',
-  DOGE: 'XDGUSDT',  // Kraken uses XDG for DOGE
+  DOGE: 'XDGUSDT',
   DOT: 'DOTUSDT',
   LINK: 'LINKUSDT',
   MATIC: 'MATICUSDT',
@@ -59,7 +68,6 @@ const SYMBOL_TO_PAIR = {
   GMX: 'GMXUSDT',
   DYDX: 'DYDXUSDT',
   COMP: 'COMPUSDT',
-  // Some Kraken pairs use USD instead of USDT
   TRX: 'TRXUSD',
   TON: 'TONUSD',
   XMR: 'XMRUSD',
@@ -88,30 +96,119 @@ const SYMBOL_TO_PAIR = {
   ICX: 'ICXUSD',
   KSM: 'KSMUSD',
   WAVES: 'WAVESUSD',
-  FTT: 'FTTUSD',
   SCRT: 'SCRTUSD',
   ROSE: 'ROSEUSD',
 };
 
-let _pairCache = null;
+// ─── Universe cache: bare symbol → Kraken pair name ──────────────────────────
+// Built by fetching /public/AssetPairs once, then served from memory.
+// Handles Kraken's naming quirks (XBT, XDG, USDT vs USD, etc.)
 
+let _pairMap = null;           // { BTC: 'XBTUSDT', ETH: 'ETHUSDT', ... }
+let _pairMapTime = 0;
+let _pairMapPromise = null;    // deduplicates concurrent loads
+const PAIR_MAP_TTL_MS = 10 * 60 * 1000;
+
+function normalizeBase(base) {
+  // Kraken uses XBT for BTC, XDG for DOGE
+  if (/^[XZ][A-Z0-9]{3}$/.test(base)) base = base.slice(1);
+  if (base === 'XBT') base = 'BTC';
+  if (base === 'XDG') base = 'DOGE';
+  return base;
+}
+
+async function loadPairMap() {
+  const now = Date.now();
+  if (_pairMap && now - _pairMapTime < PAIR_MAP_TTL_MS) return _pairMap;
+  if (_pairMapPromise) return _pairMapPromise;
+
+  _pairMapPromise = (async () => {
+    try {
+      const res = await fetchWithTimeout(`${BASE}/AssetPairs`);
+      if (!res.ok) return _pairMap || null;
+      const json = await res.json();
+      if (json.error?.length) return _pairMap || null;
+
+      const pairs = json.result || {};
+      const map = {};
+
+      // First pass: collect all USDT and USD pairs for each base
+      for (const [name, info] of Object.entries(pairs)) {
+        if (!info.base || !info.quote) continue;
+        const q = info.quote.replace(/^[XZ]/, '');  // ZUSD → USD, USDT stays
+        const base = normalizeBase(info.base);
+        if (!base) continue;
+
+        // Prefer USDT over USD. Only store if we don't already have a USDT pair.
+        if (q === 'USDT') {
+          map[base] = name;
+        } else if (q === 'USD' && !map[base]) {
+          map[base] = name;
+        }
+      }
+
+      if (Object.keys(map).length > 0) {
+        _pairMap = map;
+        _pairMapTime = Date.now();
+      }
+      return _pairMap;
+    } catch {
+      return _pairMap || null;
+    } finally {
+      _pairMapPromise = null;
+    }
+  })();
+
+  return _pairMapPromise;
+}
+
+/**
+ * Resolve a bare symbol to its Kraken pair name.
+ * Uses the dynamic pair map (preferred) or falls back to the hardcoded map.
+ * @param {string} symbol  e.g. 'BTC', 'ETH', 'DOGE'
+ * @returns {Promise<string|null>}  e.g. 'XBTUSDT', 'ETHUSDT', 'XDGUSDT'
+ */
 async function resolvePair(symbol) {
   const s = symbol.toUpperCase();
-  // Check hardcoded map first
-  if (SYMBOL_TO_PAIR[s]) return SYMBOL_TO_PAIR[s];
-  // Default: try {SYMBOL}USDT, then {SYMBOL}USD
-  // We could query AssetPairs but that's an extra call; just try both
+  const pairMap = await loadPairMap();
+  if (pairMap && pairMap[s]) return pairMap[s];
+  // Fallback to hardcoded map
+  if (SYMBOL_TO_PAIR_FALLBACK[s]) return SYMBOL_TO_PAIR_FALLBACK[s];
+  // Last resort: try {SYMBOL}USDT (works for most USDT-quoted tokens)
   return `${s}USDT`;
 }
 
 /**
+ * Check if Kraken supports this symbol.
+ * Uses the cached pair map — instant after first load.
+ * @param {string} symbol
+ * @returns {Promise<boolean>}
+ */
+export async function isSupported(symbol) {
+  const pairMap = await loadPairMap();
+  if (!pairMap) return true;  // optimistic if universe fetch failed
+  const s = symbol.toUpperCase();
+  return s in pairMap || s in SYMBOL_TO_PAIR_FALLBACK;
+}
+
+/**
  * Fetch OHLC candles from Kraken.
- * @returns {Promise<Array<{ts,open,high,low,close,vol}>>} or null
+ * @param {string} symbol  bare symbol, e.g. 'BTC', 'ETH'
+ * @param {string} [timeframe='1D']
+ * @param {number} [limit=300]
+ * @returns {Promise<Array<{ts,open,high,low,close,vol}>|null>}
  */
 export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const interval = TIMEFRAME_MINUTES[timeframe] || 1440;
   const pair = await resolvePair(symbol);
   if (!pair) return null;
+
+  // Quick universe check — skip the HTTP request if Kraken doesn't have this symbol
+  const pairMap = await loadPairMap();
+  if (pairMap) {
+    const s = symbol.toUpperCase();
+    if (!(s in pairMap) && !(s in SYMBOL_TO_PAIR_FALLBACK)) return null;
+  }
 
   // Kraken's `since` param is in seconds; returns up to 720 candles per call
   const since = Math.floor(Date.now() / 1000) - (limit * interval * 60);
@@ -137,8 +234,7 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
       vwap: parseFloat(c[5]),
       vol: parseFloat(c[6]),
     }));
-  } catch (e) {
-    console.warn(`[kraken] ${symbol} (${pair}) failed: ${e.message}`);
+  } catch {
     return null;
   }
 }
@@ -151,4 +247,5 @@ export const sourceMeta = {
   requiresApiKey: false,
   maxCandlesPerCall: 720,
   geographicalLimits: 'none',
+  notes: 'Dynamically loads AssetPairs for complete symbol coverage. Prefers USDT pairs, falls back to USD.',
 };
