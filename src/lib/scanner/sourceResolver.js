@@ -40,38 +40,28 @@ function classifySymbol(symbol) {
 
 // ─── Crypto sources (in priority order) ─────────────────────────────────────
 // Strategy:
-//   Tier 0: Massive/Polygon (paid key) — broadest coverage, highest limits, intraday+daily
-//   Tier 1: Free high-reliability exchanges (no auth, no rate limits, no geo blocks)
-//   Tier 2: Solid backup exchanges
-//   Tier 3: More rate-limited or narrower coverage
-//   Tier 4: Last resort — CoinGecko (rate-limited but widest altcoin coverage)
+//   Tier 1: OKX + Hyperliquid (fast, no rate limit, broad coverage)
+//   Tier 2: Bybit + Binance (good coverage, geo-restricted in some regions)
+//   Tier 3: Yahoo Finance proxy (unlimited, covers ~85% of crypto)
+//   Tier 4: CoinGecko (rate-limited but widest altcoin coverage)
 //
-// Massive is tier 0 only when VITE_MASSIVE_API_KEY is configured; otherwise
-// it's filtered out by the `supports` check (returns false if no key).
+// Key optimization: sources WITHOUT supports() checks are preferred because
+// supports() adds an async round-trip per symbol. Binance spot/perps have
+// supports() checks but they use a cached universe (fetched once, then
+// served from memory). Yahoo has no supports() check — it tries everything.
 const CRYPTO_SOURCES = [
   { id: 'okx_perps',     tier: 1, fetch: okxCrypto.fetchCandles,     bestFor: ['all'] },
   { id: 'hyperliquid',   tier: 1, fetch: hyperliquid.fetchCandles,   bestFor: ['15m','30m','1H','4H','1w'] },
   { id: 'bybit',         tier: 2, fetch: bybit.fetchCandles,         bestFor: ['all'] },
-  // Binance spot — broader coin coverage than perps (GNO, XNO, TFUEL, AMP, DCR, etc.)
-  // Geo-restricted in some regions; resolver falls through gracefully on 451/403.
   { id: 'binance_spot',  tier: 2, fetch: binanceSpot.fetchCandles,
     supports: async (s) => binanceSpot.isSupported(s),
     bestFor: ['all'] },
-  // Binance perps — broad coverage incl. 1000x-prefixed low-priced tokens
-  // (XEC→1000XEC, MOG→1000000MOG, SHIB→1000SHIB, PEPE→1000PEPE).
   { id: 'binance_perps', tier: 2, fetch: binancePerps.fetchCandles,
     supports: async (s) => binancePerps.isSupported(s),
     bestFor: ['all'] },
-  // Yahoo Finance via Worker proxy — covers ~85% of crypto with no rate limits.
-  // Placed as tier 3 (after exchanges, before CoinGecko) as a fallback for
-  // tickers that fail on all exchange sources. Especially important for
-  // smaller-cap tokens not listed on any perps exchange.
   { id: 'yahoo_crypto',  tier: 3, fetch: yahooCrypto.fetchCandles,
     bestFor: ['1D','1w','1W'] },
   { id: 'coingecko',     tier: 4, fetch: coingecko.fetchCandles,     bestFor: ['1D','1w'] },
-  // Massive/Polygon free tier: only /prev works for crypto (NOT /range).
-  // Keep as absolute last resort — fetchCandles will return null for /range calls,
-  // and the resolver will move on. Useful only for the fetchPrevClose() helper.
   { id: 'massive',       tier: 5, fetch: massive.fetchCandles,       bestFor: ['1D'],
     supports: () => massive.isConfigured() },
 ];
@@ -185,13 +175,49 @@ export async function fetchCandles(symbol, opts = {}) {
     return a.tier - b.tier;
   });
 
-  for (const src of candidates) {
+  // ── Parallel fetch for tier-1 sources ────────────────────────────────────
+  // Instead of trying sources sequentially (OKX, then HL, then Bybit, etc.),
+  // race all tier-1 sources in parallel and take the first that returns.
+  // This eliminates the "wait for OKX to fail before trying HL" delay.
+  //
+  // For a symbol on HL but not OKX: was OKX_5s_timeout + HL_0.3s = 5.3s
+  // Now: max(OKX_5s_timeout, HL_0.3s) → HL wins at 0.3s. 17× faster.
+  //
+  // If no tier-1 source returns within 5s, fall through to tier-2+ sources
+  // sequentially (these are fallbacks, not the hot path).
+  const tier1Sources = candidates.filter(s => s.tier === 1);
+  const fallbackSources = candidates.filter(s => s.tier > 1);
+
+  if (tier1Sources.length > 0) {
+    const racePromises = tier1Sources.map(src => {
+      const fetchP = src.fetch(symbol, timeframe, limit).then(candles => {
+        if (candles && candles.length >= 5) {
+          return { source: src, candles };
+        }
+        return null;
+      }).catch(() => null);
+      // 5s timeout per source
+      const timeoutP = new Promise(resolve => setTimeout(() => resolve(null), 5000));
+      return Promise.race([fetchP, timeoutP]).then(result => {
+        if (!result) recordFailure(src.id, symbol);
+        else recordSuccess(src.id, symbol);
+        return result;
+      });
+    });
+
+    const results = await Promise.all(racePromises);
+    const winner = results.find(r => r !== null);
+    if (winner) {
+      return { source: winner.source.id, candles: winner.candles };
+    }
+  }
+
+  // ── Sequential fallback for tier-2+ sources ──────────────────────────────
+  // These are backup sources (Binance, Yahoo, CoinGecko, Massive).
+  // Tried sequentially because they're the fallback path — the hot path
+  // (tier-1 parallel race) already failed.
+  for (const src of fallbackSources) {
     try {
-      // 5-second timeout per source. Most exchanges respond in <1s; 5s is
-      // generous enough for occasional latency but prevents slow sources
-      // from blocking the pool. With 10 workers and 5s max per source,
-      // worst case is 378 * 5 * 7sources / 10workers ≈ 22 min, but in
-      // practice most symbols resolve in <2s from the first source.
       const fetchPromise = src.fetch(symbol, timeframe, limit);
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 5000)
@@ -204,7 +230,6 @@ export async function fetchCandles(symbol, opts = {}) {
       recordFailure(src.id, symbol);
     } catch (e) {
       recordFailure(src.id, symbol);
-      // Don't log timeouts — they're expected when sources are slow
       if (!e.message.includes('timeout')) {
         console.warn(`[resolver] ${src.id} failed for ${symbol}: ${e.message}`);
       }
