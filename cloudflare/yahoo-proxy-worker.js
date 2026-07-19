@@ -88,25 +88,34 @@ async function checkRateLimit(request, ctx) {
   const windowKey = Math.floor(now / RATE_LIMIT_WINDOW_MS);
   const cacheKey = `https://rate-limit.internal/${ip}/${windowKey}`;
 
-  // Use the Cache API as a distributed counter. Each entry is a count of
-  // requests from this IP in this 1-minute window.
-  const cache = caches.default;
-  const cached = await cache.match(new Request(cacheKey));
-  const count = cached ? parseInt(await cached.text(), 10) : 0;
+  try {
+    // Use the Cache API as a distributed counter. Each entry is a count of
+    // requests from this IP in this 1-minute window.
+    const cache = caches.default;
+    const cached = await cache.match(new Request(cacheKey));
+    const count = cached ? parseInt(await cached.text(), 10) : 0;
 
-  if (count >= RATE_LIMIT_PER_MINUTE) {
-    return { allowed: false, count, ip };
+    if (count >= RATE_LIMIT_PER_MINUTE) {
+      return { allowed: false, count, ip };
+    }
+
+    // Increment the counter (cache for 90s). Wrap in try/catch — if the
+    // cache write fails, we still allow the request (fail-open for rate
+    // limiting is better than failing the request entirely).
+    try {
+      const newResponse = new Response(String(count + 1), {
+        headers: { 'Cache-Control': 'public, max-age=90' },
+      });
+      if (ctx && ctx.waitUntil) {
+        ctx.waitUntil(cache.put(new Request(cacheKey), newResponse.clone()));
+      }
+    } catch {}
+
+    return { allowed: true, count: count + 1, ip };
+  } catch {
+    // If rate limiting fails entirely, fail open (allow the request)
+    return { allowed: true, count: 0, ip };
   }
-
-  // Increment the counter (cache for 90s — slightly longer than the window
-  // so the entry expires naturally)
-  const newResponse = new Response(String(count + 1), {
-    headers: { 'Cache-Control': 'public, max-age=90' },
-  });
-  // Fire-and-forget — don't block the request on the cache write
-  ctx.waitUntil(cache.put(new Request(cacheKey), newResponse.clone()));
-
-  return { allowed: true, count: count + 1, ip };
 }
 
 export default {
