@@ -29,8 +29,31 @@ export default function CrossAssetDivergenceChart() {
   const history = useFactorWatchHistory();
   const signals = useFactorSignals();
 
-  // Need at least 5 data points to draw a meaningful chart
-  if (!history || history.length < 5) return null;
+  // Need at least 2 data points to draw a line. With fewer, show a
+  // "collecting data" message so the user knows the chart exists and
+  // is accumulating history (1 entry per day, capped at 90 days).
+  if (!history || history.length < 2) {
+    return (
+      <section className="rounded p-4" style={{
+        background: 'var(--scanner-bg1)',
+        border: '1px solid var(--scanner-border2)',
+      }}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-[10px] font-bold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text2)' }}>
+              Cross-Asset Divergence
+            </div>
+            <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
+              S&P 500 vs FW 3000 Momentum σ (5d) · collecting data
+            </div>
+          </div>
+        </div>
+        <div className="h-20 flex items-center justify-center text-[9px]" style={{ color: 'var(--scanner-text3)' }}>
+          ⟳ Collecting FactorWatch history ({history?.length || 0}/90 days) — chart appears with ≥2 data points
+        </div>
+      </section>
+    );
+  }
 
   const W = 600;
   const H = 140;

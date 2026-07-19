@@ -476,8 +476,11 @@ const YAHOO_SPECIAL_MAP = {
 // These exist only on prediction markets (Lighter) — skip them entirely
 // during snapshot building to avoid wasting Yahoo requests (which would 404
 // and contribute to rate limiting).
+//
+// NOTE: SPCX (SpaceX) IPO'd in 2026 and is now on Yahoo Finance — removed
+// from this list. If other private companies IPO, remove them here too.
 const PRIVATE_TICKERS = new Set([
-  'OPENAI', 'ANTHROPIC', 'SPACEX', 'MINIMAX', 'ZHIPU', 'SPCX',
+  'OPENAI', 'ANTHROPIC', 'SPACEX', 'MINIMAX', 'ZHIPU',
   'WLFI', 'YZY', 'UNKNOWN',
 ]);
 function toYahooSymbol(symbol) {
