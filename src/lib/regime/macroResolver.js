@@ -12,9 +12,9 @@
  * If all sources fail, returns empty array — regime engine has graceful degradation.
  */
 
-import * as alphaVantage from './macroSources/alphaVantage';
-import * as treasuryGov from './macroSources/treasuryGov';
-import * as fredProxy from './macroSources/fredProxy';
+import * as alphaVantage from './macroSources/alphaVantage.js';
+import * as treasuryGov from './macroSources/treasuryGov.js';
+import * as fredProxy from './macroSources/fredProxy.js';
 
 // Series-level cache (avoids re-fetching same series within 5 min)
 const _cache = new Map();

@@ -10,7 +10,7 @@ import {
   pointChange,
   computeRSI,
   computeOBV,
-} from './regimeCalculations';
+} from './regimeCalculations.js';
 
 // ─── Growth Composite ─────────────────────────────────────────────────────────
 
