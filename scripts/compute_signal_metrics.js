@@ -12,53 +12,101 @@
  */
 
 import { computeSignal, DEFAULT_THRESHOLDS } from '../src/lib/signal/compute.js';
+import { fetchWithTimeout } from '../src/lib/scanner/fetchWithTimeout.js';
 
 /**
- * Fetch daily candles for a symbol from Binance Vision (free, no key).
- * Used for server-side signal computation during snapshot build.
+ * Fetch daily candles for a symbol from OKX (server-side, no geo-block).
+ * Falls back to Bybit if OKX doesn't list the symbol.
+ * Same pattern as compute_crypto_factors.js — do NOT use Binance (geo-blocked in US CI).
  */
-async function fetchCandles(symbol, days = 400) {
-  const binanceSymbol = `${symbol}USDT`;
-  const endTime = Date.now();
-  const startTime = endTime - days * 86400000;
-  const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=1d&startTime=${startTime}&endTime=${endTime}&limit=${days}`;
-
+async function fetchCandles(symbol, limit = 365) {
+  // Try OKX SWAP (perps) first
+  const okxUrl = `https://www.okx.com/api/v5/market/candles?instId=${symbol}-USDT-SWAP&bar=1D&limit=${Math.min(limit, 300)}`;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data.map(k => ({
-      ts: parseInt(k[0]),
-      open: parseFloat(k[1]),
-      high: parseFloat(k[2]),
-      low: parseFloat(k[3]),
-      close: parseFloat(k[4]),
-      volume: parseFloat(k[5]),
-    }));
-  } catch {
-    return [];
-  }
+    const res = await fetchWithTimeout(okxUrl, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === '0' && json.data?.length) {
+        return json.data.slice().reverse().map(c => ({
+          ts: parseInt(c[0]), open: parseFloat(c[1]), high: parseFloat(c[2]),
+          low: parseFloat(c[3]), close: parseFloat(c[4]), volume: parseFloat(c[5]),
+        }));
+      }
+    }
+  } catch {}
+
+  // Fall back to OKX SPOT
+  const okxSpotUrl = `https://www.okx.com/api/v5/market/candles?instId=${symbol}-USDT&bar=1D&limit=${Math.min(limit, 300)}`;
+  try {
+    const res = await fetchWithTimeout(okxSpotUrl, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === '0' && json.data?.length) {
+        return json.data.slice().reverse().map(c => ({
+          ts: parseInt(c[0]), open: parseFloat(c[1]), high: parseFloat(c[2]),
+          low: parseFloat(c[3]), close: parseFloat(c[4]), volume: parseFloat(c[5]),
+        }));
+      }
+    }
+  } catch {}
+
+  // Fall back to Bybit
+  const bybitUrl = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}USDT&interval=D&limit=${Math.min(limit, 1000)}`;
+  try {
+    const res = await fetchWithTimeout(bybitUrl, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.retCode === 0 && json.result?.list?.length) {
+        return json.result.list.slice().reverse().map(c => ({
+          ts: parseInt(c[0]), open: parseFloat(c[1]), high: parseFloat(c[2]),
+          low: parseFloat(c[3]), close: parseFloat(c[4]), volume: parseFloat(c[5]),
+        }));
+      }
+    }
+  } catch {}
+
+  return [];
 }
 
 /**
- * Fetch funding rate history from Binance Futures (free, no key).
+ * Fetch funding rate history from Hyperliquid (not geo-blocked, no key needed).
+ * Falls back to OKX funding rate if Hyperliquid doesn't have the symbol.
  */
 async function fetchFunding(symbol, days = 90) {
-  const binanceSymbol = `${symbol}USDT`;
-  const endTime = Date.now();
-  const startTime = endTime - days * 86400000;
-  const url = `https://fapi.binance.com/fapi/v1/fundingRate?symbol=${binanceSymbol}&startTime=${startTime}&endTime=${endTime}&limit=1000`;
-
+  // Try Hyperliquid first (has funding history endpoint)
   try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data.map(f => ({ ts: f.fundingTime, rate: parseFloat(f.fundingRate) }));
-  } catch {
-    return [];
-  }
+    const startTime = Date.now() - days * 86400000;
+    const hlRes = await fetchWithTimeout('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'fundingHistory',
+        coin: symbol,
+        startTime,
+        endTime: Date.now(),
+      }),
+    });
+    if (hlRes.ok) {
+      const arr = await hlRes.json();
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.map(f => ({ ts: f.time, rate: parseFloat(f.fundingRate) }));
+      }
+    }
+  } catch {}
+
+  // Fall back to OKX funding rate
+  try {
+    const okxUrl = `https://www.okx.com/api/v5/public/funding-rate-history?instId=${symbol}-USDT-SWAP&limit=${Math.min(days * 3, 100)}`;
+    const res = await fetchWithTimeout(okxUrl, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.code === '0' && json.data?.length) {
+        return json.data.map(f => ({ ts: parseInt(f.fundingTime), rate: parseFloat(f.fundingRate) }));
+      }
+    }
+  } catch {}
+
+  return [];
 }
 
 /**
@@ -107,14 +155,14 @@ export async function computeSignalMetrics({
     let funding = provided?.funding;
 
     if (!candles || candles.length < 90) {
-      // Fetch from Binance (skip HYPE — not on Binance, use Hyperliquid)
-      if (symbol !== 'HYPE') {
-        candles = await fetchCandles(symbol, 400);
-        funding = await fetchFunding(symbol, 90);
-      } else {
-        // HYPE: try Hyperliquid API
+      // Fetch from OKX/Bybit (not Binance — geo-blocked in US CI)
+      candles = await fetchCandles(symbol, 365);
+      funding = await fetchFunding(symbol, 90);
+
+      // If OKX/Bybit didn't have it (e.g. HYPE), try Hyperliquid
+      if ((!candles || candles.length < 90) && symbol === 'HYPE') {
         try {
-          const hlRes = await fetch('https://api.hyperliquid.xyz/info', {
+          const hlRes = await fetchWithTimeout('https://api.hyperliquid.xyz/info', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
