@@ -8,9 +8,10 @@
  * Docs: https://twelvedata.com/docs#time-series
  * Endpoint: GET /time_series?symbol={sym}&interval=1day&outputsize={limit}&apikey={key}
  *
- * The API key is baked into the bundle at build time by Vite:
- *   - deploy.yml passes VITE_TWELVEDATA_KEY as env var to `npm run build`
- *   - Vite's loadEnv() picks it up and inlines as import.meta.env.VITE_TWELVEDATA_KEY
+ * SECURITY: API key is read from localStorage only — NOT from import.meta.env.
+ * VITE_-prefixed vars get baked into the client bundle, exposing the paid
+ * Twelve Data key. Users who want Twelve Data must set it via:
+ *   localStorage.setItem('TWELVEDATA_KEY', 'their_key')
  */
 
 import { fetchWithTimeout } from '../fetchWithTimeout';
@@ -59,10 +60,9 @@ function formatSymbol(symbol, type) {
 
 function getApiKey() {
   if (typeof window !== 'undefined') {
-    const local = localStorage.getItem('TWELVEDATA_KEY');
-    if (local) return local;
+    return localStorage.getItem('TWELVEDATA_KEY') || '';
   }
-  return import.meta.env?.VITE_TWELVEDATA_KEY || '';
+  return '';
 }
 
 export function isConfigured() {

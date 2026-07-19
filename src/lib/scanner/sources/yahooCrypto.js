@@ -4,6 +4,10 @@
  * Yahoo Finance covers most major cryptocurrencies with -USD suffix.
  * No rate limits (via the Worker proxy). CORS-enabled by the proxy.
  *
+ * SECURITY: Sends X-TrendScan-Token header to authenticate with the Worker.
+ * The Worker blocks requests without the correct token, preventing quota
+ * abuse via non-browser clients (curl, Python, etc.) that bypass CORS.
+ *
  * Symbol format: BTC → BTC-USD, ETH → ETH-USD
  * Some symbols have conflicts with stocks (A, S, AI, MET, etc.) —
  * this source is placed LOW in the resolver chain so exchange sources
@@ -17,6 +21,18 @@ import { fetchWithTimeout } from '../fetchWithTimeout';
 const PROXY_URL = (typeof window !== 'undefined' && localStorage.getItem('YAHOO_PROXY_URL'))
   || import.meta.env?.VITE_YAHOO_PROXY_URL
   || 'https://trendscan-yahoo-proxy.drew-724.workers.dev';
+
+// Shared-secret token for the Cloudflare Worker. Set via:
+//   localStorage.setItem('YAHOO_PROXY_TOKEN', '<token>')
+// or via VITE_YAHOO_PROXY_TOKEN in GitHub Actions secrets. If unset, the
+// request is sent without the token — the Worker will return 401 if it
+// requires auth. In development, the Worker may run without a token.
+function getProxyToken() {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('YAHOO_PROXY_TOKEN') || '';
+  }
+  return '';
+}
 
 const INTERVAL_MAP = {
   '15m': '15m',
@@ -53,8 +69,11 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const range = RANGE_MAP[timeframe] || '1y';
   const url = `${PROXY_URL}/chart/${encodeURIComponent(ySymbol)}?range=${range}&interval=${interval}`;
 
+  const token = getProxyToken();
+  const headers = token ? { 'X-TrendScan-Token': token } : {};
+
   try {
-    const res = await fetchWithTimeout(url);
+    const res = await fetchWithTimeout(url, { headers });
     if (!res.ok) return null;
     const d = await res.json();
     const result = d?.chart?.result?.[0];

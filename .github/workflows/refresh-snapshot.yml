@@ -1,14 +1,16 @@
 # TrendScan — Snapshot Refresh (3× daily on weekdays)
 #
-# This is a lightweight workflow that ONLY refreshes the snapshot data
-# (without rebuilding the entire site bundle). It commits an updated
-# snapshot.json + snapshot.tradfi.json to the main branch, then dispatches
-# deploy.yml to rebuild + redeploy.
+# This is a lightweight workflow that ONLY refreshes the snapshot data.
+# It commits snapshot.json (small, ~450KB) to main, then pushes
+# snapshot.tradfi.json (large, ~13MB) DIRECTLY to the gh-pages branch,
+# bypassing main entirely. This prevents Git repository bloat — committing
+# a 13MB file 3× daily to main would add ~39MB/day to .git history.
 #
-# Why separate from deploy.yml?
-#   - deploy.yml rebuilds the entire bundle on every code push
-#   - this workflow just refreshes data, then lets deploy.yml handle the rest
-#   - runs more frequently than deploy's daily schedule for fresher macro data
+# Why split the commit targets?
+#   - snapshot.json is small and useful for first-paint — commit to main
+#     so it's version-controlled with the code.
+#   - snapshot.tradfi.json is large and purely data — push to gh-pages
+#     (deployed branch) without polluting main's history.
 #
 # Schedule: 04:00, 12:00, 20:00 UTC (Mon-Sat)
 #   - 04:00 UTC = 12am ET (catches overnight ETF flow data from Farside)
@@ -17,20 +19,12 @@
 #   - Saturday 04:00 UTC captures Friday's final market-close data flows
 #     (Farside ETF flows, CBOE put/call, FRED daily series) which publish
 #     after the Friday 20:00 UTC run. Sunday is skipped — markets closed.
-#
-# Failure mode this workflow guards against:
-#   - If the snapshot fetch fails silently (e.g. FRED API down), the previous
-#     snapshot is preserved (the build script falls back to _prevSnapshot).
-#   - If the deploy dispatch returns 204 but no run starts (e.g. due to a
-#     concurrency cancel), the "Verify deploy workflow started" step logs a
-#     warning so the operator can intervene manually.
 
 name: Refresh FRED Snapshot
 
 on:
   schedule:
     # 04:00, 12:00, 20:00 UTC = 12am, 8am, 4pm ET (every 8 hours)
-    # 04:00 UTC catches overnight ETF flow data from Farside (updated after US market close)
     # Mon-Sat (1-6). Saturday 04:00 UTC catches Friday's final flows.
     - cron: '0 4,12,20 * * 1-6'
   workflow_dispatch:
@@ -46,8 +40,10 @@ jobs:
     # The cron schedule above already restricts to Mon-Sat (1-6),
     # so no extra `if:` is needed. workflow_dispatch always runs.
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history for cross-branch push
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -63,27 +59,69 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: node scripts/build_snapshot.js
 
-      - name: Check for changes
+      - name: Check for changes (snapshot.json on main)
         id: diff
         run: |
-          # Check both the small snapshot.json and the sharded snapshot.tradfi.json
-          if git diff --quiet public/snapshot.json public/snapshot.tradfi.json; then
+          if git diff --quiet public/snapshot.json; then
             echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No changes in snapshot data."
+            echo "No changes in snapshot.json."
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Snapshot data has new updates."
+            echo "snapshot.json has new updates."
           fi
 
-      - name: Commit & push if changed
+      - name: Commit snapshot.json to main
         if: steps.diff.outputs.changed == 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add public/snapshot.json public/snapshot.tradfi.json
+          git add public/snapshot.json
           git commit -m "chore(data): refresh snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
-          echo "Pushed updated snapshots."
+          echo "Pushed snapshot.json to main."
+
+      # ── Push snapshot.tradfi.json directly to gh-pages ─────────────────────
+      # This avoids committing the 13MB file to main's history. The gh-pages
+      # branch is the deployed branch — it's force-pushed on every deploy
+      # anyway, so its history is ephemeral. Main's history stays clean.
+      - name: Push snapshot.tradfi.json to gh-pages
+        run: |
+          # Check if snapshot.tradfi.json changed
+          if git diff --quiet public/snapshot.tradfi.json; then
+            echo "No changes in snapshot.tradfi.json."
+            exit 0
+          fi
+
+          # Configure git
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Fetch existing gh-pages branch (if it exists)
+          if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            git fetch origin gh-pages:gh-pages
+            git checkout gh-pages
+          else
+            # gh-pages doesn't exist yet — create it as an orphan branch
+            git checkout --orphan gh-pages
+            git rm -rf .
+            # Add .nojekyll so GitHub Pages serves files as-is
+            touch .nojekyll
+          fi
+
+          # Copy the freshly-built snapshot.tradfi.json to the gh-pages root
+          # (it's in public/ on main, but gh-pages serves from root)
+          cp public/snapshot.tradfi.json snapshot.tradfi.json 2>/dev/null || true
+
+          # Also ensure snapshot.json is current on gh-pages
+          cp public/snapshot.json snapshot.json 2>/dev/null || true
+
+          git add snapshot.tradfi.json snapshot.json .nojekyll
+          git commit -m "chore(data): refresh tradfi snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push origin gh-pages
+          echo "Pushed snapshot.tradfi.json directly to gh-pages (bypassing main)."
+
+          # Switch back to main for subsequent steps
+          git checkout main
 
       - name: Trigger deploy
         if: steps.diff.outputs.changed == 'true'
@@ -159,7 +197,9 @@ jobs:
         run: |
           if [ "${{ steps.diff.outputs.changed }}" == "true" ]; then
             echo "### Snapshot Refreshed ✅" >> $GITHUB_STEP_SUMMARY
-            echo "Updated snapshot.json + snapshot.tradfi.json committed to main and deploy triggered." >> $GITHUB_STEP_SUMMARY
+            echo "- snapshot.json committed to main" >> $GITHUB_STEP_SUMMARY
+            echo "- snapshot.tradfi.json pushed to gh-pages (bypassing main to avoid history bloat)" >> $GITHUB_STEP_SUMMARY
+            echo "- deploy workflow triggered" >> $GITHUB_STEP_SUMMARY
           else
             echo "### No Changes ⏸" >> $GITHUB_STEP_SUMMARY
             echo "Snapshot data is already current. No commit made." >> $GITHUB_STEP_SUMMARY

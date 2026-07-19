@@ -81,18 +81,42 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: node scripts/build_snapshot.js
 
+      # Fetch snapshot.tradfi.json from the gh-pages branch.
+      # It's NOT committed to main (gitignored) to prevent repository bloat.
+      # The refresh-snapshot workflow pushes it directly to gh-pages.
+      # On first deploy (no gh-pages branch yet), build_snapshot.js creates
+      # it in public/ — the next step copies it to dist/ regardless.
+      - name: Fetch snapshot.tradfi.json from gh-pages
+        run: |
+          if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            git fetch origin gh-pages --depth=1
+            git show origin/gh-pages:snapshot.tradfi.json > public/snapshot.tradfi.json 2>/dev/null || true
+            echo "✓ Fetched snapshot.tradfi.json from gh-pages branch"
+          else
+            echo "ℹ gh-pages branch doesn't exist yet — using locally built snapshot.tradfi.json"
+          fi
+
       - name: Build site (Vite)
         env:
-          # Inject the Massive key at build time only if provided (otherwise
-          # resolver uses free sources). Optional secret.
-          VITE_MASSIVE_API_KEY: ${{ secrets.VITE_MASSIVE_API_KEY }}
-          VITE_ALPHAVANTAGE_KEY: ${{ secrets.VITE_ALPHAVANTAGE_KEY }}
-          VITE_TWELVEDATA_KEY: ${{ secrets.VITE_TWELVEDATA_KEY }}
+          # VITE_YAHOO_PROXY_URL is just a URL (not a secret), safe to expose.
           VITE_YAHOO_PROXY_URL: ${{ secrets.VITE_YAHOO_PROXY_URL }}
+          # Shared-secret token for the Cloudflare Worker. Prevents quota abuse
+          # via non-browser requests. This IS baked into the bundle, but that's
+          # acceptable: the token is only useful for THIS worker, and rotating
+          # it is trivial (update secret + redeploy worker + bundle).
+          VITE_YAHOO_PROXY_TOKEN: ${{ secrets.VITE_YAHOO_PROXY_TOKEN }}
           # FactorWatch feature flag — set to 'true' to enable TradFi factor
           # signals, narrative banner, divergence chart, and revision table.
           # Defaults to off — components render nothing when not 'true'.
           VITE_ENABLE_FACTORWATCH: ${{ secrets.VITE_ENABLE_FACTORWATCH }}
+          # NOTE: Paid API keys (Massive/Polygon, Twelve Data, Alpha Vantage)
+          # are NO LONGER passed as VITE_ env vars. VITE_-prefixed vars get
+          # statically inlined into the client bundle, exposing the keys to
+          # anyone who inspects the JS. Users who want these sources must
+          # set them at runtime via localStorage:
+          #   localStorage.setItem('MASSIVE_API_KEY', '...')
+          #   localStorage.setItem('TWELVEDATA_KEY', '...')
+          #   localStorage.setItem('ALPHAVANTAGE_KEY', '...')
         run: npm run build
 
       - name: Copy snapshot files into build output

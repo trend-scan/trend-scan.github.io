@@ -63,6 +63,22 @@ function getYahooProxyUrl() {
   return import.meta.env?.VITE_YAHOO_PROXY_URL || 'https://trendscan-yahoo-proxy.drew-724.workers.dev';
 }
 
+// Shared-secret token for the Cloudflare Worker. Prevents quota abuse via
+// non-browser requests (curl, Python) that bypass CORS. Set via:
+//   localStorage.setItem('YAHOO_PROXY_TOKEN', '<token>')
+// or VITE_YAHOO_PROXY_TOKEN in GitHub Actions secrets.
+function getYahooProxyToken() {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('YAHOO_PROXY_TOKEN') || '';
+  }
+  return '';
+}
+
+function yahooProxyHeaders() {
+  const token = getYahooProxyToken();
+  return token ? { 'X-TrendScan-Token': token } : {};
+}
+
 // Yahoo symbol formatting (BRK.B → BRK-B, forex, metals, indices, international)
 const YAHOO_FOREX_MAP = {
   'EURUSD':'EURUSD=X','GBPUSD':'GBPUSD=X','USDJPY':'JPY=X','USDCHF':'CHF=X',
@@ -116,7 +132,7 @@ async function fetchYahooProxyCandles(symbol, limit = 300) {
   const ySymbol = toYahooSymbol(symbol);
   const url = `${proxyUrl}/chart/${encodeURIComponent(ySymbol)}?range=1y&interval=1d`;
   try {
-    const res = await fetchWithTimeout(url);
+    const res = await fetchWithTimeout(url, { headers: yahooProxyHeaders() });
     if (!res.ok) return null;
     const d = await res.json();
     const result = d?.chart?.result?.[0];
@@ -232,7 +248,11 @@ async function fetchOkxTradfiCandles(symbol, limit = 300) {
 // ── Massive / Polygon.io — broadest stock/ETF coverage ───────────────────────
 // Free tier: ~5 req/min. Paid tier: unlimited.
 // Rate limit detection: when 429 is received, sets a cooldown period.
-const MASSIVE_KEY = import.meta.env?.VITE_MASSIVE_API_KEY || '';
+//
+// SECURITY: API key is read from localStorage only — NOT from import.meta.env.
+// VITE_-prefixed vars get baked into the client bundle, exposing the paid
+// Polygon key. Users who want Massive/Polygon must set it via:
+//   localStorage.setItem('MASSIVE_API_KEY', 'their_key')
 let _massiveRateLimitedUntil = 0;  // timestamp when cooldown ends
 const MASSIVE_COOLDOWN_MS = 12_000;  // 12s cooldown after 429 (allows ~5 req/min)
 
@@ -240,8 +260,8 @@ async function fetchMassiveTradCandles(symbol, limit = 300) {
   // Check cooldown — skip entirely if recently rate-limited
   if (Date.now() < _massiveRateLimitedUntil) return null;
 
-  let apiKey = MASSIVE_KEY;
-  if (!apiKey && typeof window !== 'undefined') {
+  let apiKey = '';
+  if (typeof window !== 'undefined') {
     apiKey = localStorage.getItem('MASSIVE_API_KEY') || '';
   }
   if (!apiKey) return null;
@@ -363,7 +383,11 @@ async function fetchTradfiCandles(symbol, limit = 300) {
 // ── Twelve Data — full OHLC history for tickers not on Lighter ────────────────
 // Free tier: 800 req/day, 8 req/min, 1 year daily history
 // Covers US stocks, ETFs, forex, crypto — broader than Massive /prev
-const TWELVEDATA_KEY = import.meta.env?.VITE_TWELVEDATA_KEY || '';
+//
+// SECURITY: API key is read from localStorage only — NOT from import.meta.env.
+// VITE_-prefixed vars get baked into the client bundle, exposing the paid
+// Twelve Data key. Users who want Twelve Data must set it via:
+//   localStorage.setItem('TWELVEDATA_KEY', 'their_key')
 const TWELVEDATA_BASE = 'https://api.twelvedata.com';
 
 // Twelve Data symbol formatting
@@ -389,7 +413,11 @@ let _tdLastRequestTime = 0;
 const TD_MIN_INTERVAL_MS = 7500;  // 8 req/min = 1 req per 7.5s
 
 async function fetchTwelveDataCandles(symbol, limit = 300) {
-  if (!TWELVEDATA_KEY) return null;
+  // Read key from localStorage only (see SECURITY note above)
+  const tdKey = (typeof window !== 'undefined')
+    ? (localStorage.getItem('TWELVEDATA_KEY') || '')
+    : '';
+  if (!tdKey) return null;
 
   // Check if we've exhausted daily credits
   if (_tdCreditsUsed >= _tdCreditsLimit) {
@@ -414,7 +442,7 @@ async function fetchTwelveDataCandles(symbol, limit = 300) {
 
   const tdSymbol = formatTdSymbol(symbol);
   const outputsize = Math.min(limit, 365);  // Free tier: 1 year max
-  const url = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=${outputsize}&apikey=${TWELVEDATA_KEY}&format=JSON`;
+  const url = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=1day&outputsize=${outputsize}&apikey=${tdKey}&format=JSON`;
   try {
     const res = await fetchWithTimeout(url);
     if (!res.ok) return null;
@@ -623,7 +651,7 @@ export const TRAD_UNIVERSE = [
   { symbol: 'YZY',      name: 'Yeezy',                                 category: 'Consumer',                      subtheme: 'Apparel/Brand',             tier: 'Watch',        type: 'Stock' },
   { symbol: 'ZHIPU',    name: 'Zhipu AI',                              category: 'Pre-IPO',                       subtheme: 'AI',                        tier: 'Active',       type: 'Private' },
 
-  // ─── Twelve Data additions (fetched via TD API — requires VITE_TWELVEDATA_KEY) ───
+  // ─── Twelve Data additions (fetched via TD API — requires localStorage TWELVEDATA_KEY) ───
   // Financials
   { symbol: 'JPM',      name: 'JPMorgan Chase',                        category: 'Financials',                    subtheme: 'Banking',                   tier: 'Core',         type: 'Stock', source: 'twelvedata' },
   { symbol: 'BAC',      name: 'Bank of America',                       category: 'Financials',                    subtheme: 'Banking',                   tier: 'Active',       type: 'Stock', source: 'twelvedata' },

@@ -406,14 +406,16 @@ function toMassiveTicker(symbol) {
 }
 
 async function fetchMassiveCandles(symbol, timeframe = '4H', limit = 300) {
-  // Check localStorage first (runtime), then environment variable (build-time fallback)
-  const apiKey = typeof window !== 'undefined'
-    ? (localStorage.getItem('MASSIVE_API_KEY') || import.meta.env?.VITE_MASSIVE_API_KEY)
-    : import.meta.env?.VITE_MASSIVE_API_KEY;
+  // SECURITY: Read API key from localStorage only — NOT from import.meta.env.
+  // VITE_-prefixed vars get baked into the client bundle, exposing the paid
+  // Polygon key. Users must set it via:
+  //   localStorage.setItem('MASSIVE_API_KEY', 'their_key')
+  const apiKey = (typeof window !== 'undefined')
+    ? (localStorage.getItem('MASSIVE_API_KEY') || '')
+    : '';
 
   if (!apiKey) {
-    console.warn('Massive API key not configured. Set MASSIVE_API_KEY in localStorage or VITE_MASSIVE_API_KEY in .env');
-    return null;
+    return null;  // No key — let resolver fall back to free sources
   }
 
   const tf = MASSIVE_INTERVAL_MAP[timeframe] || MASSIVE_INTERVAL_MAP['4H'];

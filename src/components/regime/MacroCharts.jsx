@@ -2,7 +2,7 @@
  * MacroCharts - Nowcast history charts using recharts
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -56,6 +56,67 @@ const CustomTooltip = ({ active, payload, label } = {}) => {
 };
 
 export default function MacroCharts({ regime }) {
+  // ── Nowcast history: server-side snapshot first, localStorage as fallback ──
+  // The server (build_snapshot.js) appends today's nowcast to a 90-day rolling
+  // array in snapshot.json. This ensures ALL users see the same history
+  // regardless of device/cache state (fixes Incognito + cache-clear issues).
+  //
+  // localStorage is still checked for today's entry (which may be newer than
+  // the server's 3×-daily snapshot). We merge: server history + today's local
+  // entry if it exists and is newer.
+  //
+  // Hooks MUST be called before any early return (rules of hooks).
+  const [chartData, setChartData] = useState(null);
+  const [historyDays, setHistoryDays] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Fetch server-side history from snapshot.json
+        const snapRes = await fetch('/snapshot.json');
+        const snap = snapRes.ok ? await snapRes.json() : null;
+        const serverHistory = snap?.regime_history || [];
+
+        // Read localStorage for today's intraday entry
+        const localHistory = JSON.parse(localStorage.getItem('trendscan_regime_history') || '[]');
+
+        // Merge: server history (authoritative) + any newer local entry for today
+        const today = new Date().toISOString().split('T')[0];
+        const localToday = localHistory.find(h => h.date === today);
+        const serverHasToday = serverHistory.some(h => h.date === today);
+
+        let merged;
+        if (localToday && !serverHasToday) {
+          merged = [...serverHistory, localToday];
+        } else if (localToday && serverHasToday) {
+          merged = serverHistory;  // server is authoritative
+        } else {
+          merged = serverHistory.length > 0 ? serverHistory : localHistory;
+        }
+
+        // Sort by date and cap at 90 days
+        merged = merged
+          .slice()
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .slice(-90);
+
+        if (!cancelled && merged.length > 0) {
+          setHistoryDays(merged.length);
+          setChartData(merged.map(h => ({
+            date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+            growth: typeof h.growthNowcast === 'number' ? h.growthNowcast : 50,
+            inflation: typeof h.inflationNowcast === 'number' ? h.inflationNowcast : 50,
+            liquidity: typeof h.liquidityNowcast === 'number' ? h.liquidityNowcast : 50,
+          })));
+        }
+      } catch {
+        // fetch or parse failed — leave chartData as null
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   if (!regime) {
     return (
       <div
@@ -73,33 +134,6 @@ export default function MacroCharts({ regime }) {
   }
 
   const { btcPrice = [], quadrant = 'FLUX' } = regime;
-
-  // ── Nowcast history from localStorage ────────────────────────────────────
-  // MacroRegime.jsx persists one entry per day to 'trendscan_regime_history'
-  // with the regime quadrant + numeric nowcast scores (0-100).
-  //
-  // First-time visitors will have an empty history (chart shows a "collecting
-  // data" message). Returning visitors see the accumulated daily history
-  // (up to 90 days, pruned by MacroRegime).
-  //
-  // Older entries (before this field was added) won't have the nowcast
-  // scores and fall back to 50 (neutral) for those days.
-  let chartData = null;
-  let historyDays = 0;
-  try {
-    const stored = JSON.parse(localStorage.getItem('trendscan_regime_history') || '[]');
-    if (stored.length > 0) {
-      historyDays = stored.length;
-      chartData = stored.map(h => ({
-        date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
-        growth: typeof h.growthNowcast === 'number' ? h.growthNowcast : 50,
-        inflation: typeof h.inflationNowcast === 'number' ? h.inflationNowcast : 50,
-        liquidity: typeof h.liquidityNowcast === 'number' ? h.liquidityNowcast : 50,
-      }));
-    }
-  } catch {
-    // localStorage parse failed — leave chartData as null
-  }
 
   // BTC chart data (last 180 days)
   const btcChartData = btcPrice.length > 0

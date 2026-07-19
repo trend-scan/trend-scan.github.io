@@ -18,12 +18,15 @@
  * Limits: paid plan — no rate limit issues. Free tier (NOT_AUTHORIZED for
  * /range on most assets) is why this was originally deprioritized.
  *
- * The API key is baked into the bundle at build time by Vite:
- *   - deploy.yml passes VITE_MASSIVE_API_KEY as env var to `npm run build`
- *   - Vite's loadEnv() picks it up and inlines as import.meta.env.VITE_MASSIVE_API_KEY
- *   - At runtime, the bundle contains the literal string key
+ * SECURITY: The API key is NOT baked into the bundle. It must be provided
+ * by the user at runtime via localStorage. This prevents the paid Polygon
+ * key from being exposed in the client-side JavaScript bundle.
  *
- * For local dev: create .env with VITE_MASSIVE_API_KEY=your_key
+ * For local dev: open the browser console on the site and run:
+ *   localStorage.setItem('MASSIVE_API_KEY', 'your_key_here')
+ *
+ * To set globally for all users: configure a Cloudflare Worker that
+ * proxies Polygon requests with the key injected server-side.
  */
 
 import { fetchWithTimeout } from '../fetchWithTimeout';
@@ -58,16 +61,18 @@ const INTERVAL_MS = {
 };
 
 /**
- * Get the API key. Checks:
- *   1. localStorage (runtime override — user can paste a different key via UI)
- *   2. import.meta.env.VITE_MASSIVE_API_KEY (baked at build time by Vite/CI)
+ * Get the API key from localStorage (user-supplied at runtime).
+ *
+ * SECURITY: We deliberately do NOT read from import.meta.env.VITE_MASSIVE_API_KEY.
+ * Any VITE_-prefixed env var is statically replaced into the client bundle by
+ * Vite, exposing the paid Polygon key to anyone who inspects the JS. The key
+ * must come from localStorage (set by the user via browser console or UI).
  */
 function getApiKey() {
   if (typeof window !== 'undefined') {
-    const local = localStorage.getItem('MASSIVE_API_KEY');
-    if (local) return local;
+    return localStorage.getItem('MASSIVE_API_KEY') || '';
   }
-  return import.meta.env?.VITE_MASSIVE_API_KEY || '';
+  return '';
 }
 
 /**

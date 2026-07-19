@@ -6,16 +6,28 @@
  * Used as a live fallback for macro series; the daily GitHub Action snapshot
  * is the primary source (baked into snapshot.json at build time).
  *
+ * SECURITY: API key is read from localStorage only — NOT from import.meta.env.
+ * VITE_-prefixed vars get baked into the client bundle. Alpha Vantage's free
+ * tier is low-value enough that 'demo' suffices for most users; those who
+ * register a key should set it via:
+ *   localStorage.setItem('ALPHAVANTAGE_KEY', 'their_key')
+ *
  * Docs: https://www.alphavantage.co/documentation/
  */
 
 const BASE = 'https://www.alphavantage.co/query';
-const API_KEY = import.meta.env?.VITE_ALPHAVANTAGE_KEY || 'demo';
+
+function getApiKey() {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('ALPHAVANTAGE_KEY') || 'demo';
+  }
+  return 'demo';
+}
 
 async function callAV(functionName, params = {}) {
   const url = new URL(BASE);
   url.searchParams.set('function', functionName);
-  url.searchParams.set('apikey', API_KEY);
+  url.searchParams.set('apikey', getApiKey());
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
   }

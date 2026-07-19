@@ -36,3 +36,10 @@ dist-ssr
 # so the deployed GitHub Pages site has it (even on first deploy before
 # the daily workflow runs).
 !public/snapshot.json
+
+# IMPORTANT: DO ignore public/snapshot.tradfi.json on main branch.
+# This 13MB file is committed 3× daily by refresh-snapshot.yml, which would
+# bloat main's history by ~39MB/day. Instead, it's pushed directly to the
+# gh-pages branch (deployed branch) where history is ephemeral.
+# The deploy workflow still copies it from public/ into dist/ if present.
+public/snapshot.tradfi.json

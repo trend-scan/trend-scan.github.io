@@ -245,7 +245,42 @@ The auto-resolver tries multiple sources. If all fail:
 
 - Check that `FRED_API_KEY` is set in repo secrets
 - Check the Actions tab for the failing workflow's logs
-- The build script is lenient — if FRED fails, it writes an empty snapshot and the site still deploys
+- The build script retains the previous snapshot's FRED data if the FRED API
+  fails (stale-data fallback). The site still deploys with the last known-good
+  macro data rather than shipping an empty snapshot. Check the workflow logs
+  for the `⚠ FRED data empty — using previous snapshot (stale)` message.
+
+## Security
+
+### API Keys — Client vs Server
+
+**Server-side only (never exposed to client):**
+- `FRED_API_KEY` — Federal Reserve Economic Data. Used by `build_snapshot.js` in GitHub Actions.
+
+**Runtime only (set via localStorage, NOT baked into bundle):**
+- `MASSIVE_API_KEY` — Polygon.io paid key. Set via browser console: `localStorage.setItem('MASSIVE_API_KEY', '...')`
+- `TWELVEDATA_KEY` — Twelve Data paid key. Same pattern.
+- `ALPHAVANTAGE_KEY` — Alpha Vantage key. Same pattern.
+
+**VITE_ env vars (baked into bundle — safe because non-secret):**
+- `VITE_YAHOO_PROXY_URL` — Cloudflare Worker URL (just a URL, not a secret)
+- `VITE_YAHOO_PROXY_TOKEN` — Worker auth token (only useful for THIS worker, rotatable)
+- `VITE_ENABLE_FACTORWATCH` — boolean feature flag
+
+**Why no VITE_ prefix for paid keys?**
+Vite statically inlines `VITE_`-prefixed env vars into the client JS bundle. Anyone can inspect the bundle and extract the key. Paid keys (Polygon, Twelve Data, Alpha Vantage) must be provided at runtime via localStorage instead.
+
+### Cloudflare Worker Auth
+
+The Yahoo Finance proxy worker uses two layers of protection:
+1. **Origin allowlist (CORS)** — blocks browser requests from non-TrendScan sites
+2. **Shared-secret token** — blocks non-browser requests (curl, Python) that bypass CORS
+
+Set the worker token via `wrangler secret put WORKER_TOKEN` and the client token via `VITE_YAHOO_PROXY_TOKEN` GitHub Actions secret (or `localStorage.setItem('YAHOO_PROXY_TOKEN', '...')` for local dev).
+
+### Git Repository Size
+
+`snapshot.tradfi.json` (~13 MB) is pushed directly to the `gh-pages` branch, NOT committed to `main`. This prevents Git history bloat — committing a 13 MB file 3× daily to main would add ~39 MB/day to the `.git` folder.
 
 ## License
 

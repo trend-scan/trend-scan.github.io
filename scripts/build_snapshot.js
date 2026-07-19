@@ -536,6 +536,96 @@ async function fetchTradfiSnapshot() {
   return out;
 }
 
+// ─── Regime History — server-side accumulation for consistent 90-day graph ──
+//
+// The MacroRegime page computes a daily nowcast score (growth, inflation,
+// liquidity) and persists it to localStorage. This is ephemeral and
+// device-specific — Incognito users, cache-clearers, and new devices see
+// an empty history graph.
+//
+// This function computes the same nowcast server-side using the FRED data
+// + CoinGecko + Fear&Greed that build_snapshot.js already fetches, then
+// appends today's score to a rolling 90-day array in snapshot.json. The
+// client reads from snapshot.regime_history first, merges with localStorage
+// for today's entry (which may be newer).
+//
+// Why server-side: ensures ALL users see the same 90-day history regardless
+// of their device/cache state. The client-side localStorage path remains as
+// a fallback for intraday updates (the server only runs 3× daily).
+
+async function computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot) {
+  try {
+    // Dynamically import the regime engine modules (ES modules)
+    const regimeSignals = await import('../src/lib/regime/regimeSignals.js');
+    const calc = await import('../src/lib/regime/regimeCalculations.js');
+
+    // Build the data shape the regime engine expects
+    const fredAvailable = fred && Object.values(fred).some(v => Array.isArray(v) && v.length > 0);
+
+    // Extract BTC/ETH price series from CoinGecko data
+    const btcData = coingecko?.bitcoin;
+    const ethData = coingecko?.ethereum;
+    const btcPrice = Array.isArray(btcData?.prices) ? btcData.prices.map(p => p[1]) : [];
+    const ethPrice = Array.isArray(ethData?.prices) ? ethData.prices.map(p => p[1]) : [];
+
+    // Fear & Greed as a series
+    const fgSeries = Array.isArray(fearGreed) ? fearGreed.map(d => d.value).filter(v => v != null) : [];
+
+    // Compute growth signals + nowcast
+    const growthSignals = regimeSignals.computeGrowthSignals({
+      btcPrice, ethPrice, fearGreed: fgSeries, fred, fredAvailable,
+    });
+    const growthZ = calc.weightedComposite(growthSignals);
+    const growthNowcast = calc.computeNowcast([growthZ]);
+    const growthLabel = regimeSignals.classifyGrowthRegime(growthZ);
+
+    // Compute inflation signals + nowcast
+    const inflationSignals = regimeSignals.computeInflationSignals({
+      btcPrice, fearGreed: fgSeries, fred, fredAvailable,
+    });
+    const inflationZ = calc.weightedComposite(inflationSignals);
+    const inflationNowcast = calc.computeNowcast([inflationZ]);
+    const inflationLabel = regimeSignals.classifyInflationRegime(inflationZ);
+
+    // Compute liquidity signals + nowcast
+    const liquiditySignals = regimeSignals.computeLiquiditySignals({
+      btcPrice, fred, fredAvailable,
+    });
+    const liquidityZ = calc.weightedComposite(liquiditySignals);
+    const liquidityNowcast = calc.computeNowcast([liquidityZ]);
+    const liquidityLabel = regimeSignals.classifyLiquidityRegime(liquidityZ);
+
+    // Classify quadrant
+    const quadrant = calc.classifyQuadrant(growthNowcast.nowcast, inflationNowcast.nowcast);
+
+    const today = new Date().toISOString().split('T')[0];
+    const todayEntry = {
+      date: today,
+      quadrant,
+      growth: growthLabel,
+      inflation: inflationLabel,
+      liquidity: liquidityLabel,
+      growthNowcast: Math.round(growthNowcast.nowcast * 10) / 10,
+      inflationNowcast: Math.round(inflationNowcast.nowcast * 10) / 10,
+      liquidityNowcast: Math.round(liquidityNowcast.nowcast * 10) / 10,
+    };
+
+    // Merge with previous history (if exists)
+    const prevHistory = _prevSnapshot?.regime_history || [];
+    // Remove any existing entry for today (in case of re-runs)
+    const filtered = prevHistory.filter(h => h.date !== today);
+    // Append today's entry and cap at 90 days
+    const merged = [...filtered, todayEntry].slice(-90);
+
+    console.log(`  ✓ Regime history: ${merged.length} days (today: ${quadrant} | G:${growthLabel} I:${inflationLabel} L:${liquidityLabel})`);
+    return merged;
+  } catch (e) {
+    console.warn(`  ✗ Regime history computation failed: ${e.message}`);
+    // Fall back to previous history if computation fails
+    return _prevSnapshot?.regime_history || [];
+  }
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -562,6 +652,9 @@ async function main() {
     console.log('  ⚠ FRED data empty — using previous snapshot (stale)');
     fred = _prevSnapshot.fred;
   }
+
+  // Compute regime history server-side (appends today's nowcast to a 90-day rolling array)
+  const regimeHistory = await computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot);
 
   // If FactorWatch scrape failed, fall back to previous snapshot's data
   // (if it's from today). If stale, leave as null — UI degrades gracefully.
@@ -647,6 +740,7 @@ async function main() {
     crypto_factors: cryptoFactors?.factorData || null,
     crypto_factor_history: cryptoFactors?.factorHistory || [],
     crypto_factor_spread_history: cryptoFactors?.spreadHistory || [],
+    regime_history: regimeHistory,
   };
 
   // Large snapshot — only loaded when Board or Macro needs tradfi OHLCV.
