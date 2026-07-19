@@ -781,9 +781,27 @@ async function main() {
 
   const generatedAt = new Date().toISOString();
 
+  // Compute signal metrics (BTC + Majors + Cash) using the backtested engine
+  let signalMetrics = null;
+  let signalHistory = [];
+  try {
+    const { computeSignalMetrics } = await import('./compute_signal_metrics.js');
+    const result = await computeSignalMetrics({
+      ultra6: regimeHistory?.[regimeHistory.length - 1] || null,
+      prevSnapshot: _prevSnapshot,
+    });
+    signalMetrics = result.signal_metrics;
+    signalHistory = result.signal_history;
+    console.log(`  ✓ Signal metrics: BTC=${signalMetrics.btc_stance.verdict} (${signalMetrics.btc_stance.confidence}/10), Majors=${signalMetrics.majors.sector_summary}, Cash=${signalMetrics.cash_weight.suggested_pct}%`);
+  } catch (e) {
+    console.warn(`  ✗ Signal metrics computation failed: ${e.message}`);
+    signalMetrics = _prevSnapshot?.signal_metrics || null;
+    signalHistory = _prevSnapshot?.signal_history || [];
+  }
+
   // Small snapshot — loaded by every page (FRED proxy, CoinGecko fallback,
   // Fear&Greed, Ken French seasonality, CBOE put/call, ETF flows, FactorWatch,
-  // crypto factors). Keeping this lean is critical for first paint.
+  // crypto factors, signal metrics). Keeping this lean is critical for first paint.
   const snapshot = {
     generated_at: generatedAt,
     fred,
@@ -799,6 +817,8 @@ async function main() {
     crypto_factor_history: cryptoFactors?.factorHistory || [],
     crypto_factor_spread_history: cryptoFactors?.spreadHistory || [],
     regime_history: regimeHistory,
+    signal_metrics: signalMetrics,
+    signal_history: signalHistory,
   };
 
   // Large snapshot — only loaded when Board or Macro needs tradfi OHLCV.

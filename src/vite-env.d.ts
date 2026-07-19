@@ -15,6 +15,9 @@ interface ImportMetaEnv {
   // chart, and revision arbitrage table. Defaults to off — all FactorWatch
   // UI components check this flag and render nothing when it's not 'true'.
   readonly VITE_ENABLE_FACTORWATCH?: string;
+  // Feature flag for Signal page. Set to 'true' in GitHub Actions secrets
+  // to enable the /signal route with STRONG/WEAK/NEUTRAL verdicts.
+  readonly VITE_ENABLE_SIGNAL_PAGE?: string;
   // NOTE: Paid API keys (Massive/Polygon, Twelve Data, Alpha Vantage) are
   // deliberately NOT declared here. They must NOT be passed as VITE_ env vars
   // — Vite statically inlines VITE_-prefixed vars into the client bundle,

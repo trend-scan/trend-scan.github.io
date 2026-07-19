@@ -4,12 +4,12 @@
 export const CRYPTO_UNIVERSE = [
   // Layer 1
   { symbol: 'BTC', name: 'Bitcoin', theme: 'Layer 1', tier: 'Core', subtheme: 'Bitcoin' },
-  { symbol: 'ETH', name: 'Ethereum', theme: 'Layer 1', tier: 'Core', subtheme: 'Smart Contract L1' },
+  { symbol: 'ETH', name: 'Ethereum', theme: 'Layer 1', tier: 'Core', subtheme: 'Smart Contract L1', signal_major: true },
   { symbol: 'BNB', name: 'BNB', theme: 'Layer 1', tier: 'Core', subtheme: 'Exchange L1' },
   { symbol: 'XRP', name: 'XRP', theme: 'Layer 1', tier: 'Core', subtheme: 'Payments L1' },
-  { symbol: 'SOL', name: 'Solana', theme: 'Layer 1', tier: 'Core', subtheme: 'Smart Contract L1' },
+  { symbol: 'SOL', name: 'Solana', theme: 'Layer 1', tier: 'Core', subtheme: 'Smart Contract L1', signal_major: true },
   { symbol: 'TRX', name: 'TRON', theme: 'Layer 1', tier: 'Core', subtheme: 'Smart Contract L1' },
-  { symbol: 'HYPE', name: 'Hyperliquid', theme: 'Layer 1', tier: 'Core', subtheme: 'Perpetuals L1' },
+  { symbol: 'HYPE', name: 'Hyperliquid', theme: 'Layer 1', tier: 'Core', subtheme: 'Perpetuals L1', signal_major: true },
   { symbol: 'ADA', name: 'Cardano', theme: 'Layer 1', tier: 'Core', subtheme: 'Smart Contract L1' },
   { symbol: 'GRAM', name: 'Gram (prev. Toncoin)', theme: 'Layer 1', tier: 'Core', subtheme: 'Smart Contract L1' },
   { symbol: 'BCH', name: 'Bitcoin Cash', theme: 'Layer 1', tier: 'Core', subtheme: 'Payments' },

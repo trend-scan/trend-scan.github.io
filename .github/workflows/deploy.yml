@@ -109,6 +109,9 @@ jobs:
           # signals, narrative banner, divergence chart, and revision table.
           # Defaults to off — components render nothing when not 'true'.
           VITE_ENABLE_FACTORWATCH: ${{ secrets.VITE_ENABLE_FACTORWATCH }}
+          # Signal page feature flag — set to 'true' to enable the /signal route
+          # with STRONG/WEAK/NEUTRAL verdicts for BTC, Majors, and Cash.
+          VITE_ENABLE_SIGNAL_PAGE: ${{ secrets.VITE_ENABLE_SIGNAL_PAGE }}
           # NOTE: Paid API keys (Massive/Polygon, Twelve Data, Alpha Vantage)
           # are NO LONGER passed as VITE_ env vars. VITE_-prefixed vars get
           # statically inlined into the client bundle, exposing the keys to

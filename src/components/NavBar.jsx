@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
+const SIGNAL_ENABLED = import.meta.env.VITE_ENABLE_SIGNAL_PAGE === 'true';
+
 const TABS = [
   { label: 'Screener',     path: '/' },
   { label: 'Market Board', path: '/board' },
   { label: 'Macro',        path: '/macro' },
+  ...(SIGNAL_ENABLED ? [{ label: 'Signal', path: '/signal' }] : []),
 ];
 
 export default function NavBar() {

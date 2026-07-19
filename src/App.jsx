@@ -12,6 +12,7 @@ import LegalDisclaimer from './components/LegalDisclaimer';
 const Scanner = lazy(() => import('./pages/Scanner'));
 const Board = lazy(() => import('./pages/Board'));
 const MacroRegime = lazy(() => import('./pages/MacroRegime'));
+const Signal = lazy(() => import('./pages/Signal'));
 
 function PageLoader() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/" element={<ErrorBoundary name="Scanner"><Scanner /></ErrorBoundary>} />
           <Route path="/board" element={<ErrorBoundary name="Market Board"><Board /></ErrorBoundary>} />
           <Route path="/macro" element={<ErrorBoundary name="Macro Regime"><MacroRegime /></ErrorBoundary>} />
+          <Route path="/signal" element={<ErrorBoundary name="Signal Engine"><Signal /></ErrorBoundary>} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
         </Suspense>
