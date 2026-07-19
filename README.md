@@ -7,22 +7,25 @@ Multi-source crypto + tradfi market scanner with macro regime monitoring. Deploy
 ```
 [Client Browser]
   ├─ Loads index.html (with inlined Vite bundle)
-  ├─ Reads /snapshot.json (small ~450 KB: FRED macro + CoinGecko top + Fear & Greed + ETF flows)
+  ├─ Reads /snapshot.json (small ~450 KB: FRED macro + CoinGecko top + Fear & Greed + ETF flows + signal metrics)
   ├─ Lazy-loads /snapshot.tradfi.json (only on Board/Macro pages — ~13 MB of OHLCV)
   ├─ Live fetches crypto OHLC via sourceResolver:
-  │     CoinGecko → Hyperliquid → Bybit → Gate → Kucoin (auto fallback)
+  │     OKX → Bybit → Kraken → Hyperliquid → Yahoo → Binance → CoinGecko (auto fallback)
   ├─ Live fetches tradfi OHLC via sourceResolver:
-  │     OKX SWAP perps → Lighter → Binance xStocks (auto fallback)
+  │     Lighter → OKX SWAP perps → Yahoo proxy → Binance xStocks (auto fallback)
   └─ Computes regime signals, factor scores, breadth — all client-side
 
 [GitHub Actions]
-  ├─ refresh-snapshot.yml (3× daily Mon-Sat at 04:00/12:00/20:00 UTC)
+  ├─ refresh-snapshot.yml (3× daily 7 days/week at 04:00/12:00/20:00 UTC)
   │     ├─ Runs scripts/build_snapshot.js with FRED_API_KEY secret
   │     ├─ Fetches FRED + CoinGecko + Fear&Greed + Ken French + CBOE + Yahoo tradfi + Farside ETF
-  │     ├─ Writes public/snapshot.json (small) + public/snapshot.tradfi.json (large)
+  │     ├─ Computes crypto factors + signal metrics (BTC/Majors/Cash verdicts)
+  │     ├─ Writes public/snapshot.json (small) → commits to main
+  │     ├─ Writes public/snapshot.tradfi.json (large) → pushes to gh-pages branch (bypasses main)
   │     └─ Dispatches deploy.yml to rebuild + redeploy
   └─ deploy.yml (on push to main + daily at 22:00 UTC)
         ├─ Builds the Vite bundle
+        ├─ Fetches snapshot.tradfi.json from gh-pages branch
         ├─ Copies both snapshot files into dist/
         └─ Pushes dist/ to gh-pages branch → live site updates
 ```
@@ -206,16 +209,22 @@ npm run typecheck        # TypeScript check
     └── lib/
         ├── scanner/
         │   ├── sourceResolver.js     # Multi-source auto-fallback dispatcher
+        │   ├── sourceHealth.js       # Global geo-block tracking (HTTP 451)
         │   ├── sources/
+        │   │   ├── okxCrypto.js      # OKX SWAP+SPOT with universe cache
+        │   │   ├── bybit.js          # Bybit linear perps + spot
+        │   │   ├── kraken.js         # Kraken spot with dynamic AssetPairs
+        │   │   ├── hyperliquid.js    # Hyperliquid perps + funding/OI tickers
+        │   │   ├── yahooCrypto.js    # Yahoo Finance via Cloudflare Worker proxy
+        │   │   ├── binanceSpot.js    # Binance spot (geo-blocked in US/UK)
+        │   │   ├── binancePerps.js   # Binance USD-M futures
         │   │   ├── coingecko.js      # Free daily OHLC
-        │   │   ├── hyperliquid.js    # Free intraday perps
-        │   │   ├── bybit.js
-        │   │   ├── gate.js
-        │   │   ├── kucoin.js
         │   │   ├── okxTradfi.js      # SPY/QQQ/NVDA/TSLA/AAPL/XAU/XAG perps
         │   │   ├── lighter.js        # 214-market tradfi universe
         │   │   └── binanceXStocks.js
-        │   └── exchanges.js          # Legacy dispatcher (now delegates to resolver)
+        │   └── exchanges.js          # Legacy dispatcher (delegates to resolver + GeoBlockedError)
+        ├── signal/
+        │   └── compute.js            # Pure signal engine (backtested v3.1, 9 gates)
         └── regime/
             ├── macroResolver.js      # Multi-source macro fallback chain
             ├── macroSources/

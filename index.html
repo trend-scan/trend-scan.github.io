@@ -60,10 +60,10 @@
         style-src                                — CSS sources (Vite bundle + Google Fonts CSS @import + unsafe-inline for runtime styles)
         font-src                                 — Google Fonts static files
         img-src                                  — images: self, data: URIs, https: for OG/twitter card images
-        frame-src                                — TradingView chart iframe (www.tradingview-widget.com)
+        frame-src                                — TradingView chart iframe (s.tradingview.com)
         connect-src                              — runtime fetch() / XHR endpoints (all exchange + macro + treasury APIs)
         worker-src                               — Web Workers (none currently, but allowed from self for future use)
-        frame-ancestors 'none'                   — prevent clickjacking (no embedding) — NOTE: ignored via meta, needs HTTP header
+        frame-ancestors 'none'                   — clickjacking mitigation (NOTE: ignored via meta tag on GitHub Pages; would need HTTP header to be effective)
         base-uri 'self'                          — prevent <base> tag injection
         form-action 'self'                       — prevent form submissions to external origins
         object-src 'none'                        — no Flash/Java/plugins

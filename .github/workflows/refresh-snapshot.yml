@@ -1,4 +1,4 @@
-# TrendScan — Snapshot Refresh (3× daily on weekdays)
+# TrendScan — Snapshot Refresh (3× daily, 7 days/week)
 #
 # This is a lightweight workflow that ONLY refreshes the snapshot data.
 # It commits snapshot.json (small, ~450KB) to main, then pushes

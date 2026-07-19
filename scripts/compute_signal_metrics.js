@@ -124,7 +124,7 @@ export async function computeSignalMetrics({
   let btcCandles = providedBtcCandles;
   let btcFunding = providedBtcFunding;
   if (!btcCandles || btcCandles.length < 90) {
-    console.log('  Signal: Fetching BTC candles + funding from Binance...');
+    console.log('  Signal: Fetching BTC candles + funding from OKX/Bybit...');
     btcCandles = await fetchCandles('BTC', 400);
     btcFunding = await fetchFunding('BTC', 90);
     console.log(`  Signal: BTC ${btcCandles.length} candles, ${btcFunding.length} funding entries`);
