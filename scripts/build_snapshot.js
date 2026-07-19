@@ -467,7 +467,19 @@ const YAHOO_SPECIAL_MAP = {
   'XAU':'GC=F','XAG':'SI=F','XCU':'HG=F','XPD':'PA=F','XPT':'PL=F',
   'WTI':'CL=F','BRENTOIL':'BZ=F','NATGAS':'NG=F',
   'US500':'^GSPC','US100':'^NDX','SPX':'^GSPC',
+  // Commodities not covered by the above
+  'WHEAT':'ZW=F',     // Wheat futures
+  'PAXG':'PAXG-USD',  // Pax Gold (crypto-pegged gold, trades on Yahoo as PAXG-USD)
 };
+
+// Private/pre-IPO companies that have NO public exchange data.
+// These exist only on prediction markets (Lighter) — skip them entirely
+// during snapshot building to avoid wasting Yahoo requests (which would 404
+// and contribute to rate limiting).
+const PRIVATE_TICKERS = new Set([
+  'OPENAI', 'ANTHROPIC', 'SPACEX', 'MINIMAX', 'ZHIPU', 'SPCX',
+  'WLFI', 'YZY', 'UNKNOWN',
+]);
 function toYahooSymbol(symbol) {
   const s = symbol.toUpperCase();
   if (YAHOO_FOREX_MAP[s]) return YAHOO_FOREX_MAP[s];
@@ -477,42 +489,63 @@ function toYahooSymbol(symbol) {
   return s;
 }
 
-async function fetchYahooOHLCV(symbol, limit = 250) {
+async function fetchYahooOHLCV(symbol, limit = 250, retries = 2) {
   const ySymbol = toYahooSymbol(symbol);
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySymbol)}?range=1y&interval=1d`;
-  try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
-    if (!res.ok) return null;
-    const d = await res.json();
-    const result = d?.chart?.result?.[0];
-    if (!result?.timestamp) return null;
-    const q = result.indicators?.quote?.[0];
-    if (!q) return null;
-    const candles = [];
-    for (let i = 0; i < result.timestamp.length; i++) {
-      if (q.close?.[i] == null) continue;
-      candles.push({
-        t: result.timestamp[i] * 1000,
-        o: q.open?.[i] ?? q.close[i],
-        h: q.high?.[i] ?? q.close[i],
-        l: q.low?.[i] ?? q.close[i],
-        c: q.close[i],
-        v: q.volume?.[i] ?? 0,
-      });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
+      if (res.status === 429 || res.status === 503) {
+        // Rate limited — wait and retry (exponential backoff: 2s, 4s)
+        if (attempt < retries) {
+          const wait = 2000 * Math.pow(2, attempt);
+          await new Promise(r => setTimeout(r, wait));
+          continue;
+        }
+        return null;
+      }
+      if (!res.ok) return null;
+      const d = await res.json();
+      const result = d?.chart?.result?.[0];
+      if (!result?.timestamp) return null;
+      const q = result.indicators?.quote?.[0];
+      if (!q) return null;
+      const candles = [];
+      for (let i = 0; i < result.timestamp.length; i++) {
+        if (q.close?.[i] == null) continue;
+        candles.push({
+          t: result.timestamp[i] * 1000,
+          o: q.open?.[i] ?? q.close[i],
+          h: q.high?.[i] ?? q.close[i],
+          l: q.low?.[i] ?? q.close[i],
+          c: q.close[i],
+          v: q.volume?.[i] ?? 0,
+        });
+      }
+      return candles.slice(-limit);
+    } catch {
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+        continue;
+      }
+      return null;
     }
-    return candles.slice(-limit);
-  } catch {
-    return null;
   }
+  return null;
 }
 
 async function fetchTradfiSnapshot() {
-  const symbols = readTradUniverseSymbols();
-  console.log(`  Fetching ${symbols.length} tradfi tickers from Yahoo Finance...`);
+  const allSymbols = readTradUniverseSymbols();
+  // Skip private/pre-IPO tickers — they have no Yahoo data and waste requests
+  const symbols = allSymbols.filter(s => !PRIVATE_TICKERS.has(s));
+  const skipped = allSymbols.length - symbols.length;
+  console.log(`  Fetching ${symbols.length} tradfi tickers from Yahoo Finance (${skipped} private/pre-IPO skipped)...`);
   const out = {};
   let ok = 0, fail = 0;
-  // Process in batches of 10 to be respectful
-  const batchSize = 10;
+  // Process in batches of 5 (down from 10) with a delay between batches
+  // to avoid Yahoo's rate limit (~200 req before 429).
+  const batchSize = 5;
+  const batchDelayMs = 500;  // 500ms between batches = ~10 req/s sustained
   for (let i = 0; i < symbols.length; i += batchSize) {
     const batch = symbols.slice(i, i + batchSize);
     const results = await Promise.allSettled(
@@ -530,6 +563,10 @@ async function fetchTradfiSnapshot() {
     }
     if ((i + batchSize) % 50 === 0 || i + batchSize >= symbols.length) {
       console.log(`    ${Math.min(i + batchSize, symbols.length)}/${symbols.length} done (${ok} ok, ${fail} fail)`);
+    }
+    // Delay between batches to avoid rate limiting
+    if (i + batchSize < symbols.length) {
+      await new Promise(r => setTimeout(r, batchDelayMs));
     }
   }
   console.log(`  ✓ ${ok} tickers fetched, ${fail} failed`);

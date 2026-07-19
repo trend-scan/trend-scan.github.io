@@ -116,6 +116,8 @@ const YAHOO_SPECIAL_MAP = {
   'US500': '^GSPC',    // S&P 500 index
   'US100': '^NDX',     // Nasdaq 100 index
   'SPX': '^GSPC',      // S&P 500 spot (same as US500)
+  'WHEAT': 'ZW=F',     // Wheat futures
+  'PAXG': 'PAXG-USD',  // Pax Gold (crypto-pegged gold)
 };
 
 function toYahooSymbol(symbol) {
