@@ -323,9 +323,9 @@ async function fetchFearGreed() {
 
 const FARSIDE_PAGES = {
   BTC: ['https://farside.co.uk/bitcoin-etf-flow-all-data/', 'https://farside.co.uk/btc/'],
-  ETH: ['https://farside.co.uk/ethereum-etf-flow-all-data/'],
-  SOL: ['https://farside.co.uk/sol/'],
-  HYPE: ['https://farside.co.uk/hyp/'],
+  ETH: ['https://farside.co.uk/ethereum-etf-flow-all-data/', 'https://farside.co.uk/eth/'],
+  SOL: ['https://farside.co.uk/solana-etf-flow-all-data/', 'https://farside.co.uk/sol/'],
+  HYPE: ['https://farside.co.uk/hyperliquid-etf-flow-all-data/', 'https://farside.co.uk/hyp/'],
 };
 
 function parseFarsideTable(html) {
@@ -655,6 +655,24 @@ async function main() {
 
   // Compute regime history server-side (appends today's nowcast to a 90-day rolling array)
   const regimeHistory = await computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot);
+
+  // If an ETF flow asset failed to fetch (Farside 403/timeout), fall back to
+  // the previous snapshot's data for that asset. This prevents rows from
+  // disappearing from the ETF Flows table when Farside has a transient failure
+  // (observed: ETH returned 403 on one run, dropping the ETH row entirely).
+  // Per-asset merge — only fills gaps, never overwrites fresh data.
+  if (_prevSnapshot?.etf_flows) {
+    const prevEtf = _prevSnapshot.etf_flows;
+    for (const asset of ['BTC', 'ETH', 'SOL', 'HYPE']) {
+      if ((!etfFlows[asset] || etfFlows[asset].length === 0) && prevEtf[asset]?.length > 0) {
+        const prevAge = Date.now() - new Date(prevEtf[asset][prevEtf[asset].length - 1].date).getTime();
+        if (prevAge < 3 * 24 * 60 * 60 * 1000) {  // < 3 days old
+          etfFlows[asset] = prevEtf[asset];
+          console.log(`  ⚠ Farside ${asset}: fetch failed — using previous snapshot (stale but <3d)`);
+        }
+      }
+    }
+  }
 
   // If FactorWatch scrape failed, fall back to previous snapshot's data
   // (if it's from today). If stale, leave as null — UI degrades gracefully.

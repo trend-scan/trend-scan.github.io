@@ -12,21 +12,23 @@
 #   - snapshot.tradfi.json is large and purely data — push to gh-pages
 #     (deployed branch) without polluting main's history.
 #
-# Schedule: 04:00, 12:00, 20:00 UTC (Mon-Sat)
+# Schedule: 04:00, 12:00, 20:00 UTC (7 days a week)
 #   - 04:00 UTC = 12am ET (catches overnight ETF flow data from Farside)
 #   - 12:00 UTC = 8am ET (pre-market)
 #   - 20:00 UTC = 4pm ET (close)
-#   - Saturday 04:00 UTC captures Friday's final market-close data flows
-#     (Farside ETF flows, CBOE put/call, FRED daily series) which publish
-#     after the Friday 20:00 UTC run. Sunday is skipped — markets closed.
+#   - Runs every day including Sunday — even though US markets are closed
+#     on weekends, FRED/Farside/CoinGecko publish data throughout the
+#     weekend, and crypto markets never close. This ensures the snapshot
+#     is always fresh for Monday morning users.
 
 name: Refresh FRED Snapshot
 
 on:
   schedule:
     # 04:00, 12:00, 20:00 UTC = 12am, 8am, 4pm ET (every 8 hours)
-    # Mon-Sat (1-6). Saturday 04:00 UTC catches Friday's final flows.
-    - cron: '0 4,12,20 * * 1-6'
+    # 7 days a week (0-6). Crypto markets never close; FRED/Farside publish
+    # weekend data that we want to capture for Monday morning users.
+    - cron: '0 4,12,20 * * 0-6'
   workflow_dispatch:
 
 permissions:
@@ -37,8 +39,7 @@ jobs:
   refresh:
     name: Fetch fresh FRED data
     runs-on: ubuntu-latest
-    # The cron schedule above already restricts to Mon-Sat (1-6),
-    # so no extra `if:` is needed. workflow_dispatch always runs.
+    # The cron schedule runs 7 days a week (0-6). workflow_dispatch always runs.
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
