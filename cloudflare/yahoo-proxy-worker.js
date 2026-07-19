@@ -45,11 +45,15 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 // Shared secret token. Set via Cloudflare Worker secrets:
-//   Wrangler: wrangler secret put WORKER_TOKEN
-//   Dashboard: Settings → Variables → Add WORKER_TOKEN
-// Generate with: openssl rand -hex 16
-// If unset (development), the token check is skipped — but a warning is logged.
-const WORKER_TOKEN = typeof WORKER_TOKEN !== 'undefined' ? WORKER_TOKEN : '';
+//   Wrangler CLI:  wrangler secret put WORKER_TOKEN
+//   Dashboard:     Workers → your-worker → Settings → Variables → Add
+//                  Name: WORKER_TOKEN, Value: <random 32-char string>
+// Generate one with: openssl rand -hex 16
+//
+// The token is read from `env.WORKER_TOKEN` at runtime (Cloudflare injects
+// secrets into the `env` argument of the fetch handler). If unset, the token
+// check is skipped and a warning is logged — this allows development without
+// a token, but production should always set it.
 
 function corsHeaders(origin) {
   const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : null;
@@ -101,7 +105,7 @@ export default {
     //   2. Rotating it is trivial (update secret + redeploy worker + bundle)
     //   3. Combined with the origin allowlist, it raises the bar high enough
     //      to deter casual abuse
-    const expectedToken = env.WORKER_TOKEN || WORKER_TOKEN;
+    const expectedToken = env.WORKER_TOKEN || '';
     if (expectedToken) {
       const providedToken = request.headers.get('X-TrendScan-Token') || '';
       if (providedToken !== expectedToken) {
