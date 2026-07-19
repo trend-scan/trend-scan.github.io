@@ -479,8 +479,8 @@ export default function DailyBoard({
 }) {
   return (
     <div className="font-mono space-y-8 px-5 md:px-8 py-5">
-      <BenchmarkSnapshot benchmarks={benchmarks} />
       <ETFFlowTable />
+      <BenchmarkSnapshot benchmarks={benchmarks} />
       <StartingToMove startingToMove={startingToMove} />
       <ThemeStatus themes={themes} />
       <ThemeRotation themeRotation={themeRotation} />
