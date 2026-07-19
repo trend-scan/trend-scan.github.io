@@ -62,8 +62,55 @@ function corsHeaders(origin) {
     : {};
 }
 
+// ── IP-based rate limiting (defense in depth) ────────────────────────────────
+// The token stops casual abuse, but it's baked into the client bundle — a
+// determined attacker can extract it. Rate limiting caps the damage: even if
+// someone has the token, a single IP can't burn the 100k/day quota.
+//
+// Uses Cloudflare's Cache API as a cheap counter (1 cache entry per IP per
+// minute window). Free tier supports this with no extra config.
+//
+// Limits:
+//   - 60 requests per minute per IP (matches the Board's 60-symbol refresh)
+//   - Legitimate users never hit this — they request at human speed (1-2 req/s)
+//   - Scripts hitting 100+ req/min get 429 Too Many Requests
+const RATE_LIMIT_PER_MINUTE = 60;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+async function checkRateLimit(request) {
+  // Use CF-Connecting-IP (set by Cloudflare for all requests through their
+  // network). Falls back to X-Forwarded-For or 'unknown' for local dev.
+  const ip = request.headers.get('CF-Connecting-IP')
+    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
+    || 'unknown';
+
+  const now = Date.now();
+  const windowKey = Math.floor(now / RATE_LIMIT_WINDOW_MS);
+  const cacheKey = `https://rate-limit.internal/${ip}/${windowKey}`;
+
+  // Use the Cache API as a distributed counter. Each entry is a count of
+  // requests from this IP in this 1-minute window.
+  const cache = caches.default;
+  const cached = await cache.match(new Request(cacheKey));
+  const count = cached ? parseInt(await cached.text(), 10) : 0;
+
+  if (count >= RATE_LIMIT_PER_MINUTE) {
+    return { allowed: false, count, ip };
+  }
+
+  // Increment the counter (cache for 90s — slightly longer than the window
+  // so the entry expires naturally)
+  const newResponse = new Response(String(count + 1), {
+    headers: { 'Cache-Control': 'public, max-age=90' },
+  });
+  // Fire-and-forget — don't block the request on the cache write
+  ctx.waitUntil(cache.put(new Request(cacheKey), newResponse.clone()));
+
+  return { allowed: true, count: count + 1, ip };
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
 
     // Handle CORS preflight
@@ -80,15 +127,35 @@ export default {
 
     const url = new URL(request.url);
 
-    // Health check — open to all (no CORS or token needed)
+    // Health check — open to all (no CORS, token, or rate limit needed)
     if (url.pathname === '/' || url.pathname === '/health') {
       return new Response(JSON.stringify({
         status: 'ok',
         service: 'trendscan-yahoo-proxy',
         tokenRequired: !!env.WORKER_TOKEN,
+        rateLimitPerMinute: RATE_LIMIT_PER_MINUTE,
       }), {
         headers: {
           'Content-Type': 'application/json',
+          ...corsHeaders(origin),
+        },
+      });
+    }
+
+    // ── Rate limit check (before token check — counts ALL requests) ────────
+    const rateLimit = await checkRateLimit(request);
+    if (!rateLimit.allowed) {
+      return new Response(JSON.stringify({
+        error: 'Rate limit exceeded',
+        limit: RATE_LIMIT_PER_MINUTE,
+        window: '60s',
+        retryAfter: 60,
+        ip: rateLimit.ip,
+      }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '60',
           ...corsHeaders(origin),
         },
       });
@@ -103,8 +170,8 @@ export default {
     // This is acceptable because:
     //   1. The token is only useful for THIS worker (not a general-purpose secret)
     //   2. Rotating it is trivial (update secret + redeploy worker + bundle)
-    //   3. Combined with the origin allowlist, it raises the bar high enough
-    //      to deter casual abuse
+    //   3. Combined with rate limiting, it raises the bar high enough to deter
+    //      all but the most determined abuse
     const expectedToken = env.WORKER_TOKEN || '';
     if (expectedToken) {
       const providedToken = request.headers.get('X-TrendScan-Token') || '';
