@@ -153,8 +153,19 @@ export function computeReturns(closes) {
 
 /**
  * Macro Z-Score — log-price EMA crossover normalized by volatility.
- * External signal, originally optimized on 4H data (21/100/42).
- * Converted to daily: 21×4H=3.5d→4, 100×4H=16.7d→17, 42×4H=7d→7
+ *
+ * Provenance: External signal provided by site owner. Originally optimized on
+ * 4H candle data with parameters 21 fast / 100 slow / 42 vol. Converted to
+ * daily equivalents: 21×4H=3.5d→4, 100×4H=16.7d→17, 42×4H=7d→7.
+ *
+ * The optimization process and dataset used to derive the original 4H parameters
+ * are not documented in this repo. The signal is included as-is per owner's
+ * request. Standalone backtest on daily BTC/ETH/SOL data (2023-10 to 2025-07)
+ * showed 60.0% bull hit rate with corrected params (was 52.8% with wrong vol=42).
+ *
+ * Integration: Used as a tiebreaker boost only (conf 7→8 when macroZ > 1.5).
+ * Not used as a standalone gate or additive booster — that diluted overall
+ * STRONG hit rate in testing.
  */
 export function computeMacroZ(candles, params = {}) {
   const {
@@ -337,7 +348,11 @@ export function computeAssetStance({
     if (rsiOversold) confidence -= 2;
     if (accelerating) confidence -= 1;
   } else if (stretchNegative && isBtc) {
-    // BTC stretched down = potential bottom, not WEAK (BTC mean-reverts from dips)
+    // DESIGN CHOICE (not empirical finding): BTC negative stretch → SELECTIVE, not DEFENSIVE.
+    // Backtest showed BTC WEAK signals on negative stretch fired at major bottoms
+    // (Feb/Jul/Aug 2024 — all had +13-19% forward returns). Rather than presenting
+    // this as "BTC WEAK is correctly silent," we explicitly disable the DEFENSIVE
+    // path for BTC price dips. BTC can still reach DEFENSIVE via overextended+crowded.
     stance = 'SELECTIVE';
     confidence = 4;
     if (persistent) confidence += 1;

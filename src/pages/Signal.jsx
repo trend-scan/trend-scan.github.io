@@ -32,6 +32,26 @@ function verdictIcon(v) {
 }
 
 /**
+ * Cash verdicts have INVERTED semantics from asset verdicts:
+ *   Cash STRONG = conditions are strong → hold LESS cash (deploy capital)
+ *   Cash WEAK   = conditions are weak → hold MORE cash (defensive)
+ *   Cash NEUTRAL = balanced
+ * So for Cash, WEAK is actually a protective/defensive call (bullish for cash),
+ * not a bearish signal. Use different colors to avoid confusion.
+ */
+function cashVerdictColor(v) {
+  if (v === 'STRONG') return 'var(--scanner-green)';   // deploy capital (risk-on)
+  if (v === 'WEAK') return 'var(--scanner-accent)';    // hold cash (defensive — NOT red)
+  return 'var(--scanner-text3)';
+}
+
+function cashVerdictIcon(v) {
+  if (v === 'STRONG') return '▲';   // deploy
+  if (v === 'WEAK') return '◈';     // defend (shield, not down-arrow)
+  return '▬';
+}
+
+/**
  * @param {object} props
  * @param {any} props.children
  * @param {any} [props.right]
@@ -98,24 +118,27 @@ function AssetCard({ symbol, name, verdict, confidence, drivers }) {
 }
 
 function CashAllocation({ verdict, suggestedPct, ultra6Gates, rationale }) {
-  const color = verdictColor(verdict);
+  // Use cash-specific colors — Cash WEAK means "hold more cash" (defensive),
+  // NOT "cash is bad" (bearish). Different visual language from asset verdicts.
+  const color = cashVerdictColor(verdict);
+  const icon = cashVerdictIcon(verdict);
   return (
     <div className="rounded p-4" style={{ background: 'var(--scanner-bg1)', border: `1px solid ${color}33` }}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <span className="text-[14px] font-bold" style={{ color }}>{verdictIcon(verdict)} {verdict}</span>
+          <span className="text-[14px] font-bold" style={{ color }}>{icon} {verdict}</span>
           <span className="text-[11px] ml-2" style={{ color: 'var(--scanner-text2)' }}>{suggestedPct}% cash</span>
         </div>
         <div className="text-right">
           <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--scanner-text3)' }}>Ultra6 Gates</span>
-          <div className="text-[14px] font-bold" style={{ color: ultra6Gates >= 4 ? 'var(--scanner-green)' : ultra6Gates >= 3 ? 'var(--scanner-text2)' : 'var(--scanner-red)' }}>
+          <div className="text-[14px] font-bold" style={{ color: ultra6Gates >= 4 ? 'var(--scanner-green)' : ultra6Gates >= 3 ? 'var(--scanner-text2)' : 'var(--scanner-accent)' }}>
             {ultra6Gates}/6
           </div>
         </div>
       </div>
       <div className="text-[9px]" style={{ color: 'var(--scanner-text3)' }}>{rationale}</div>
       <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--scanner-bg2)' }}>
-        <div className="h-full rounded-full" style={{ width: `${100 - suggestedPct}%`, background: color }} />
+        <div className="h-full rounded-full" style={{ width: `${suggestedPct}%`, background: color }} />
       </div>
     </div>
   );
@@ -278,8 +301,9 @@ export default function Signal() {
       {/* Backtest stats (if available) */}
       {history.length >= 10 && (
         <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
-          <strong style={{ color: 'var(--scanner-text2)' }}>Backtest reference:</strong>{' '}
-          STRONG 62.0% hit rate · WEAK 54.1% hit rate · 10-day forward window · Tuned on 2023-10 to 2025-07 data
+          <strong style={{ color: 'var(--scanner-text2)' }}>Backtest reference (in-sample, optimistic):</strong>{' '}
+          STRONG 62.0% hit · WEAK 54.1% hit (61 signals, below 100-trade significance bar) · 10-day forward · 2023-10 to 2025-07.
+          Thresholds tuned on same period — not walk-forward validated. Live performance may differ.
         </div>
       )}
     </div>
