@@ -77,7 +77,7 @@ function corsHeaders(origin) {
 const RATE_LIMIT_PER_MINUTE = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
-async function checkRateLimit(request) {
+async function checkRateLimit(request, ctx) {
   // Use CF-Connecting-IP (set by Cloudflare for all requests through their
   // network). Falls back to X-Forwarded-For or 'unknown' for local dev.
   const ip = request.headers.get('CF-Connecting-IP')
@@ -143,7 +143,7 @@ export default {
     }
 
     // ── Rate limit check (before token check — counts ALL requests) ────────
-    const rateLimit = await checkRateLimit(request);
+    const rateLimit = await checkRateLimit(request, ctx);
     if (!rateLimit.allowed) {
       return new Response(JSON.stringify({
         error: 'Rate limit exceeded',
