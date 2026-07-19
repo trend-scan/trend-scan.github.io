@@ -24,14 +24,16 @@ const PROXY_URL = (typeof window !== 'undefined' && localStorage.getItem('YAHOO_
 
 // Shared-secret token for the Cloudflare Worker. Set via:
 //   localStorage.setItem('YAHOO_PROXY_TOKEN', '<token>')
-// or via VITE_YAHOO_PROXY_TOKEN in GitHub Actions secrets. If unset, the
-// request is sent without the token — the Worker will return 401 if it
-// requires auth. In development, the Worker may run without a token.
+// or via VITE_YAHOO_PROXY_TOKEN in GitHub Actions secrets (baked into bundle
+// at build time). The VITE_ prefix is acceptable here because the token is
+// only useful for THIS worker (not a general-purpose secret) and rotating it
+// is trivial. localStorage takes precedence for local dev / per-user overrides.
 function getProxyToken() {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('YAHOO_PROXY_TOKEN') || '';
+    const local = localStorage.getItem('YAHOO_PROXY_TOKEN');
+    if (local) return local;
   }
-  return '';
+  return import.meta.env?.VITE_YAHOO_PROXY_TOKEN || '';
 }
 
 const INTERVAL_MAP = {

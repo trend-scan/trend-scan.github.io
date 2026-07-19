@@ -69,9 +69,10 @@ function getYahooProxyUrl() {
 // or VITE_YAHOO_PROXY_TOKEN in GitHub Actions secrets.
 function getYahooProxyToken() {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('YAHOO_PROXY_TOKEN') || '';
+    const local = localStorage.getItem('YAHOO_PROXY_TOKEN');
+    if (local) return local;
   }
-  return '';
+  return import.meta.env?.VITE_YAHOO_PROXY_TOKEN || '';
 }
 
 function yahooProxyHeaders() {
