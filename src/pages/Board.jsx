@@ -256,7 +256,7 @@ export default function Board() {
       {/* Snapshot freshness banner — alerts when Board header's signal/quadrant
           badges are stale. Board's main content (table) is live scanner data
           and is unaffected, but the header's BTC Signal + Macro quadrant come
-          from snapshot.json and go stale if the 3x daily refresh misses. */}
+          from snapshot.json and go stale if the 4× daily refresh misses. */}
       <FreshnessBanner generatedAt={snapshotData?.generated_at} contextLabel="board" />
 
       {/* Progress bar */}

@@ -75,7 +75,7 @@ export default function FactorMonitor() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Phase 3: Load crypto factors from snapshot for instant first paint.
-  // The server computes factors every 8 hours and stores them in
+  // The server computes factors every 6 hours (4× daily) and stores them in
   // snapshot.json. This gives the user immediate data while the live
   // fetch (manual trigger) runs in the background.
   useEffect(() => {

@@ -647,7 +647,7 @@ async function fetchTradfiSnapshot() {
 //
 // Why server-side: ensures ALL users see the same 90-day history regardless
 // of their device/cache state. The client-side localStorage path remains as
-// a fallback for intraday updates (the server only runs 3× daily).
+// a fallback for intraday updates (the server only runs 4× daily).
 
 async function computeRegimeHistory(fred, coingecko, fearGreed, cgHistorical, _prevSnapshot) {
   try {

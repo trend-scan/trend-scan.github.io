@@ -1,10 +1,10 @@
-# TrendScan — Snapshot Refresh (3× daily, 7 days/week)
+# TrendScan — Snapshot Refresh (4× daily, 7 days/week)
 #
 # This is a lightweight workflow that ONLY refreshes the snapshot data.
 # It commits snapshot.json (small, ~450KB) to main, then pushes
 # snapshot.tradfi.json (large, ~13MB) DIRECTLY to the gh-pages branch,
 # bypassing main entirely. This prevents Git repository bloat — committing
-# a 13MB file 3× daily to main would add ~39MB/day to .git history.
+# a 13MB file 4× daily to main would add ~52MB/day to .git history.
 #
 # Why split the commit targets?
 #   - snapshot.json is small and useful for first-paint — commit to main
@@ -12,10 +12,11 @@
 #   - snapshot.tradfi.json is large and purely data — push to gh-pages
 #     (deployed branch) without polluting main's history.
 #
-# Schedule: 04:00, 12:00, 20:00 UTC (7 days a week)
+# Schedule: 04:00, 10:00, 16:00, 22:00 UTC (7 days a week, every 6 hours)
 #   - 04:00 UTC = 12am ET (catches overnight ETF flow data from Farside)
-#   - 12:00 UTC = 8am ET (pre-market)
-#   - 20:00 UTC = 4pm ET (close)
+#   - 10:00 UTC = 6am ET (pre-market; catches FRED 10am ET daily publish)
+#   - 16:00 UTC = 12pm ET (midday — captures US market session)
+#   - 22:00 UTC = 6pm ET (after US close — captures close-of-day data)
 #   - Runs every day including Sunday — even though US markets are closed
 #     on weekends, FRED/Farside/CoinGecko publish data throughout the
 #     weekend, and crypto markets never close. This ensures the snapshot
@@ -25,10 +26,10 @@ name: Refresh FRED Snapshot
 
 on:
   schedule:
-    # 04:00, 12:00, 20:00 UTC = 12am, 8am, 4pm ET (every 8 hours)
+    # 04:00, 10:00, 16:00, 22:00 UTC = 12am, 6am, 12pm, 6pm ET (every 6 hours)
     # 7 days a week (0-6). Crypto markets never close; FRED/Farside publish
     # weekend data that we want to capture for Monday morning users.
-    - cron: '0 4,12,20 * * 0-6'
+    - cron: '0 4,10,16,22 * * 0-6'
   workflow_dispatch:
 
 permissions:
@@ -214,7 +215,7 @@ jobs:
   # ── Failure alerting ─────────────────────────────────────────────────────
   # Same pattern as deploy.yml: open (or comment on) a GitHub Issue with the
   # "ci-failure" label so silent data staleness can't slip through. Critical
-  # for the 3× daily refresh — without this, a multi-day FRED outage would
+  # for the 4× daily refresh — without this, a multi-day FRED outage would
   # leave the macro page serving stale data with no notification.
   alert-on-failure:
     name: Open GitHub Issue on failure
@@ -263,7 +264,7 @@ jobs:
               ``,
               `**Failure context:**`,
               `- The snapshot refresh job failed. The most likely cause is an upstream API outage (FRED, CoinGecko, Farside) or a network timeout during \`build_snapshot.js\`.`,
-              `- If this is the first failure, the snapshot is still fresh from the previous run. After 3+ consecutive failures (24h), the live site will be serving stale data — check the "As of" timestamp on the Macro page.`,
+              `- If this is the first failure, the snapshot is still fresh from the previous run. After 2+ consecutive failures (12h+), the live site will be serving stale data — check the "As of" timestamp on the Macro page.`,
               ``,
               `**To resolve:**`,
               `1. Open the run URL and check which step failed.`,

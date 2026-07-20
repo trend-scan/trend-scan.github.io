@@ -2,7 +2,9 @@
 #
 # Triggers:
 #   1. Push to main (any change to src/, scripts/, public/, index.html, etc.)
-#   2. Daily at 22:00 UTC (after US market close) — refreshes the FRED snapshot
+#   2. Daily at 23:00 UTC (safety-net deploy — refresh-snapshot.yml also triggers
+#      a deploy via workflow_dispatch after each of its 4× daily runs at
+#      04:00/10:00/16:00/22:00 UTC, so this daily cron is purely a backup)
 #   3. Manual dispatch from the Actions tab
 #
 # What it does:
@@ -30,9 +32,11 @@ on:
       - 'vite.config.js'
       - '.github/workflows/deploy.yml'
   schedule:
-    # 22:00 UTC daily = 6pm ET (after US market close)
-    # FRED publishes daily series around 10am ET, so this catches them
-    - cron: '0 22 * * *'
+    # 23:00 UTC daily = 7pm ET (1 hour after the 22:00 refresh-snapshot run,
+    # which itself triggers a deploy via workflow_dispatch). This cron is a
+    # safety-net: if refresh-snapshot fails to dispatch the deploy for any
+    # reason, this daily build ensures the site is still rebuilt once a day.
+    - cron: '0 23 * * *'
   workflow_dispatch:
 
 # Don't run concurrent deploys for the same ref

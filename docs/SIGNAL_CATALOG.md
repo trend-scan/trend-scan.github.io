@@ -906,7 +906,7 @@ Fetches top-300 universe, market data, Hyperliquid tickers; runs
 ## 17. Server-side crypto factor pipeline
 
 **File**: `scripts/compute_crypto_factors.js` (339 lines)
-**Used by**: `build_snapshot.js` (GitHub Actions 3× daily).
+**Used by**: `build_snapshot.js` (GitHub Actions 4× daily).
 
 Mirrors the client-side `factorEngine` + `rotationDetector` +
 `crowdingMatrix` for server-side persistence. Fetches top-100 CoinGecko →

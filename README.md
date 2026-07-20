@@ -16,7 +16,7 @@ Multi-source crypto + tradfi market scanner with macro regime monitoring. Deploy
   └─ Computes regime signals, factor scores, breadth — all client-side
 
 [GitHub Actions]
-  ├─ refresh-snapshot.yml (3× daily 7 days/week at 04:00/12:00/20:00 UTC)
+  ├─ refresh-snapshot.yml (4× daily 7 days/week at 04:00/10:00/16:00/22:00 UTC)
   │     ├─ Runs scripts/build_snapshot.js with FRED_API_KEY secret
   │     ├─ Fetches FRED + CoinGecko + Fear&Greed + Ken French + CBOE + Yahoo tradfi + Farside ETF
   │     ├─ Computes crypto factors + signal metrics (BTC/Majors/Cash verdicts)
@@ -164,7 +164,7 @@ Series marked "snapshot (FRED only)" cannot be fetched from the browser (FRED is
 
 ### `.github/workflows/refresh-snapshot.yml`
 
-- Triggers: 04:00, 12:00, 20:00 UTC Mon-Sat, manual dispatch
+- Triggers: 04:00, 10:00, 16:00, 22:00 UTC Mon-Sat, manual dispatch
 - Saturday 04:00 UTC captures Friday's final market-close data flows
 - Only refreshes `snapshot.json` + `snapshot.tradfi.json` (no full bundle rebuild)
 - If snapshot changed, commits to main → dispatches `deploy.yml` for rebuild
@@ -187,7 +187,7 @@ npm run typecheck        # TypeScript check
 ├── .github/
 │   ├── workflows/
 │   │   ├── deploy.yml                # Build + deploy to gh-pages
-│   │   └── refresh-snapshot.yml      # Refresh snapshot data 3× daily
+│   │   └── refresh-snapshot.yml      # Refresh snapshot data 4× daily
 │   ├── ISSUE_TEMPLATE/               # Bug / feature / data issue templates
 │   └── PULL_REQUEST_TEMPLATE.md      # PR checklist
 ├── public/
@@ -289,7 +289,7 @@ Set the worker token via `wrangler secret put WORKER_TOKEN` and the client token
 
 ### Git Repository Size
 
-`snapshot.tradfi.json` (~13 MB) is pushed directly to the `gh-pages` branch, NOT committed to `main`. This prevents Git history bloat — committing a 13 MB file 3× daily to main would add ~39 MB/day to the `.git` folder.
+`snapshot.tradfi.json` (~13 MB) is pushed directly to the `gh-pages` branch, NOT committed to `main`. This prevents Git history bloat — committing a 13 MB file 4× daily to main would add ~52 MB/day to the `.git` folder.
 
 ## License
 

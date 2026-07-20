@@ -1,22 +1,22 @@
 /**
  * useSnapshotFreshness — hook for assessing snapshot data staleness
  *
- * Snapshot refreshes 3× daily (04:00, 12:00, 20:00 UTC). The banner uses
+ * Snapshot refreshes 4× daily (04:00, 10:00, 16:00, 22:00 UTC). The banner uses
  * the snapshot's `generated_at` timestamp to determine how stale the data is.
  *
  * Staleness thresholds:
- *   FRESH    → < 12h old  → no banner (silent)
- *   STALE    → 12–24h old → amber banner ("last refresh may have missed")
- *   CRITICAL → > 24h old  → red banner ("multiple scheduled refreshes missed")
+ *   FRESH    → < 6h old   → no banner (silent)
+ *   STALE    → 6–12h old  → amber banner ("last refresh may have missed")
+ *   CRITICAL → > 12h old  → red banner ("multiple scheduled refreshes missed")
  *
- * The 12h threshold gives one scheduled refresh worth of buffer (refreshes
- * are 8h apart). The 24h threshold means three consecutive refreshes have
+ * The 6h threshold gives one scheduled refresh worth of buffer (refreshes
+ * are 6h apart). The 12h threshold means two consecutive refreshes have
  * been missed — strong signal of CI failure or upstream API outage.
  */
 
 import { useMemo } from 'react';
 
-const REFRESH_HOURS_UTC = [4, 12, 20];  // 04:00, 12:00, 20:00 UTC
+const REFRESH_HOURS_UTC = [4, 10, 16, 22];  // 04:00, 10:00, 16:00, 22:00 UTC
 
 /**
  * Compute hours until the next scheduled refresh.
@@ -82,10 +82,11 @@ export function useSnapshotFreshness(generatedAt) {
     const ageMs = now.getTime() - genDate.getTime();
     const ageHours = ageMs / 3600000;
 
-    let status;
-    if (ageHours < 12) status = 'fresh';
-    else if (ageHours < 24) status = 'stale';
-    else status = 'critical';
+    // Use a ternary so TypeScript infers the literal union type
+    // 'fresh' | 'stale' | 'critical' (rather than widening to `string`).
+    // Thresholds: <6h=fresh (1 refresh buffer), 6-12h=stale (1 missed),
+    // >12h=critical (2+ missed). Refreshes are 6h apart.
+    const status = ageHours < 6 ? 'fresh' : ageHours < 12 ? 'stale' : 'critical';
 
     const hoursLeft = hoursUntilNextRefresh(now);
     const nextRefreshLabel = hoursLeft < 1

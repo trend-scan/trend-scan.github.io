@@ -1,15 +1,15 @@
 /**
  * FreshnessBanner — shows a dismissible alert when snapshot data is stale
  *
- * Snapshot refreshes 3× daily (04:00, 12:00, 20:00 UTC). When the most
+ * Snapshot refreshes 4× daily (04:00, 10:00, 16:00, 22:00 UTC). When the most
  * recent scheduled refresh has missed, the snapshot.json served to clients
  * is stale. Without this banner, users see "current" verdicts and signals
  * that are actually hours or days old — leading to bad decisions.
  *
  * Visual states:
- *   FRESH    (< 12h)  → banner not rendered (silent)
- *   STALE    (12-24h) → amber banner with dismiss button
- *   CRITICAL (> 24h)  → red banner with dismiss button + GitHub Actions link
+ *   FRESH    (< 6h)   → banner not rendered (silent)
+ *   STALE    (6-12h)  → amber banner with dismiss button
+ *   CRITICAL (> 12h)  → red banner with dismiss button + GitHub Actions link
  *
  * Dismiss behavior:
  *   - Dismissed per-session (sessionStorage) — reappears on next visit
@@ -51,8 +51,8 @@ function statusConfig(status) {
 
 /**
  * @param {object} props
- * @param {string} [props.generatedAt] — ISO timestamp from snapshot.generated_at
- * @param {string} [props.contextLabel] — e.g. "Signal Engine" or "Macro Regime" (for dismiss key)
+ * @param {string} [props.generatedAt] ISO timestamp from snapshot.generated_at
+ * @param {string} [props.contextLabel] e.g. "Signal Engine" or "Macro Regime" (for dismiss key)
  */
 export default function FreshnessBanner({ generatedAt, contextLabel = 'global' }) {
   // Poll every 60s so the banner escalates while the page is open.
@@ -110,7 +110,7 @@ export default function FreshnessBanner({ generatedAt, contextLabel = 'global' }
           (generated {formattedTime}).{' '}
           {status === 'critical' ? (
             <>
-              Three or more scheduled refreshes have been missed — this usually means a CI
+              Two or more scheduled refreshes have been missed — this usually means a CI
               failure or upstream API outage. Check the{' '}
               <a
                 href={ACTIONS_URL}
