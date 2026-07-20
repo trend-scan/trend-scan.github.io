@@ -294,32 +294,47 @@ export function fundingZScore(fundingHistory, asOfTs, lookback = 90) {
 export function computeAssetStance({
   zScore, zPctile, trendTenure, atrExt, rsVsBtc, fundingZ,
   rsi, obvSlope, impulseZ, returns, macroZ, isBtc = false,
+  ablations = null,
 }) {
+  // Ablation support (optional — null/empty = no change, fully backward compatible).
+  // Disabling a gate neutralizes its contribution to the stance/confidence calc.
+  const ab = ablations instanceof Set ? ablations : new Set(Array.isArray(ablations) ? ablations : []);
+  const zScoreEff     = ab.has('adaptiveZ')       ? 0                       : zScore;
+  const zPctileEff    = ab.has('adaptiveZ')       ? 50                      : zPctile;
+  const trendTenureEff= ab.has('trendTenure')     ? 0                       : trendTenure;
+  const atrExtEff     = ab.has('atrExt50ma')      ? null                    : atrExt;
+  const rsVsBtcEff    = ab.has('rsVsBtc')         ? { label: 'NEUTRAL', value: 1.0 } : rsVsBtc;
+  const fundingZEff   = ab.has('fundingZ')        ? 0                       : fundingZ;
+  const macroZEff     = ab.has('macroZBoost')     ? null                    : macroZ;
+  const returnsEff    = ab.has('returns')         ? null                    : returns;
+  const skipRsiPenalty    = ab.has('rsiPenalty');
+  const skipImpulsePenalty= ab.has('impulseZPenalty');
+
   const drivers = {
-    zScore: round(zScore, 2), zPctile: round(zPctile, 1), trendTenure,
-    atrExt: atrExt != null ? round(atrExt, 2) : null,
-    rsVsBtc: isBtc ? null : rsVsBtc?.label,
-    rsVsBtcValue: isBtc ? null : round(rsVsBtc?.value, 3),
-    fundingZ: round(fundingZ, 2), rsi: round(rsi, 1),
+    zScore: round(zScoreEff, 2), zPctile: round(zPctileEff, 1), trendTenure: trendTenureEff,
+    atrExt: atrExtEff != null ? round(atrExtEff, 2) : null,
+    rsVsBtc: isBtc ? null : rsVsBtcEff?.label,
+    rsVsBtcValue: isBtc ? null : round(rsVsBtcEff?.value, 3),
+    fundingZ: round(fundingZEff, 2), rsi: round(rsi, 1),
     obvSlope: round(obvSlope, 3), impulseZ: round(impulseZ, 2),
-    ret5d: returns ? round(returns.ret5d * 100, 2) : null,
-    ret20d: returns ? round(returns.ret20d * 100, 2) : null,
-    macroZ: macroZ ? round(macroZ.macroZ, 3) : null,
+    ret5d: returnsEff ? round(returnsEff.ret5d * 100, 2) : null,
+    ret20d: returnsEff ? round(returnsEff.ret20d * 100, 2) : null,
+    macroZ: macroZEff ? round(macroZEff.macroZ, 3) : null,
   };
 
-  const stretchPositive = zScore >= 1.0;
-  const stretchNegative = zScore <= -1.0;
+  const stretchPositive = zScoreEff >= 1.0;
+  const stretchNegative = zScoreEff <= -1.0;
   const stretchPresent = stretchPositive || stretchNegative;
-  const persistent = trendTenure >= 3;
-  const extremePctile = zPctile >= 80 || zPctile <= 20;
+  const persistent = trendTenureEff >= 3;
+  const extremePctile = zPctileEff >= 80 || zPctileEff <= 20;
   const persistentOrExtreme = persistent || extremePctile;
-  const healthyExtension = atrExt != null && atrExt >= 0 && atrExt <= 5;
-  const overextended = atrExt != null && atrExt > 5;
-  const deeplyOversold = atrExt != null && atrExt < -3;
+  const healthyExtension = atrExtEff != null && atrExtEff >= 0 && atrExtEff <= 5;
+  const overextended = atrExtEff != null && atrExtEff > 5;
+  const deeplyOversold = atrExtEff != null && atrExtEff < -3;
 
   let confirmed = false, crowdingRisk = false;
-  if (isBtc) { confirmed = fundingZ < 1.0; crowdingRisk = fundingZ > 2.0; }
-  else { confirmed = rsVsBtc?.label === 'OUTPERFORMING'; crowdingRisk = fundingZ > 2.0; }
+  if (isBtc) { confirmed = fundingZEff < 1.0; crowdingRisk = fundingZEff > 2.0; }
+  else { confirmed = rsVsBtcEff?.label === 'OUTPERFORMING'; crowdingRisk = fundingZEff > 2.0; }
 
   const rsiBullish = rsi > 60;
   const rsiBearish = rsi < 40;
@@ -329,8 +344,8 @@ export function computeAssetStance({
   const obvBearish = obvSlope < -0.1;
   const accelerating = impulseZ > 0.5;
   const decelerating = impulseZ < -0.5;
-  const momAlignedBullish = returns && returns.ret5d > 0 && returns.ret20d > 0;
-  const momAlignedBearish = returns && returns.ret5d < 0 && returns.ret20d < 0;
+  const momAlignedBullish = returnsEff && returnsEff.ret5d > 0 && returnsEff.ret20d > 0;
+  const momAlignedBearish = returnsEff && returnsEff.ret5d < 0 && returnsEff.ret20d < 0;
 
   let stance, confidence;
 
@@ -338,21 +353,21 @@ export function computeAssetStance({
     stance = 'CONSTRUCTIVE';
     confidence = 6;
     if (confirmed) confidence += 2;
-    if (zPctile >= 80) confidence += 1;
+    if (zPctileEff >= 80) confidence += 1;
     if (overextended) confidence -= 2;
     if (crowdingRisk) confidence -= 2;
-    if (rsiOverbought) confidence -= 1;
-    if (decelerating) confidence -= 1;
+    if (rsiOverbought && !skipRsiPenalty) confidence -= 1;
+    if (decelerating && !skipImpulsePenalty) confidence -= 1;
     // macroZ boost: conf 7→8 when macroZ > 1.5, conf 7→9 when > 2.5
-    if (confidence === 7 && macroZ) {
-      if (macroZ.macroZ > 2.5) confidence = 9;
-      else if (macroZ.macroZ > 1.5) confidence = 8;
+    if (confidence === 7 && macroZEff) {
+      if (macroZEff.macroZ > 2.5) confidence = 9;
+      else if (macroZEff.macroZ > 1.5) confidence = 8;
     }
   } else if (stretchNegative && !isBtc) {
     stance = 'DEFENSIVE';
     confidence = 5;
     if (persistent) confidence += 2;
-    if (zPctile <= 20) confidence += 1;
+    if (zPctileEff <= 20) confidence += 1;
     if (deeplyOversold) confidence += 1;
     if (confirmed) confidence += 1;
     let bearishGateCount = 0;
@@ -413,7 +428,7 @@ export function mapStanceToVerdict(stance, confidence, thresholds = DEFAULT_THRE
 
 export function computeSignal({
   candles, fundingHistory = [], btcCandles = null,
-  isBtc = false, thresholds = DEFAULT_THRESHOLDS,
+  isBtc = false, thresholds = DEFAULT_THRESHOLDS, ablations = null,
 }) {
   if (!candles || candles.length < 90) {
     return {
@@ -439,7 +454,7 @@ export function computeSignal({
 
   const stance = computeAssetStance({
     zScore: z, zPctile: pctile, trendTenure, atrExt, rsVsBtc, fundingZ,
-    rsi, obvSlope, impulseZ, returns, macroZ, isBtc,
+    rsi, obvSlope, impulseZ, returns, macroZ, isBtc, ablations,
   });
 
   const verdict = mapStanceToVerdict(stance.stance, stance.confidence, thresholds);

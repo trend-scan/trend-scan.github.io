@@ -1,0 +1,2490 @@
+{
+  "generated_at": "2026-07-20T03:30:55.947Z",
+  "config": {
+    "symbols": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "AVAX",
+      "LINK",
+      "DOGE",
+      "ARB",
+      "OP",
+      "INJ",
+      "SUI",
+      "NEAR",
+      "APT",
+      "TIA"
+    ],
+    "periods": {
+      "TRAIN": {
+        "start": "2022-01-01",
+        "end": "2023-06-30",
+        "label": "TRAIN (tune)"
+      },
+      "VALIDATION": {
+        "start": "2023-07-01",
+        "end": "2024-06-30",
+        "label": "VALIDATION (hold)"
+      },
+      "OOS": {
+        "start": "2024-07-01",
+        "end": "2025-07-31",
+        "label": "OOS (untouched)"
+      }
+    },
+    "forward_windows": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "primary_forward_window": 10,
+    "best_forward_window_train": 20,
+    "fees_bps_per_side": 10,
+    "min_signals_for_tune": 30,
+    "ablation_enabled": true,
+    "ablation_gates": [
+      "adaptiveZ",
+      "trendTenure",
+      "atrExt50ma",
+      "rsVsBtc",
+      "fundingZ",
+      "rsiPenalty",
+      "impulseZPenalty",
+      "macroZBoost",
+      "returns"
+    ]
+  },
+  "threshold_sweep_train": {
+    "grid": [
+      {
+        "strong": 5,
+        "weak": 5,
+        "strongCount": 337,
+        "weakCount": 1076,
+        "total": 1413,
+        "strongPreHit": 0.4124629080118694,
+        "weakPreHit": 0.5195167286245354,
+        "combinedPreHit": 0.49398443029016276,
+        "combinedPostHit": 0.4876150035385704,
+        "strongPostHit": 0.4065281899109792,
+        "weakPostHit": 0.5130111524163569
+      },
+      {
+        "strong": 5,
+        "weak": 6,
+        "strongCount": 337,
+        "weakCount": 886,
+        "total": 1223,
+        "strongPreHit": 0.4124629080118694,
+        "weakPreHit": 0.5282167042889391,
+        "combinedPreHit": 0.4963205233033524,
+        "combinedPostHit": 0.48896156991005724,
+        "strongPostHit": 0.4065281899109792,
+        "weakPostHit": 0.5203160270880361
+      },
+      {
+        "strong": 5,
+        "weak": 7,
+        "strongCount": 337,
+        "weakCount": 510,
+        "total": 847,
+        "strongPreHit": 0.4124629080118694,
+        "weakPreHit": 0.5117647058823529,
+        "combinedPreHit": 0.4722550177095632,
+        "combinedPostHit": 0.4651711924439197,
+        "strongPostHit": 0.4065281899109792,
+        "weakPostHit": 0.503921568627451
+      },
+      {
+        "strong": 5,
+        "weak": 8,
+        "strongCount": 337,
+        "weakCount": 161,
+        "total": 498,
+        "strongPreHit": 0.4124629080118694,
+        "weakPreHit": 0.40372670807453415,
+        "combinedPreHit": 0.40963855421686746,
+        "combinedPostHit": 0.4036144578313253,
+        "strongPostHit": 0.4065281899109792,
+        "weakPostHit": 0.39751552795031053
+      },
+      {
+        "strong": 5,
+        "weak": 9,
+        "strongCount": 337,
+        "weakCount": 5,
+        "total": 342,
+        "strongPreHit": 0.4124629080118694,
+        "weakPreHit": 0.4,
+        "combinedPreHit": 0.41228070175438597,
+        "combinedPostHit": 0.4064327485380117,
+        "strongPostHit": 0.4065281899109792,
+        "weakPostHit": 0.4
+      },
+      {
+        "strong": 5,
+        "weak": 10,
+        "strongCount": 337,
+        "weakCount": 0,
+        "total": 337,
+        "strongPreHit": 0.4124629080118694,
+        "weakPreHit": null,
+        "combinedPreHit": 0.4124629080118694,
+        "combinedPostHit": 0.4065281899109792,
+        "strongPostHit": 0.4065281899109792,
+        "weakPostHit": null
+      },
+      {
+        "strong": 6,
+        "weak": 5,
+        "strongCount": 301,
+        "weakCount": 1076,
+        "total": 1377,
+        "strongPreHit": 0.4019933554817276,
+        "weakPreHit": 0.5195167286245354,
+        "combinedPreHit": 0.49382716049382713,
+        "combinedPostHit": 0.4865649963689179,
+        "strongPostHit": 0.3920265780730897,
+        "weakPostHit": 0.5130111524163569
+      },
+      {
+        "strong": 6,
+        "weak": 6,
+        "strongCount": 301,
+        "weakCount": 886,
+        "total": 1187,
+        "strongPreHit": 0.4019933554817276,
+        "weakPreHit": 0.5282167042889391,
+        "combinedPreHit": 0.4962089300758214,
+        "combinedPostHit": 0.4877843302443134,
+        "strongPostHit": 0.3920265780730897,
+        "weakPostHit": 0.5203160270880361
+      },
+      {
+        "strong": 6,
+        "weak": 7,
+        "strongCount": 301,
+        "weakCount": 510,
+        "total": 811,
+        "strongPreHit": 0.4019933554817276,
+        "weakPreHit": 0.5117647058823529,
+        "combinedPreHit": 0.47102342786683105,
+        "combinedPostHit": 0.4623921085080148,
+        "strongPostHit": 0.3920265780730897,
+        "weakPostHit": 0.503921568627451
+      },
+      {
+        "strong": 6,
+        "weak": 8,
+        "strongCount": 301,
+        "weakCount": 161,
+        "total": 462,
+        "strongPreHit": 0.4019933554817276,
+        "weakPreHit": 0.40372670807453415,
+        "combinedPreHit": 0.4025974025974026,
+        "combinedPostHit": 0.3939393939393939,
+        "strongPostHit": 0.3920265780730897,
+        "weakPostHit": 0.39751552795031053
+      },
+      {
+        "strong": 6,
+        "weak": 9,
+        "strongCount": 301,
+        "weakCount": 5,
+        "total": 306,
+        "strongPreHit": 0.4019933554817276,
+        "weakPreHit": 0.4,
+        "combinedPreHit": 0.4019607843137255,
+        "combinedPostHit": 0.39215686274509803,
+        "strongPostHit": 0.3920265780730897,
+        "weakPostHit": 0.4
+      },
+      {
+        "strong": 6,
+        "weak": 10,
+        "strongCount": 301,
+        "weakCount": 0,
+        "total": 301,
+        "strongPreHit": 0.4019933554817276,
+        "weakPreHit": null,
+        "combinedPreHit": 0.4019933554817276,
+        "combinedPostHit": 0.3920265780730897,
+        "strongPostHit": 0.3920265780730897,
+        "weakPostHit": null
+      },
+      {
+        "strong": 7,
+        "weak": 5,
+        "strongCount": 262,
+        "weakCount": 1076,
+        "total": 1338,
+        "strongPreHit": 0.3969465648854962,
+        "weakPreHit": 0.5195167286245354,
+        "combinedPreHit": 0.49551569506726456,
+        "combinedPostHit": 0.4880418535127055,
+        "strongPostHit": 0.38549618320610685,
+        "weakPostHit": 0.5130111524163569
+      },
+      {
+        "strong": 7,
+        "weak": 6,
+        "strongCount": 262,
+        "weakCount": 886,
+        "total": 1148,
+        "strongPreHit": 0.3969465648854962,
+        "weakPreHit": 0.5282167042889391,
+        "combinedPreHit": 0.49825783972125437,
+        "combinedPostHit": 0.4895470383275261,
+        "strongPostHit": 0.38549618320610685,
+        "weakPostHit": 0.5203160270880361
+      },
+      {
+        "strong": 7,
+        "weak": 7,
+        "strongCount": 262,
+        "weakCount": 510,
+        "total": 772,
+        "strongPreHit": 0.3969465648854962,
+        "weakPreHit": 0.5117647058823529,
+        "combinedPreHit": 0.4727979274611399,
+        "combinedPostHit": 0.4637305699481865,
+        "strongPostHit": 0.38549618320610685,
+        "weakPostHit": 0.503921568627451
+      },
+      {
+        "strong": 7,
+        "weak": 8,
+        "strongCount": 262,
+        "weakCount": 161,
+        "total": 423,
+        "strongPreHit": 0.3969465648854962,
+        "weakPreHit": 0.40372670807453415,
+        "combinedPreHit": 0.39952718676122934,
+        "combinedPostHit": 0.3900709219858156,
+        "strongPostHit": 0.38549618320610685,
+        "weakPostHit": 0.39751552795031053
+      },
+      {
+        "strong": 7,
+        "weak": 9,
+        "strongCount": 262,
+        "weakCount": 5,
+        "total": 267,
+        "strongPreHit": 0.3969465648854962,
+        "weakPreHit": 0.4,
+        "combinedPreHit": 0.3970037453183521,
+        "combinedPostHit": 0.3857677902621723,
+        "strongPostHit": 0.38549618320610685,
+        "weakPostHit": 0.4
+      },
+      {
+        "strong": 7,
+        "weak": 10,
+        "strongCount": 262,
+        "weakCount": 0,
+        "total": 262,
+        "strongPreHit": 0.3969465648854962,
+        "weakPreHit": null,
+        "combinedPreHit": 0.3969465648854962,
+        "combinedPostHit": 0.38549618320610685,
+        "strongPostHit": 0.38549618320610685,
+        "weakPostHit": null
+      },
+      {
+        "strong": 8,
+        "weak": 5,
+        "strongCount": 227,
+        "weakCount": 1076,
+        "total": 1303,
+        "strongPreHit": 0.41409691629955947,
+        "weakPreHit": 0.5195167286245354,
+        "combinedPreHit": 0.501151189562548,
+        "combinedPostHit": 0.49424405218726014,
+        "strongPostHit": 0.4052863436123348,
+        "weakPostHit": 0.5130111524163569
+      },
+      {
+        "strong": 8,
+        "weak": 6,
+        "strongCount": 227,
+        "weakCount": 886,
+        "total": 1113,
+        "strongPreHit": 0.41409691629955947,
+        "weakPreHit": 0.5282167042889391,
+        "combinedPreHit": 0.504941599281222,
+        "combinedPostHit": 0.4968553459119497,
+        "strongPostHit": 0.4052863436123348,
+        "weakPostHit": 0.5203160270880361
+      },
+      {
+        "strong": 8,
+        "weak": 7,
+        "strongCount": 227,
+        "weakCount": 510,
+        "total": 737,
+        "strongPreHit": 0.41409691629955947,
+        "weakPreHit": 0.5117647058823529,
+        "combinedPreHit": 0.4816824966078697,
+        "combinedPostHit": 0.4735413839891452,
+        "strongPostHit": 0.4052863436123348,
+        "weakPostHit": 0.503921568627451
+      },
+      {
+        "strong": 8,
+        "weak": 8,
+        "strongCount": 227,
+        "weakCount": 161,
+        "total": 388,
+        "strongPreHit": 0.41409691629955947,
+        "weakPreHit": 0.40372670807453415,
+        "combinedPreHit": 0.4097938144329897,
+        "combinedPostHit": 0.4020618556701031,
+        "strongPostHit": 0.4052863436123348,
+        "weakPostHit": 0.39751552795031053
+      },
+      {
+        "strong": 8,
+        "weak": 9,
+        "strongCount": 227,
+        "weakCount": 5,
+        "total": 232,
+        "strongPreHit": 0.41409691629955947,
+        "weakPreHit": 0.4,
+        "combinedPreHit": 0.41379310344827586,
+        "combinedPostHit": 0.4051724137931034,
+        "strongPostHit": 0.4052863436123348,
+        "weakPostHit": 0.4
+      },
+      {
+        "strong": 8,
+        "weak": 10,
+        "strongCount": 227,
+        "weakCount": 0,
+        "total": 227,
+        "strongPreHit": 0.41409691629955947,
+        "weakPreHit": null,
+        "combinedPreHit": 0.41409691629955947,
+        "combinedPostHit": 0.4052863436123348,
+        "strongPostHit": 0.4052863436123348,
+        "weakPostHit": null
+      },
+      {
+        "strong": 9,
+        "weak": 5,
+        "strongCount": 97,
+        "weakCount": 1076,
+        "total": 1173,
+        "strongPreHit": 0.4329896907216495,
+        "weakPreHit": 0.5195167286245354,
+        "combinedPreHit": 0.5123614663256607,
+        "combinedPostHit": 0.505541346973572,
+        "strongPostHit": 0.422680412371134,
+        "weakPostHit": 0.5130111524163569
+      },
+      {
+        "strong": 9,
+        "weak": 6,
+        "strongCount": 97,
+        "weakCount": 886,
+        "total": 983,
+        "strongPreHit": 0.4329896907216495,
+        "weakPreHit": 0.5282167042889391,
+        "combinedPreHit": 0.5188199389623601,
+        "combinedPostHit": 0.5106815869786369,
+        "strongPostHit": 0.422680412371134,
+        "weakPostHit": 0.5203160270880361
+      },
+      {
+        "strong": 9,
+        "weak": 7,
+        "strongCount": 97,
+        "weakCount": 510,
+        "total": 607,
+        "strongPreHit": 0.4329896907216495,
+        "weakPreHit": 0.5117647058823529,
+        "combinedPreHit": 0.49917627677100496,
+        "combinedPostHit": 0.49093904448105435,
+        "strongPostHit": 0.422680412371134,
+        "weakPostHit": 0.503921568627451
+      },
+      {
+        "strong": 9,
+        "weak": 8,
+        "strongCount": 97,
+        "weakCount": 161,
+        "total": 258,
+        "strongPreHit": 0.4329896907216495,
+        "weakPreHit": 0.40372670807453415,
+        "combinedPreHit": 0.41472868217054265,
+        "combinedPostHit": 0.4069767441860465,
+        "strongPostHit": 0.422680412371134,
+        "weakPostHit": 0.39751552795031053
+      },
+      {
+        "strong": 9,
+        "weak": 9,
+        "strongCount": 97,
+        "weakCount": 5,
+        "total": 102,
+        "strongPreHit": 0.4329896907216495,
+        "weakPreHit": 0.4,
+        "combinedPreHit": 0.43137254901960786,
+        "combinedPostHit": 0.4215686274509804,
+        "strongPostHit": 0.422680412371134,
+        "weakPostHit": 0.4
+      },
+      {
+        "strong": 9,
+        "weak": 10,
+        "strongCount": 97,
+        "weakCount": 0,
+        "total": 97,
+        "strongPreHit": 0.4329896907216495,
+        "weakPreHit": null,
+        "combinedPreHit": 0.4329896907216495,
+        "combinedPostHit": 0.422680412371134,
+        "strongPostHit": 0.422680412371134,
+        "weakPostHit": null
+      },
+      {
+        "strong": 10,
+        "weak": 5,
+        "strongCount": 0,
+        "weakCount": 1076,
+        "total": 1076,
+        "strongPreHit": null,
+        "weakPreHit": 0.5195167286245354,
+        "combinedPreHit": 0.5195167286245354,
+        "combinedPostHit": 0.5130111524163569,
+        "strongPostHit": null,
+        "weakPostHit": 0.5130111524163569
+      },
+      {
+        "strong": 10,
+        "weak": 6,
+        "strongCount": 0,
+        "weakCount": 886,
+        "total": 886,
+        "strongPreHit": null,
+        "weakPreHit": 0.5282167042889391,
+        "combinedPreHit": 0.5282167042889391,
+        "combinedPostHit": 0.5203160270880361,
+        "strongPostHit": null,
+        "weakPostHit": 0.5203160270880361
+      },
+      {
+        "strong": 10,
+        "weak": 7,
+        "strongCount": 0,
+        "weakCount": 510,
+        "total": 510,
+        "strongPreHit": null,
+        "weakPreHit": 0.5117647058823529,
+        "combinedPreHit": 0.5117647058823529,
+        "combinedPostHit": 0.503921568627451,
+        "strongPostHit": null,
+        "weakPostHit": 0.503921568627451
+      },
+      {
+        "strong": 10,
+        "weak": 8,
+        "strongCount": 0,
+        "weakCount": 161,
+        "total": 161,
+        "strongPreHit": null,
+        "weakPreHit": 0.40372670807453415,
+        "combinedPreHit": 0.40372670807453415,
+        "combinedPostHit": 0.39751552795031053,
+        "strongPostHit": null,
+        "weakPostHit": 0.39751552795031053
+      },
+      {
+        "strong": 10,
+        "weak": 9,
+        "strongCount": 0,
+        "weakCount": 5,
+        "total": 5,
+        "strongPreHit": null,
+        "weakPreHit": 0.4,
+        "combinedPreHit": 0.4,
+        "combinedPostHit": 0.4,
+        "strongPostHit": null,
+        "weakPostHit": 0.4
+      },
+      {
+        "strong": 10,
+        "weak": 10,
+        "strongCount": 0,
+        "weakCount": 0,
+        "total": 0,
+        "strongPreHit": null,
+        "weakPreHit": null,
+        "combinedPreHit": null,
+        "combinedPostHit": null,
+        "strongPostHit": null,
+        "weakPostHit": null
+      }
+    ],
+    "best": {
+      "strong": 9,
+      "weak": 6,
+      "strongCount": 97,
+      "weakCount": 886,
+      "total": 983,
+      "strongPreHit": 0.4329896907216495,
+      "weakPreHit": 0.5282167042889391,
+      "combinedPreHit": 0.5188199389623601,
+      "combinedPostHit": 0.5106815869786369,
+      "strongPostHit": 0.422680412371134,
+      "weakPostHit": 0.5203160270880361
+    },
+    "selected_thresholds": {
+      "STRONG": 9,
+      "WEAK": 6
+    }
+  },
+  "period_hit_rates": {
+    "TRAIN": {
+      "STRONG": {
+        "count": 97,
+        "preHits": 42,
+        "postHits": 41,
+        "preRetPctSum": -68.86451766457942,
+        "postRetPctSum": -109.44029566457947,
+        "preHitRate": 0.4329896907216495,
+        "postHitRate": 0.422680412371134,
+        "avgPreRetPct": -0.7099434810781384,
+        "avgPostRetPct": -1.1282504707688605
+      },
+      "WEAK": {
+        "count": 886,
+        "preHits": 468,
+        "postHits": 461,
+        "preRetPctSum": 1125.7143134713913,
+        "postRetPctSum": 712.2804294713917,
+        "preHitRate": 0.5282167042889391,
+        "postHitRate": 0.5203160270880361,
+        "avgPreRetPct": 1.2705579158819316,
+        "avgPostRetPct": 0.8039282499677107
+      },
+      "NEUTRAL": {
+        "count": 2905
+      },
+      "combined": {
+        "count": 983,
+        "preHits": 510,
+        "postHits": 502,
+        "preHitRate": 0.5188199389623601,
+        "postHitRate": 0.5106815869786369
+      }
+    },
+    "VALIDATION": {
+      "STRONG": {
+        "count": 420,
+        "preHits": 237,
+        "postHits": 226,
+        "preRetPctSum": 2467.044114324388,
+        "postRetPctSum": 2107.7820813243893,
+        "preHitRate": 0.5642857142857143,
+        "postHitRate": 0.5380952380952381,
+        "avgPreRetPct": 5.873914557915209,
+        "avgPostRetPct": 5.01852876505807
+      },
+      "WEAK": {
+        "count": 512,
+        "preHits": 282,
+        "postHits": 277,
+        "preRetPctSum": -295.15889294489887,
+        "postRetPctSum": -349.67567794489787,
+        "preHitRate": 0.55078125,
+        "postHitRate": 0.541015625,
+        "avgPreRetPct": -0.5764822127830056,
+        "avgPostRetPct": -0.6829603084861287
+      },
+      "NEUTRAL": {
+        "count": 3583
+      },
+      "combined": {
+        "count": 932,
+        "preHits": 519,
+        "postHits": 503,
+        "preHitRate": 0.5568669527896996,
+        "postHitRate": 0.5396995708154506
+      }
+    },
+    "OOS": {
+      "STRONG": {
+        "count": 343,
+        "preHits": 187,
+        "postHits": 183,
+        "preRetPctSum": 1953.4609964673064,
+        "postRetPctSum": 1728.179559467304,
+        "preHitRate": 0.5451895043731778,
+        "postHitRate": 0.5335276967930029,
+        "avgPreRetPct": 5.695221564044625,
+        "avgPostRetPct": 5.038424371624793
+      },
+      "WEAK": {
+        "count": 1101,
+        "preHits": 458,
+        "postHits": 454,
+        "preRetPctSum": -3198.004460108771,
+        "postRetPctSum": -3446.1658981087735,
+        "preHitRate": 0.4159854677565849,
+        "postHitRate": 0.4123524069028156,
+        "avgPreRetPct": -2.9046362035502007,
+        "avgPostRetPct": -3.1300326050034273
+      },
+      "NEUTRAL": {
+        "count": 3689
+      },
+      "combined": {
+        "count": 1444,
+        "preHits": 645,
+        "postHits": 637,
+        "preHitRate": 0.4466759002770083,
+        "postHitRate": 0.44113573407202217
+      }
+    }
+  },
+  "overfit_check": {
+    "checks": [
+      {
+        "verdict": "STRONG",
+        "valHit": 0.5642857142857143,
+        "oosHit": 0.5451895043731778,
+        "divergence": 0.019096209912536466,
+        "flagged": false,
+        "reason": "OOS within 1.9pp of VAL (<=20pp threshold)"
+      },
+      {
+        "verdict": "WEAK",
+        "valHit": 0.55078125,
+        "oosHit": 0.4159854677565849,
+        "divergence": 0.1347957822434151,
+        "flagged": false,
+        "reason": "OOS within 13.5pp of VAL (<=20pp threshold)"
+      }
+    ],
+    "flagged": false
+  },
+  "forward_window_sweep": {
+    "1": {
+      "TRAIN": {
+        "strong": {
+          "count": 97,
+          "preHit": 0.422680412371134,
+          "postHit": 0.35051546391752575,
+          "avgPreRet": -0.25768261662466035,
+          "avgPostRet": -0.48231515270713465
+        },
+        "weak": {
+          "count": 886,
+          "preHit": 0.48419864559819414,
+          "postHit": 0.4525959367945824,
+          "avgPreRet": 0.2002332327322636,
+          "avgPostRet": -0.05254418374629193
+        },
+        "combined": {
+          "count": 983,
+          "preHits": 470,
+          "postHits": 435,
+          "preHitRate": 0.47812817904374366,
+          "postHitRate": 0.44252288911495424
+        }
+      },
+      "VALIDATION": {
+        "strong": {
+          "count": 420,
+          "preHit": 0.5428571428571428,
+          "postHit": 0.5166666666666667,
+          "avgPreRet": 0.8493079537382404,
+          "avgPostRet": 0.5779347251668119
+        },
+        "weak": {
+          "count": 512,
+          "preHit": 0.46484375,
+          "postHit": 0.435546875,
+          "avgPreRet": -0.009546218101836921,
+          "avgPostRet": -0.20121638021121172
+        },
+        "combined": {
+          "count": 932,
+          "preHits": 466,
+          "postHits": 440,
+          "preHitRate": 0.5,
+          "postHitRate": 0.4721030042918455
+        }
+      },
+      "OOS": {
+        "strong": {
+          "count": 354,
+          "preHit": 0.5225988700564972,
+          "postHit": 0.4971751412429379,
+          "avgPreRet": 0.6440462153221058,
+          "avgPostRet": 0.3957634271865123
+        },
+        "weak": {
+          "count": 1102,
+          "preHit": 0.4927404718693285,
+          "postHit": 0.470961887477314,
+          "avgPreRet": -0.250077394197217,
+          "avgPostRet": -0.45309534791772554
+        },
+        "combined": {
+          "count": 1456,
+          "preHits": 728,
+          "postHits": 695,
+          "preHitRate": 0.5,
+          "postHitRate": 0.47733516483516486
+        }
+      }
+    },
+    "3": {
+      "TRAIN": {
+        "strong": {
+          "count": 97,
+          "preHit": 0.44329896907216493,
+          "postHit": 0.422680412371134,
+          "avgPreRet": -0.4190829471491046,
+          "avgPostRet": -0.6928700296233317
+        },
+        "weak": {
+          "count": 886,
+          "preHit": 0.5158013544018059,
+          "postHit": 0.49887133182844245,
+          "avgPreRet": 0.8222306370831752,
+          "avgPostRet": 0.47022369577392015
+        },
+        "combined": {
+          "count": 983,
+          "preHits": 500,
+          "postHits": 483,
+          "preHitRate": 0.508646998982706,
+          "postHitRate": 0.491353001017294
+        }
+      },
+      "VALIDATION": {
+        "strong": {
+          "count": 420,
+          "preHit": 0.5357142857142857,
+          "postHit": 0.5166666666666667,
+          "avgPreRet": 2.230688047764698,
+          "avgPostRet": 1.8191079287170808
+        },
+        "weak": {
+          "count": 512,
+          "preHit": 0.498046875,
+          "postHit": 0.47265625,
+          "avgPreRet": -0.4114912374354539,
+          "avgPostRet": -0.5888331104823288
+        },
+        "combined": {
+          "count": 932,
+          "preHits": 480,
+          "postHits": 459,
+          "preHitRate": 0.5150214592274678,
+          "postHitRate": 0.4924892703862661
+        }
+      },
+      "OOS": {
+        "strong": {
+          "count": 354,
+          "preHit": 0.5649717514124294,
+          "postHit": 0.5423728813559322,
+          "avgPreRet": 1.3891863554678856,
+          "avgPostRet": 1.0450628724170379
+        },
+        "weak": {
+          "count": 1101,
+          "preHit": 0.45594913714804725,
+          "postHit": 0.44686648501362397,
+          "avgPreRet": -0.9038581261683842,
+          "avgPostRet": -1.1117413250784676
+        },
+        "combined": {
+          "count": 1455,
+          "preHits": 702,
+          "postHits": 684,
+          "preHitRate": 0.4824742268041237,
+          "postHitRate": 0.47010309278350515
+        }
+      }
+    },
+    "5": {
+      "TRAIN": {
+        "strong": {
+          "count": 97,
+          "preHit": 0.41237113402061853,
+          "postHit": 0.3711340206185567,
+          "avgPreRet": -0.7075150656365102,
+          "avgPostRet": -1.025182910997335
+        },
+        "weak": {
+          "count": 886,
+          "preHit": 0.5349887133182845,
+          "postHit": 0.5214446952595937,
+          "avgPreRet": 1.032529301155353,
+          "avgPostRet": 0.6343647932546754
+        },
+        "combined": {
+          "count": 983,
+          "preHits": 514,
+          "postHits": 498,
+          "preHitRate": 0.5228891149542217,
+          "postHitRate": 0.5066124109867752
+        }
+      },
+      "VALIDATION": {
+        "strong": {
+          "count": 420,
+          "preHit": 0.5404761904761904,
+          "postHit": 0.5214285714285715,
+          "avgPreRet": 3.1800075306431954,
+          "avgPostRet": 2.634723775881289
+        },
+        "weak": {
+          "count": 512,
+          "preHit": 0.48046875,
+          "postHit": 0.474609375,
+          "avgPreRet": -0.4877423011509547,
+          "avgPostRet": -0.6471780218540817
+        },
+        "combined": {
+          "count": 932,
+          "preHits": 473,
+          "postHits": 462,
+          "preHitRate": 0.5075107296137339,
+          "postHitRate": 0.4957081545064378
+        }
+      },
+      "OOS": {
+        "strong": {
+          "count": 351,
+          "preHit": 0.5299145299145299,
+          "postHit": 0.5128205128205128,
+          "avgPreRet": 3.0791329798260336,
+          "avgPostRet": 2.6413869855240413
+        },
+        "weak": {
+          "count": 1101,
+          "preHit": 0.44504995458673935,
+          "postHit": 0.43778383287920075,
+          "avgPreRet": -1.733759000791962,
+          "avgPostRet": -1.9463508554695277
+        },
+        "combined": {
+          "count": 1452,
+          "preHits": 676,
+          "postHits": 662,
+          "preHitRate": 0.465564738292011,
+          "postHitRate": 0.4559228650137741
+        }
+      }
+    },
+    "10": {
+      "TRAIN": {
+        "strong": {
+          "count": 97,
+          "preHit": 0.4329896907216495,
+          "postHit": 0.422680412371134,
+          "avgPreRet": -0.7099434810781384,
+          "avgPostRet": -1.1282504707688605
+        },
+        "weak": {
+          "count": 886,
+          "preHit": 0.5282167042889391,
+          "postHit": 0.5203160270880361,
+          "avgPreRet": 1.2705579158819316,
+          "avgPostRet": 0.8039282499677107
+        },
+        "combined": {
+          "count": 983,
+          "preHits": 510,
+          "postHits": 502,
+          "preHitRate": 0.5188199389623601,
+          "postHitRate": 0.5106815869786369
+        }
+      },
+      "VALIDATION": {
+        "strong": {
+          "count": 420,
+          "preHit": 0.5642857142857143,
+          "postHit": 0.5380952380952381,
+          "avgPreRet": 5.873914557915209,
+          "avgPostRet": 5.01852876505807
+        },
+        "weak": {
+          "count": 512,
+          "preHit": 0.55078125,
+          "postHit": 0.541015625,
+          "avgPreRet": -0.5764822127830056,
+          "avgPostRet": -0.6829603084861287
+        },
+        "combined": {
+          "count": 932,
+          "preHits": 519,
+          "postHits": 503,
+          "preHitRate": 0.5568669527896996,
+          "postHitRate": 0.5396995708154506
+        }
+      },
+      "OOS": {
+        "strong": {
+          "count": 343,
+          "preHit": 0.5451895043731778,
+          "postHit": 0.5335276967930029,
+          "avgPreRet": 5.695221564044625,
+          "avgPostRet": 5.038424371624793
+        },
+        "weak": {
+          "count": 1101,
+          "preHit": 0.4159854677565849,
+          "postHit": 0.4123524069028156,
+          "avgPreRet": -2.9046362035502007,
+          "avgPostRet": -3.1300326050034273
+        },
+        "combined": {
+          "count": 1444,
+          "preHits": 645,
+          "postHits": 637,
+          "preHitRate": 0.4466759002770083,
+          "postHitRate": 0.44113573407202217
+        }
+      }
+    },
+    "20": {
+      "TRAIN": {
+        "strong": {
+          "count": 97,
+          "preHit": 0.36082474226804123,
+          "postHit": 0.3402061855670103,
+          "avgPreRet": -1.5014822994596184,
+          "avgPostRet": -2.117322454098794
+        },
+        "weak": {
+          "count": 886,
+          "preHit": 0.5575620767494357,
+          "postHit": 0.54627539503386,
+          "avgPreRet": 0.8001585548503821,
+          "avgPostRet": 0.15878587200613667
+        },
+        "combined": {
+          "count": 983,
+          "preHits": 529,
+          "postHits": 517,
+          "preHitRate": 0.5381485249237029,
+          "postHitRate": 0.525940996948118
+        }
+      },
+      "VALIDATION": {
+        "strong": {
+          "count": 420,
+          "preHit": 0.5952380952380952,
+          "postHit": 0.5761904761904761,
+          "avgPreRet": 12.625739871641175,
+          "avgPostRet": 11.135837031165007
+        },
+        "weak": {
+          "count": 512,
+          "preHit": 0.541015625,
+          "postHit": 0.537109375,
+          "avgPreRet": -2.597748827734332,
+          "avgPostRet": -2.609910095312456
+        },
+        "combined": {
+          "count": 932,
+          "preHits": 527,
+          "postHits": 517,
+          "preHitRate": 0.5654506437768241,
+          "postHitRate": 0.5547210300429185
+        }
+      },
+      "OOS": {
+        "strong": {
+          "count": 323,
+          "preHit": 0.5108359133126935,
+          "postHit": 0.5108359133126935,
+          "avgPreRet": 7.472913231743227,
+          "avgPostRet": 6.444142693043543
+        },
+        "weak": {
+          "count": 1101,
+          "preHit": 0.4986376021798365,
+          "postHit": 0.4977293369663942,
+          "avgPreRet": -3.251789030918382,
+          "avgPostRet": -3.476381265250811
+        },
+        "combined": {
+          "count": 1424,
+          "preHits": 714,
+          "postHits": 713,
+          "preHitRate": 0.5014044943820225,
+          "postHitRate": 0.5007022471910112
+        }
+      }
+    }
+  },
+  "ablation": {
+    "baseline": {
+      "TRAIN": {
+        "strong": {
+          "count": 97,
+          "preHit": 0.4329896907216495,
+          "postHit": 0.422680412371134
+        },
+        "weak": {
+          "count": 886,
+          "preHit": 0.5282167042889391,
+          "postHit": 0.5203160270880361
+        },
+        "combined": {
+          "count": 983,
+          "preHits": 510,
+          "postHits": 502,
+          "preHitRate": 0.5188199389623601,
+          "postHitRate": 0.5106815869786369
+        }
+      },
+      "VALIDATION": {
+        "strong": {
+          "count": 420,
+          "preHit": 0.5642857142857143,
+          "postHit": 0.5380952380952381
+        },
+        "weak": {
+          "count": 512,
+          "preHit": 0.55078125,
+          "postHit": 0.541015625
+        },
+        "combined": {
+          "count": 932,
+          "preHits": 519,
+          "postHits": 503,
+          "preHitRate": 0.5568669527896996,
+          "postHitRate": 0.5396995708154506
+        }
+      },
+      "OOS": {
+        "strong": {
+          "count": 343,
+          "preHit": 0.5451895043731778,
+          "postHit": 0.5335276967930029
+        },
+        "weak": {
+          "count": 1101,
+          "preHit": 0.4159854677565849,
+          "postHit": 0.4123524069028156
+        },
+        "combined": {
+          "count": 1444,
+          "preHits": 645,
+          "postHits": 637,
+          "preHitRate": 0.4466759002770083,
+          "postHitRate": 0.44113573407202217
+        }
+      }
+    },
+    "ablations": {
+      "adaptiveZ": {
+        "TRAIN": {
+          "strong": {
+            "count": 0,
+            "preHit": null,
+            "postHit": null
+          },
+          "weak": {
+            "count": 5,
+            "preHit": 0.2,
+            "postHit": 0.2
+          },
+          "combined": {
+            "count": 5,
+            "preHits": 1,
+            "postHits": 1,
+            "preHitRate": 0.2,
+            "postHitRate": 0.2
+          },
+          "delta_combined_preHit": -0.3188199389623601,
+          "delta_strong_preHit": -0.4329896907216495
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 0,
+            "preHit": null,
+            "postHit": null
+          },
+          "weak": {
+            "count": 29,
+            "preHit": 0.2413793103448276,
+            "postHit": 0.27586206896551724
+          },
+          "combined": {
+            "count": 29,
+            "preHits": 7,
+            "postHits": 8,
+            "preHitRate": 0.2413793103448276,
+            "postHitRate": 0.27586206896551724
+          },
+          "delta_combined_preHit": -0.31548764244487193,
+          "delta_strong_preHit": -0.5642857142857143
+        },
+        "OOS": {
+          "strong": {
+            "count": 0,
+            "preHit": null,
+            "postHit": null
+          },
+          "weak": {
+            "count": 12,
+            "preHit": 0.25,
+            "postHit": 0.25
+          },
+          "combined": {
+            "count": 12,
+            "preHits": 3,
+            "postHits": 3,
+            "preHitRate": 0.25,
+            "postHitRate": 0.25
+          },
+          "delta_combined_preHit": -0.19667590027700832,
+          "delta_strong_preHit": -0.5451895043731778
+        }
+      },
+      "trendTenure": {
+        "TRAIN": {
+          "strong": {
+            "count": 91,
+            "preHit": 0.3956043956043956,
+            "postHit": 0.38461538461538464
+          },
+          "weak": {
+            "count": 886,
+            "preHit": 0.5282167042889391,
+            "postHit": 0.5203160270880361
+          },
+          "combined": {
+            "count": 977,
+            "preHits": 504,
+            "postHits": 496,
+            "preHitRate": 0.5158648925281474,
+            "postHitRate": 0.5076765609007164
+          },
+          "delta_combined_preHit": -0.002955046434212738,
+          "delta_strong_preHit": -0.037385295117253914
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 416,
+            "preHit": 0.5673076923076923,
+            "postHit": 0.5408653846153846
+          },
+          "weak": {
+            "count": 512,
+            "preHit": 0.55078125,
+            "postHit": 0.541015625
+          },
+          "combined": {
+            "count": 928,
+            "preHits": 518,
+            "postHits": 502,
+            "preHitRate": 0.5581896551724138,
+            "postHitRate": 0.540948275862069
+          },
+          "delta_combined_preHit": 0.001322702382714258,
+          "delta_strong_preHit": 0.0030219780219780112
+        },
+        "OOS": {
+          "strong": {
+            "count": 343,
+            "preHit": 0.5451895043731778,
+            "postHit": 0.5335276967930029
+          },
+          "weak": {
+            "count": 1089,
+            "preHit": 0.41781450872359965,
+            "postHit": 0.41414141414141414
+          },
+          "combined": {
+            "count": 1432,
+            "preHits": 642,
+            "postHits": 634,
+            "preHitRate": 0.4483240223463687,
+            "postHitRate": 0.44273743016759776
+          },
+          "delta_combined_preHit": 0.0016481220693603804,
+          "delta_strong_preHit": 0
+        }
+      },
+      "atrExt50ma": {
+        "TRAIN": {
+          "strong": {
+            "count": 0,
+            "preHit": null,
+            "postHit": null
+          },
+          "weak": {
+            "count": 752,
+            "preHit": 0.5053191489361702,
+            "postHit": 0.4973404255319149
+          },
+          "combined": {
+            "count": 752,
+            "preHits": 380,
+            "postHits": 374,
+            "preHitRate": 0.5053191489361702,
+            "postHitRate": 0.4973404255319149
+          },
+          "delta_combined_preHit": -0.013500790026189868,
+          "delta_strong_preHit": -0.4329896907216495
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 0,
+            "preHit": null,
+            "postHit": null
+          },
+          "weak": {
+            "count": 459,
+            "preHit": 0.5751633986928104,
+            "postHit": 0.5620915032679739
+          },
+          "combined": {
+            "count": 459,
+            "preHits": 264,
+            "postHits": 258,
+            "preHitRate": 0.5751633986928104,
+            "postHitRate": 0.5620915032679739
+          },
+          "delta_combined_preHit": 0.01829644590311086,
+          "delta_strong_preHit": -0.5642857142857143
+        },
+        "OOS": {
+          "strong": {
+            "count": 0,
+            "preHit": null,
+            "postHit": null
+          },
+          "weak": {
+            "count": 1079,
+            "preHit": 0.41334569045412417,
+            "postHit": 0.40963855421686746
+          },
+          "combined": {
+            "count": 1079,
+            "preHits": 446,
+            "postHits": 442,
+            "preHitRate": 0.41334569045412417,
+            "postHitRate": 0.40963855421686746
+          },
+          "delta_combined_preHit": -0.03333020982288415,
+          "delta_strong_preHit": -0.5451895043731778
+        }
+      },
+      "rsVsBtc": {
+        "TRAIN": {
+          "strong": {
+            "count": 57,
+            "preHit": 0.47368421052631576,
+            "postHit": 0.45614035087719296
+          },
+          "weak": {
+            "count": 795,
+            "preHit": 0.5308176100628931,
+            "postHit": 0.5220125786163522
+          },
+          "combined": {
+            "count": 852,
+            "preHits": 449,
+            "postHits": 441,
+            "preHitRate": 0.5269953051643192,
+            "postHitRate": 0.5176056338028169
+          },
+          "delta_combined_preHit": 0.008175366201959133,
+          "delta_strong_preHit": 0.04069451980466626
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 176,
+            "preHit": 0.6363636363636364,
+            "postHit": 0.6136363636363636
+          },
+          "weak": {
+            "count": 488,
+            "preHit": 0.5491803278688525,
+            "postHit": 0.5389344262295082
+          },
+          "combined": {
+            "count": 664,
+            "preHits": 380,
+            "postHits": 371,
+            "preHitRate": 0.572289156626506,
+            "postHitRate": 0.5587349397590361
+          },
+          "delta_combined_preHit": 0.01542220383680648,
+          "delta_strong_preHit": 0.07207792207792207
+        },
+        "OOS": {
+          "strong": {
+            "count": 127,
+            "preHit": 0.5354330708661418,
+            "postHit": 0.5118110236220472
+          },
+          "weak": {
+            "count": 999,
+            "preHit": 0.3943943943943944,
+            "postHit": 0.3913913913913914
+          },
+          "combined": {
+            "count": 1126,
+            "preHits": 462,
+            "postHits": 456,
+            "preHitRate": 0.4103019538188277,
+            "postHitRate": 0.4049733570159858
+          },
+          "delta_combined_preHit": -0.036373946458180595,
+          "delta_strong_preHit": -0.009756433507036033
+        }
+      },
+      "fundingZ": {
+        "TRAIN": {
+          "strong": {
+            "count": 103,
+            "preHit": 0.42718446601941745,
+            "postHit": 0.4077669902912621
+          },
+          "weak": {
+            "count": 881,
+            "preHit": 0.5300794551645857,
+            "postHit": 0.5221339387060159
+          },
+          "combined": {
+            "count": 984,
+            "preHits": 511,
+            "postHits": 502,
+            "preHitRate": 0.5193089430894309,
+            "postHitRate": 0.5101626016260162
+          },
+          "delta_combined_preHit": 0.0004890041270707579,
+          "delta_strong_preHit": -0.005805224702232048
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 460,
+            "preHit": 0.5673913043478261,
+            "postHit": 0.5391304347826087
+          },
+          "weak": {
+            "count": 483,
+            "preHit": 0.5693581780538303,
+            "postHit": 0.556935817805383
+          },
+          "combined": {
+            "count": 943,
+            "preHits": 536,
+            "postHits": 517,
+            "preHitRate": 0.5683987274655355,
+            "postHitRate": 0.5482502651113468
+          },
+          "delta_combined_preHit": 0.011531774675835993,
+          "delta_strong_preHit": 0.0031055900621118626
+        },
+        "OOS": {
+          "strong": {
+            "count": 371,
+            "preHit": 0.555256064690027,
+            "postHit": 0.5390835579514824
+          },
+          "weak": {
+            "count": 1089,
+            "preHit": 0.41781450872359965,
+            "postHit": 0.41414141414141414
+          },
+          "combined": {
+            "count": 1460,
+            "preHits": 661,
+            "postHits": 651,
+            "preHitRate": 0.45273972602739726,
+            "postHitRate": 0.4458904109589041
+          },
+          "delta_combined_preHit": 0.00606382575038894,
+          "delta_strong_preHit": 0.01006656031684916
+        }
+      },
+      "rsiPenalty": {
+        "TRAIN": {
+          "strong": {
+            "count": 91,
+            "preHit": 0.3956043956043956,
+            "postHit": 0.38461538461538464
+          },
+          "weak": {
+            "count": 886,
+            "preHit": 0.5282167042889391,
+            "postHit": 0.5203160270880361
+          },
+          "combined": {
+            "count": 977,
+            "preHits": 504,
+            "postHits": 496,
+            "preHitRate": 0.5158648925281474,
+            "postHitRate": 0.5076765609007164
+          },
+          "delta_combined_preHit": -0.002955046434212738,
+          "delta_strong_preHit": -0.037385295117253914
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 445,
+            "preHit": 0.5685393258426966,
+            "postHit": 0.5438202247191011
+          },
+          "weak": {
+            "count": 512,
+            "preHit": 0.55078125,
+            "postHit": 0.541015625
+          },
+          "combined": {
+            "count": 957,
+            "preHits": 535,
+            "postHits": 519,
+            "preHitRate": 0.5590386624869383,
+            "postHitRate": 0.542319749216301
+          },
+          "delta_combined_preHit": 0.0021717096972387884,
+          "delta_strong_preHit": 0.00425361155698234
+        },
+        "OOS": {
+          "strong": {
+            "count": 348,
+            "preHit": 0.5373563218390804,
+            "postHit": 0.5258620689655172
+          },
+          "weak": {
+            "count": 1101,
+            "preHit": 0.4159854677565849,
+            "postHit": 0.4123524069028156
+          },
+          "combined": {
+            "count": 1449,
+            "preHits": 645,
+            "postHits": 637,
+            "preHitRate": 0.4451345755693582,
+            "postHitRate": 0.4396135265700483
+          },
+          "delta_combined_preHit": -0.0015413247076501158,
+          "delta_strong_preHit": -0.007833182534097372
+        }
+      },
+      "impulseZPenalty": {
+        "TRAIN": {
+          "strong": {
+            "count": 103,
+            "preHit": 0.42718446601941745,
+            "postHit": 0.4174757281553398
+          },
+          "weak": {
+            "count": 886,
+            "preHit": 0.5282167042889391,
+            "postHit": 0.5203160270880361
+          },
+          "combined": {
+            "count": 989,
+            "preHits": 512,
+            "postHits": 504,
+            "preHitRate": 0.5176946410515673,
+            "postHitRate": 0.5096056622851365
+          },
+          "delta_combined_preHit": -0.0011252979107928551,
+          "delta_strong_preHit": -0.005805224702232048
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 490,
+            "preHit": 0.5775510204081633,
+            "postHit": 0.5551020408163265
+          },
+          "weak": {
+            "count": 512,
+            "preHit": 0.55078125,
+            "postHit": 0.541015625
+          },
+          "combined": {
+            "count": 1002,
+            "preHits": 565,
+            "postHits": 549,
+            "preHitRate": 0.563872255489022,
+            "postHitRate": 0.5479041916167665
+          },
+          "delta_combined_preHit": 0.007005302699322424,
+          "delta_strong_preHit": 0.013265306122449028
+        },
+        "OOS": {
+          "strong": {
+            "count": 372,
+            "preHit": 0.543010752688172,
+            "postHit": 0.5295698924731183
+          },
+          "weak": {
+            "count": 1101,
+            "preHit": 0.4159854677565849,
+            "postHit": 0.4123524069028156
+          },
+          "combined": {
+            "count": 1473,
+            "preHits": 660,
+            "postHits": 651,
+            "preHitRate": 0.4480651731160896,
+            "postHitRate": 0.4419551934826884
+          },
+          "delta_combined_preHit": 0.0013892728390813014,
+          "delta_strong_preHit": -0.0021787516850058086
+        }
+      },
+      "macroZBoost": {
+        "TRAIN": {
+          "strong": {
+            "count": 85,
+            "preHit": 0.4,
+            "postHit": 0.38823529411764707
+          },
+          "weak": {
+            "count": 886,
+            "preHit": 0.5282167042889391,
+            "postHit": 0.5203160270880361
+          },
+          "combined": {
+            "count": 971,
+            "preHits": 502,
+            "postHits": 494,
+            "preHitRate": 0.5169927909371782,
+            "postHitRate": 0.5087538619979403
+          },
+          "delta_combined_preHit": -0.0018271480251819128,
+          "delta_strong_preHit": -0.03298969072164948
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 363,
+            "preHit": 0.5674931129476584,
+            "postHit": 0.5426997245179064
+          },
+          "weak": {
+            "count": 512,
+            "preHit": 0.55078125,
+            "postHit": 0.541015625
+          },
+          "combined": {
+            "count": 875,
+            "preHits": 488,
+            "postHits": 474,
+            "preHitRate": 0.5577142857142857,
+            "postHitRate": 0.5417142857142857
+          },
+          "delta_combined_preHit": 0.0008473329245861638,
+          "delta_strong_preHit": 0.003207398661944083
+        },
+        "OOS": {
+          "strong": {
+            "count": 306,
+            "preHit": 0.5620915032679739,
+            "postHit": 0.5522875816993464
+          },
+          "weak": {
+            "count": 1101,
+            "preHit": 0.4159854677565849,
+            "postHit": 0.4123524069028156
+          },
+          "combined": {
+            "count": 1407,
+            "preHits": 630,
+            "postHits": 623,
+            "preHitRate": 0.44776119402985076,
+            "postHitRate": 0.4427860696517413
+          },
+          "delta_combined_preHit": 0.0010852937528424422,
+          "delta_strong_preHit": 0.016901998894796044
+        }
+      },
+      "returns": {
+        "TRAIN": {
+          "strong": {
+            "count": 97,
+            "preHit": 0.4329896907216495,
+            "postHit": 0.422680412371134
+          },
+          "weak": {
+            "count": 762,
+            "preHit": 0.515748031496063,
+            "postHit": 0.5091863517060368
+          },
+          "combined": {
+            "count": 859,
+            "preHits": 435,
+            "postHits": 429,
+            "preHitRate": 0.5064027939464494,
+            "postHitRate": 0.49941792782305006
+          },
+          "delta_combined_preHit": -0.012417145015910735,
+          "delta_strong_preHit": 0
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 420,
+            "preHit": 0.5642857142857143,
+            "postHit": 0.5380952380952381
+          },
+          "weak": {
+            "count": 481,
+            "preHit": 0.5550935550935551,
+            "postHit": 0.5467775467775468
+          },
+          "combined": {
+            "count": 901,
+            "preHits": 504,
+            "postHits": 489,
+            "preHitRate": 0.5593784683684795,
+            "postHitRate": 0.5427302996670367
+          },
+          "delta_combined_preHit": 0.0025115155787799326,
+          "delta_strong_preHit": 0
+        },
+        "OOS": {
+          "strong": {
+            "count": 343,
+            "preHit": 0.5451895043731778,
+            "postHit": 0.5335276967930029
+          },
+          "weak": {
+            "count": 1058,
+            "preHit": 0.4111531190926276,
+            "postHit": 0.40737240075614367
+          },
+          "combined": {
+            "count": 1401,
+            "preHits": 622,
+            "postHits": 614,
+            "preHitRate": 0.4439685938615275,
+            "postHitRate": 0.4382583868665239
+          },
+          "delta_combined_preHit": -0.002707306415480837,
+          "delta_strong_preHit": 0
+        }
+      }
+    }
+  },
+  "per_symbol": {
+    "TRAIN": {
+      "BTC": {
+        "strong": {
+          "count": 44,
+          "preHit": 0.5681818181818182,
+          "postHit": 0.5454545454545454,
+          "avgPreRet": -0.32482183649810703,
+          "avgPostRet": -0.7009494955890164
+        },
+        "weak": {
+          "count": 1,
+          "preHit": 0,
+          "postHit": 0,
+          "avgPreRet": -8.559440823473352,
+          "avgPostRet": -8.45944082347335
+        },
+        "totalSignals": 45,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "ETH": {
+        "strong": {
+          "count": 24,
+          "preHit": 0.4166666666666667,
+          "postHit": 0.4166666666666667,
+          "avgPreRet": -0.9787525414598052,
+          "avgPostRet": -1.3580707497931386
+        },
+        "weak": {
+          "count": 94,
+          "preHit": 0.5319148936170213,
+          "postHit": 0.5212765957446809,
+          "avgPreRet": 1.4940445029988976,
+          "avgPostRet": 1.3289546200201758
+        },
+        "totalSignals": 118,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "STRONG"
+        ]
+      },
+      "SOL": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 148,
+          "preHit": 0.4797297297297297,
+          "postHit": 0.44594594594594594,
+          "avgPreRet": 0.015490310719607183,
+          "avgPostRet": -1.6899191554966115
+        },
+        "totalSignals": 148,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "AVAX": {
+        "strong": {
+          "count": 11,
+          "preHit": 0.09090909090909091,
+          "postHit": 0.09090909090909091,
+          "avgPreRet": -10.536852581620373,
+          "avgPostRet": -11.057292399802192
+        },
+        "weak": {
+          "count": 161,
+          "preHit": 0.6211180124223602,
+          "postHit": 0.6149068322981367,
+          "avgPreRet": 4.562826164511547,
+          "avgPostRet": 4.144570760784842
+        },
+        "totalSignals": 172,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "LINK": {
+        "strong": {
+          "count": 8,
+          "preHit": 0,
+          "postHit": 0,
+          "avgPreRet": -11.441461512315167,
+          "avgPostRet": -11.923866637315168
+        },
+        "weak": {
+          "count": 125,
+          "preHit": 0.512,
+          "postHit": 0.512,
+          "avgPreRet": 0.2752401379627457,
+          "avgPostRet": 0.21928293796274545
+        },
+        "totalSignals": 133,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "DOGE": {
+        "strong": {
+          "count": 5,
+          "preHit": 0.2,
+          "postHit": 0.2,
+          "avgPreRet": -0.39192350964267747,
+          "avgPostRet": -0.8036903096426776
+        },
+        "weak": {
+          "count": 92,
+          "preHit": 0.3695652173913043,
+          "postHit": 0.3695652173913043,
+          "avgPreRet": -0.38793556711185995,
+          "avgPostRet": -0.519595208416209
+        },
+        "totalSignals": 97,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "ARB": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "totalSignals": 0,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "OP": {
+        "strong": {
+          "count": 4,
+          "preHit": 1,
+          "postHit": 1,
+          "avgPreRet": 35.587198514349346,
+          "avgPostRet": 34.96116426434935
+        },
+        "weak": {
+          "count": 37,
+          "preHit": 0.4594594594594595,
+          "postHit": 0.4594594594594595,
+          "avgPreRet": -7.865271735422804,
+          "avgPostRet": -7.861827330017398
+        },
+        "totalSignals": 41,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "INJ": {
+        "strong": {
+          "count": 1,
+          "preHit": 1,
+          "postHit": 1,
+          "avgPreRet": 35.965598123534036,
+          "avgPostRet": 35.190124123534034
+        },
+        "weak": {
+          "count": 20,
+          "preHit": 0.5,
+          "postHit": 0.5,
+          "avgPreRet": -2.4243231594920602,
+          "avgPostRet": -2.452960159492059
+        },
+        "totalSignals": 21,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "SUI": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "totalSignals": 0,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "NEAR": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 176,
+          "preHit": 0.6306818181818182,
+          "postHit": 0.6306818181818182,
+          "avgPreRet": 4.144110296734362,
+          "avgPostRet": 3.81421318877981
+        },
+        "totalSignals": 176,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "APT": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 32,
+          "preHit": 0.34375,
+          "postHit": 0.34375,
+          "avgPreRet": -4.114088979865841,
+          "avgPostRet": -4.13475113611584
+        },
+        "totalSignals": 32,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "TIA": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "totalSignals": 0,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      }
+    },
+    "VALIDATION": {
+      "BTC": {
+        "strong": {
+          "count": 52,
+          "preHit": 0.7115384615384616,
+          "postHit": 0.6538461538461539,
+          "avgPreRet": 5.246485834701274,
+          "avgPostRet": 4.6483320462397355
+        },
+        "weak": {
+          "count": 5,
+          "preHit": 0,
+          "postHit": 0,
+          "avgPreRet": -15.014267375649975,
+          "avgPostRet": -13.761432975649972
+        },
+        "totalSignals": 57,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "ETH": {
+        "strong": {
+          "count": 64,
+          "preHit": 0.59375,
+          "postHit": 0.578125,
+          "avgPreRet": 3.5722307834513334,
+          "avgPostRet": 2.9113002365763334
+        },
+        "weak": {
+          "count": 34,
+          "preHit": 0.5294117647058824,
+          "postHit": 0.5,
+          "avgPreRet": -3.6688637097460304,
+          "avgPostRet": -3.559069297981324
+        },
+        "totalSignals": 98,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "SOL": {
+        "strong": {
+          "count": 32,
+          "preHit": 0.59375,
+          "postHit": 0.59375,
+          "avgPreRet": 9.298306479480818,
+          "avgPostRet": 8.57327541698082
+        },
+        "weak": {
+          "count": 1,
+          "preHit": 0,
+          "postHit": 0,
+          "avgPreRet": -2.2445174465062667,
+          "avgPostRet": -1.9462574465062668
+        },
+        "totalSignals": 33,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "AVAX": {
+        "strong": {
+          "count": 26,
+          "preHit": 0.6538461538461539,
+          "postHit": 0.6538461538461539,
+          "avgPreRet": 22.60114883599292,
+          "avgPostRet": 21.81620291291599
+        },
+        "weak": {
+          "count": 65,
+          "preHit": 0.7076923076923077,
+          "postHit": 0.6923076923076923,
+          "avgPreRet": -0.17050880052344794,
+          "avgPostRet": -0.38193621590806326
+        },
+        "totalSignals": 91,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "LINK": {
+        "strong": {
+          "count": 42,
+          "preHit": 0.5,
+          "postHit": 0.47619047619047616,
+          "avgPreRet": 5.844441815612801,
+          "avgPostRet": 5.3144813156128015
+        },
+        "weak": {
+          "count": 10,
+          "preHit": 0.2,
+          "postHit": 0.2,
+          "avgPreRet": -4.698173028261062,
+          "avgPostRet": -4.741172128261061
+        },
+        "totalSignals": 52,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "DOGE": {
+        "strong": {
+          "count": 50,
+          "preHit": 0.38,
+          "postHit": 0.38,
+          "avgPreRet": -0.9467354300879518,
+          "avgPostRet": -1.7940698700879516
+        },
+        "weak": {
+          "count": 39,
+          "preHit": 0.20512820512820512,
+          "postHit": 0.20512820512820512,
+          "avgPreRet": -4.333276124120166,
+          "avgPostRet": -4.262507508735552
+        },
+        "totalSignals": 89,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "STRONG",
+          "WEAK"
+        ]
+      },
+      "ARB": {
+        "strong": {
+          "count": 3,
+          "preHit": 0.3333333333333333,
+          "postHit": 0.3333333333333333,
+          "avgPreRet": -14.148512691449163,
+          "avgPostRet": -15.514131358115828
+        },
+        "weak": {
+          "count": 107,
+          "preHit": 0.6915887850467289,
+          "postHit": 0.6915887850467289,
+          "avgPreRet": 2.5645298269194416,
+          "avgPostRet": 2.5604171166390652
+        },
+        "totalSignals": 110,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "OP": {
+        "strong": {
+          "count": 43,
+          "preHit": 0.4883720930232558,
+          "postHit": 0.37209302325581395,
+          "avgPreRet": 1.8318997342149044,
+          "avgPostRet": 0.6908189435172286
+        },
+        "weak": {
+          "count": 38,
+          "preHit": 0.5,
+          "postHit": 0.5,
+          "avgPreRet": -1.4351076365551723,
+          "avgPostRet": -1.3370312418183299
+        },
+        "totalSignals": 81,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "STRONG"
+        ]
+      },
+      "INJ": {
+        "strong": {
+          "count": 16,
+          "preHit": 0.5625,
+          "postHit": 0.5625,
+          "avgPreRet": 13.818881439843242,
+          "avgPostRet": 12.888323189843238
+        },
+        "weak": {
+          "count": 10,
+          "preHit": 0.1,
+          "postHit": 0.1,
+          "avgPreRet": -5.738458859111394,
+          "avgPostRet": -5.977722959111394
+        },
+        "totalSignals": 26,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "SUI": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 61,
+          "preHit": 0.5409836065573771,
+          "postHit": 0.5409836065573771,
+          "avgPreRet": -0.4870870002407167,
+          "avgPostRet": -0.6950833117161253
+        },
+        "totalSignals": 61,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "NEAR": {
+        "strong": {
+          "count": 42,
+          "preHit": 0.6428571428571429,
+          "postHit": 0.6190476190476191,
+          "avgPreRet": 12.40688350426899,
+          "avgPostRet": 11.317064409030893
+        },
+        "weak": {
+          "count": 51,
+          "preHit": 0.49019607843137253,
+          "postHit": 0.47058823529411764,
+          "avgPreRet": -2.280466524452662,
+          "avgPostRet": -2.459864151903641
+        },
+        "totalSignals": 93,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "APT": {
+        "strong": {
+          "count": 50,
+          "preHit": 0.56,
+          "postHit": 0.56,
+          "avgPreRet": 2.075625164696215,
+          "avgPostRet": 0.7996418446962145
+        },
+        "weak": {
+          "count": 45,
+          "preHit": 0.5777777777777777,
+          "postHit": 0.5555555555555556,
+          "avgPreRet": -3.4672703535412728,
+          "avgPostRet": -4.076786197985715
+        },
+        "totalSignals": 95,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "TIA": {
+        "strong": {
+          "count": 0,
+          "preHit": null,
+          "postHit": null,
+          "avgPreRet": null,
+          "avgPostRet": null
+        },
+        "weak": {
+          "count": 46,
+          "preHit": 0.6521739130434783,
+          "postHit": 0.6304347826086957,
+          "avgPreRet": 5.9460467747717685,
+          "avgPostRet": 5.836734492163072
+        },
+        "totalSignals": 46,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      }
+    },
+    "OOS": {
+      "BTC": {
+        "strong": {
+          "count": 21,
+          "preHit": 0.47619047619047616,
+          "postHit": 0.42857142857142855,
+          "avgPreRet": 3.221838600739049,
+          "avgPostRet": 2.686582695977145
+        },
+        "weak": {
+          "count": 1,
+          "preHit": 0,
+          "postHit": 0,
+          "avgPreRet": -4.164529139191608,
+          "avgPostRet": -3.7606241391916084
+        },
+        "totalSignals": 22,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "STRONG"
+        ]
+      },
+      "ETH": {
+        "strong": {
+          "count": 33,
+          "preHit": 0.6363636363636364,
+          "postHit": 0.6363636363636364,
+          "avgPreRet": 5.404409073448049,
+          "avgPostRet": 4.76211204314502
+        },
+        "weak": {
+          "count": 112,
+          "preHit": 0.5446428571428571,
+          "postHit": 0.5446428571428571,
+          "avgPreRet": 0.6242643904400749,
+          "avgPostRet": 0.5028231136543612
+        },
+        "totalSignals": 145,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "SOL": {
+        "strong": {
+          "count": 28,
+          "preHit": 0.5,
+          "postHit": 0.5,
+          "avgPreRet": 1.2485961590911199,
+          "avgPostRet": 0.7289907662339783
+        },
+        "weak": {
+          "count": 41,
+          "preHit": 0.4634146341463415,
+          "postHit": 0.4634146341463415,
+          "avgPreRet": -0.11462796904929307,
+          "avgPostRet": -0.3062612617322189
+        },
+        "totalSignals": 69,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "AVAX": {
+        "strong": {
+          "count": 22,
+          "preHit": 0.6363636363636364,
+          "postHit": 0.5454545454545454,
+          "avgPreRet": 5.112256132147476,
+          "avgPostRet": 4.434329677602024
+        },
+        "weak": {
+          "count": 94,
+          "preHit": 0.44680851063829785,
+          "postHit": 0.44680851063829785,
+          "avgPreRet": -2.6393297599429864,
+          "avgPostRet": -2.9760867386663907
+        },
+        "totalSignals": 116,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "LINK": {
+        "strong": {
+          "count": 39,
+          "preHit": 0.5128205128205128,
+          "postHit": 0.5128205128205128,
+          "avgPreRet": 8.188132931222965,
+          "avgPostRet": 7.475248418402452
+        },
+        "weak": {
+          "count": 65,
+          "preHit": 0.24615384615384617,
+          "postHit": 0.24615384615384617,
+          "avgPreRet": -5.768950586901713,
+          "avgPostRet": -5.877307048440176
+        },
+        "totalSignals": 104,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "DOGE": {
+        "strong": {
+          "count": 23,
+          "preHit": 0.782608695652174,
+          "postHit": 0.782608695652174,
+          "avgPreRet": 33.1215339076474,
+          "avgPostRet": 32.46709547286478
+        },
+        "weak": {
+          "count": 52,
+          "preHit": 0.34615384615384615,
+          "postHit": 0.34615384615384615,
+          "avgPreRet": -3.0369054819130503,
+          "avgPostRet": -3.1046406357591994
+        },
+        "totalSignals": 75,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "ARB": {
+        "strong": {
+          "count": 24,
+          "preHit": 0.5416666666666666,
+          "postHit": 0.5416666666666666,
+          "avgPreRet": 6.6714606541014305,
+          "avgPostRet": 5.851284820768099
+        },
+        "weak": {
+          "count": 115,
+          "preHit": 0.43478260869565216,
+          "postHit": 0.43478260869565216,
+          "avgPreRet": -1.1014264157520883,
+          "avgPostRet": -1.1760899027086096
+        },
+        "totalSignals": 139,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "OP": {
+        "strong": {
+          "count": 15,
+          "preHit": 0.5333333333333333,
+          "postHit": 0.5333333333333333,
+          "avgPreRet": 2.4372368195919263,
+          "avgPostRet": 1.4710432195919279
+        },
+        "weak": {
+          "count": 133,
+          "preHit": 0.45864661654135336,
+          "postHit": 0.45864661654135336,
+          "avgPreRet": -1.2406829542911773,
+          "avgPostRet": -1.3323551422611017
+        },
+        "totalSignals": 148,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "INJ": {
+        "strong": {
+          "count": 23,
+          "preHit": 0.43478260869565216,
+          "postHit": 0.43478260869565216,
+          "avgPreRet": -0.8012471500916034,
+          "avgPostRet": -1.4937981066133421
+        },
+        "weak": {
+          "count": 118,
+          "preHit": 0.4491525423728814,
+          "postHit": 0.4491525423728814,
+          "avgPreRet": -2.3637525519557325,
+          "avgPostRet": -2.5360810689048843
+        },
+        "totalSignals": 141,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "STRONG",
+          "WEAK"
+        ]
+      },
+      "SUI": {
+        "strong": {
+          "count": 48,
+          "preHit": 0.5625,
+          "postHit": 0.5625,
+          "avgPreRet": 8.51848025213495,
+          "avgPostRet": 8.157967168801614
+        },
+        "weak": {
+          "count": 32,
+          "preHit": 0.1875,
+          "postHit": 0.1875,
+          "avgPreRet": -18.20808949420447,
+          "avgPostRet": -18.465897806704472
+        },
+        "totalSignals": 80,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "NEAR": {
+        "strong": {
+          "count": 15,
+          "preHit": 0.4,
+          "postHit": 0.4,
+          "avgPreRet": -2.3073811642418796,
+          "avgPostRet": -3.1112161642418785
+        },
+        "weak": {
+          "count": 96,
+          "preHit": 0.5,
+          "postHit": 0.4895833333333333,
+          "avgPreRet": -1.4385062754692732,
+          "avgPostRet": -1.6401328483859403
+        },
+        "totalSignals": 111,
+        "flaggedWeak": false,
+        "failingVerdicts": []
+      },
+      "APT": {
+        "strong": {
+          "count": 36,
+          "preHit": 0.5555555555555556,
+          "postHit": 0.5277777777777778,
+          "avgPreRet": 1.9745629837276542,
+          "avgPostRet": 1.3681559559498766
+        },
+        "weak": {
+          "count": 108,
+          "preHit": 0.28703703703703703,
+          "postHit": 0.25925925925925924,
+          "avgPreRet": -4.855680544894977,
+          "avgPostRet": -5.089378470820901
+        },
+        "totalSignals": 144,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      },
+      "TIA": {
+        "strong": {
+          "count": 16,
+          "preHit": 0.375,
+          "postHit": 0.375,
+          "avgPreRet": -9.044464420039615,
+          "avgPostRet": -10.246261045039613
+        },
+        "weak": {
+          "count": 134,
+          "preHit": 0.39552238805970147,
+          "postHit": 0.39552238805970147,
+          "avgPreRet": -4.942487226521452,
+          "avgPostRet": -5.621050965327423
+        },
+        "totalSignals": 150,
+        "flaggedWeak": true,
+        "failingVerdicts": [
+          "WEAK"
+        ]
+      }
+    }
+  },
+  "summary": {
+    "best_thresholds": {
+      "STRONG": 9,
+      "WEAK": 6
+    },
+    "best_forward_window_train": 20,
+    "train_combined_pre_hit": 0.5188199389623601,
+    "train_combined_post_hit": 0.5106815869786369,
+    "val_strong_pre_hit": 0.5642857142857143,
+    "oos_strong_pre_hit": 0.5451895043731778,
+    "val_strong_post_hit": 0.5380952380952381,
+    "oos_strong_post_hit": 0.5335276967930029,
+    "overfit_flagged": false,
+    "notes": [
+      "Thresholds tuned ONLY on TRAIN. Applied unchanged to VAL/OOS.",
+      "Costs: 20bps round-trip fees + funding cost over hold.",
+      "preHit  = hit rate before costs (price return only).",
+      "postHit = hit rate after fees + funding (net return > 0).",
+      "Best thresholds selected by combined (STRONG+WEAK) pre-cost hit rate on TRAIN.",
+      "OOS flagged overfit if STRONG pre-hit diverges from VAL by >20pp."
+    ]
+  }
+}
