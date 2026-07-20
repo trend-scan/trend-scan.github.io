@@ -303,7 +303,8 @@ export default function Signal() {
         <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
           <strong style={{ color: 'var(--scanner-text2)' }}>Backtest reference (in-sample, optimistic):</strong>{' '}
           STRONG 62.0% hit · WEAK 54.1% hit (61 signals, below 100-trade significance bar) · 10-day forward · 2023-10 to 2025-07.
-          Thresholds tuned on same period — not walk-forward validated. Live performance may differ.
+          Thresholds tuned on same period — not walk-forward validated. macroZ boost is in-sample only (v11 OOS report
+          validates the source system, not this isolated daily use). Live performance may differ.
         </div>
       )}
     </div>

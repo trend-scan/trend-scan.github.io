@@ -154,28 +154,33 @@ export function computeReturns(closes) {
 /**
  * Macro Z-Score — log-price EMA crossover normalized by volatility.
  *
- * Provenance: Part of the v9 trading system documented in
+ * Provenance: Originates from the v9 trading system documented in
  * "BTCUSDT 4h Pattern Analytics v11 — OOS & Cross-Asset Validation"
- * (QR-2026-06 V11). The macro_z2 feature is one of 146 features in the
- * v1-v9 pipeline (71 core + 23 extended + 51 v3-v4 + Pine Script translations).
+ * (QR-2026-06 V11), where it appears as the `macro_z2` feature — one of
+ * 146 engineered features in a multi-filter ensemble system.
  *
- * The v9 system was developed on BTCUSDT 4H data (Jan 2020 – May 2026) and
- * validated with three independent approaches:
- *   - Walk-forward (train 2020-2023, test 2024-2026): Sharpe 2.29, +21.3% return
- *   - True OOS (June 2026): 2/2 winning trades, +3.42% mean
- *   - Cross-asset (ETHUSDT): +18.0% return, Sharpe 0.58 (lower — BTC-specific)
+ * IMPORTANT — what is and isn't validated:
+ *   The v11 report validates the FULL v9 system (5-filter pivot-low + 3-filter
+ *   trend-continuation with MAE stops, on 4H bars). It does NOT validate
+ *   macroZ as a standalone feature, on daily data, or as a confidence boost.
+ *   TrendScan extracts this one feature, converts it from 4H to daily, and
+ *   uses it in a completely different way than the v9 system did.
  *
- * Walk-forward Sharpe (2.29) exceeded in-sample Sharpe (1.68) — strong evidence
- * against overfitting. The system is validated across time, regime, and asset.
+ *   The v11 report's "walk-forward" test is pseudo-OOS (filters were selected
+ *   on the full sample including the test period — the report itself says so).
+ *   The only genuinely clean OOS test (June 2026) produced a negative Sharpe
+ *   (-0.32). No transaction costs are modeled in any v11 numbers.
+ *
+ *   The ONLY test of macroZ in its actual TrendScan form (daily, standalone,
+ *   as a confidence boost) is our own in-sample backtest (2023-10 to 2025-07),
+ *   which showed 60.0% standalone bull hit rate and improved overall STRONG
+ *   hit rate from 60.9% to 62.0% when used as a tiebreaker boost. This is
+ *   in-sample and not walk-forward validated.
  *
  * Original 4H parameters (21/100/42) converted to daily equivalents:
  *   21×4H = 3.5 days → 4, 100×4H = 16.7 days → 17, 42×4H = 7 days → 7
  *
- * Integration in TrendScan: Used as a tiebreaker boost only (conf 7→8 when
- * macroZ > 1.5). Not used as a standalone gate — that diluted STRONG hit rate.
- * Standalone daily backtest (2023-10 to 2025-07): 60.0% bull hit rate.
- *
- * Reference document: /home/z/my-project/upload/BTCUSDT_4h_Pattern_Analytics_v11_OOS_Validation.pdf
+ * Integration: Used as a tiebreaker boost only (conf 7→8 when macroZ > 1.5).
  */
 export function computeMacroZ(candles, params = {}) {
   const {
