@@ -10,6 +10,7 @@ import MacroTab from '@/components/board/MacroTab';
 import MassiveApiKeyInput from '@/components/scanner/MassiveApiKeyInput';
 import FactorMonitor from '@/components/board/FactorMonitor';
 import QuickViewBar from '@/components/board/QuickViewBar';
+import FreshnessBanner from '@/components/FreshnessBanner';
 import { runBoardAnalysis } from '@/lib/board/boardEngine';
 import { fetchTradMarketData, buildTradDataFromSnapshot } from '@/lib/board/traditionalMarkets';
 import { getGloballyBlockedSources } from '@/lib/scanner/sourceResolver';
@@ -251,6 +252,12 @@ export default function Board() {
         signalMetrics={snapshotData?.signal_metrics}
         macroQuadrant={snapshotData?.regime_history?.[snapshotData.regime_history.length - 1]?.quadrant}
       />
+
+      {/* Snapshot freshness banner — alerts when Board header's signal/quadrant
+          badges are stale. Board's main content (table) is live scanner data
+          and is unaffected, but the header's BTC Signal + Macro quadrant come
+          from snapshot.json and go stale if the 3x daily refresh misses. */}
+      <FreshnessBanner generatedAt={snapshotData?.generated_at} contextLabel="board" />
 
       {/* Progress bar */}
       {isLoading && (

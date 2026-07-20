@@ -39,6 +39,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import FreshnessBanner from '../components/FreshnessBanner';
 
 const SIGNAL_ENABLED = import.meta.env.VITE_ENABLE_SIGNAL_PAGE === 'true';
 
@@ -608,6 +609,9 @@ export default function Signal() {
           </div>
         </div>
       </div>
+
+      {/* Freshness banner — only renders when snapshot is stale (≥12h old) */}
+      <FreshnessBanner generatedAt={data?.generated_at} contextLabel="signal" />
 
       {/* Interpretation Guide (collapsible, near top) */}
       <InterpretationGuide />

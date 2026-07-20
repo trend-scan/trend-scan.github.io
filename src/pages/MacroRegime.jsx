@@ -11,6 +11,8 @@ import AllocationPanel from '../components/regime/AllocationPanel';
 import SignalTable from '../components/regime/SignalTable';
 import MacroCharts from '../components/regime/MacroCharts';
 import ChangeBanner from '../components/regime/ChangeBanner';
+import FreshnessBanner from '../components/FreshnessBanner';
+import { useSnapshot } from '../hooks/useSnapshot';
 import { lazy as fwLazy, Suspense as FwSuspense } from 'react';
 
 // FactorWatch-gated components are lazy-loaded so they're tree-shaken when
@@ -117,6 +119,10 @@ function SourceBadge({ sources }) {
 }
 
 export default function MacroRegime() {
+  // Snapshot is used for the freshness banner (regime page's quadrant
+  // history and nowcasts are persisted in snapshot.regime_history, so
+  // snapshot freshness directly affects what users see here).
+  const snapshot = useSnapshot();
   // Fetch all regime data
   const {
     data: rawData,
@@ -396,6 +402,9 @@ export default function MacroRegime() {
 
         {/* Day-over-day change banner (shows what shifted since last visit) */}
         <ChangeBanner regime={regime} />
+
+        {/* Snapshot freshness alert — silent when fresh, amber/red when stale */}
+        <FreshnessBanner generatedAt={snapshot?.generated_at} contextLabel="macro" />
 
         {/* FactorWatch narrative banner (shakeout / junk rally signals) */}
         {FW_REGIME_ENABLED && MacroNarrativeBanner && (
