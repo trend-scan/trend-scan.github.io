@@ -602,8 +602,24 @@ export default function Signal() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[16px] font-bold tracking-[0.05em]" style={{ color: 'var(--scanner-text)' }}>SIGNAL ENGINE</h1>
-          <div className="text-[9px]" style={{ color: 'var(--scanner-text3)' }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-[16px] font-bold tracking-[0.05em]" style={{ color: 'var(--scanner-text)' }}>SIGNAL ENGINE</h1>
+            <span
+              className="text-[8px] font-bold tracking-[0.18em] uppercase px-1.5 py-0.5 rounded"
+              style={{
+                background: 'rgba(245,200,66,0.1)',
+                border: '1px solid rgba(245,200,66,0.35)',
+                color: '#f5c842',
+              }}
+              title="This page and its signals are under active development. Verdicts, thresholds, and methodology may change without notice. Do not rely on these signals for investment decisions — they are experimental and have not been validated against live trading."
+            >
+              In Testing
+            </span>
+          </div>
+          <div className="text-[9px] mt-1" style={{ color: 'var(--scanner-text3)' }}>
+            Experimental · verdicts and methodology may change without notice · not investment advice
+          </div>
+          <div className="text-[9px] mt-0.5" style={{ color: 'var(--scanner-text3)' }}>
             As of {new Date(sm.as_of).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
             {sm.is_weekend && <span className="ml-2 opacity-60">(Weekend — TradFi data flat)</span>}
           </div>
