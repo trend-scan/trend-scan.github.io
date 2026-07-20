@@ -197,7 +197,7 @@ export async function computeSignalMetrics({
     majorResults.push({
       symbol, name,
       verdict: signal.verdict, confidence: signal.confidence, stance: signal.stance,
-      close: signal.close, drivers: signal.drivers,
+      close: signal.close, drivers: signal.drivers, horizon: signal.horizon,
     });
     if (signal.verdict === 'STRONG') strongCount++;
   }
@@ -229,6 +229,7 @@ export async function computeSignalMetrics({
       stance: btcSignal.stance,
       close_at_signal: btcSignal.close,
       drivers: btcSignal.drivers,
+      horizon: btcSignal.horizon,
     },
     majors: {
       sector_summary: sectorSummary,

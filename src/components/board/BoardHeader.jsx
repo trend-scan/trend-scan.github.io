@@ -35,13 +35,13 @@ const REGIME_COLORS = {
 
 function verdictColor(v) {
   if (v === 'STRONG') return 'var(--scanner-green)';
-  if (v === 'WEAK') return 'var(--scanner-red)';
+  if (v === 'WEAK') return '#f5c842';  // amber — defensive, not failure
   return 'var(--scanner-text3)';
 }
 
 function verdictIcon(v) {
   if (v === 'STRONG') return '▲';
-  if (v === 'WEAK') return '▼';
+  if (v === 'WEAK') return '◈';  // shield — defensive (not down-arrow)
   return '▬';
 }
 
@@ -142,7 +142,15 @@ function SignalOverview({ regime, signalMetrics, macroQuadrant }) {
         </span>
         <div className="flex items-center gap-1.5">
           {btcVerdict && (
-            <span className="text-[11px] font-bold" style={{ color: verdictColor(btcVerdict) }}>
+            <span
+              className="text-[11px] font-bold cursor-help"
+              style={{ color: verdictColor(btcVerdict) }}
+              title={btcVerdict === 'STRONG'
+                ? 'Constructive conditions — exposure warranted'
+                : btcVerdict === 'WEAK'
+                  ? 'Defensive conditions — raise cash (NOT a failure)'
+                  : 'No actionable signal — factors mixed'}
+            >
               {verdictIcon(btcVerdict)} {btcVerdict}
             </span>
           )}

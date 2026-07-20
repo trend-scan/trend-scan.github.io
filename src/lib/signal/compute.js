@@ -332,6 +332,43 @@ export function fundingZScore(fundingHistory, asOfTs, lookback = 90) {
   return sd > 0 ? (current - mu) / sd : 0;
 }
 
+// ─── Multi-horizon context ───────────────────────────────────────────────────
+//
+// The primary stance uses adaptiveZ(90, 365) — a medium-term daily horizon.
+// Multi-horizon context shows how the signal looks at three different
+// lookback scales, using the SAME daily candles (no extra API calls):
+//
+//   short  — adaptiveZ(20, 90)   → 1-3 week momentum (RSI-like sensitivity)
+//   medium — adaptiveZ(90, 365)  → 1-3 month trend (PRIMARY stance)
+//   long   — adaptiveZ(180, 730) → 6-12 month structure (macro alignment)
+//
+// Each horizon returns a simplified stance: BULLISH / NEUTRAL / BEARISH
+// based on z-score sign and magnitude (not the full 10-gate engine — that
+// requires percentile lookback which exceeds long-horizon data length).
+//
+// Purpose: surface disagreement between timeframes. A STRONG medium-term
+// verdict that conflicts with long-term BEARISH is materially different
+// from one aligned with long-term BULLISH — without this, users see only
+// the medium-term call.
+
+export function computeHorizonStance(closes, shortLen, longLen) {
+  if (!closes || closes.length < longLen + 10) {
+    return { stance: 'NEUTRAL', z: null, insufficient: true };
+  }
+  const z = adaptiveZ(closes, shortLen, longLen);
+  if (z >= 1.0) return { stance: 'BULLISH', z: round(z, 2), insufficient: false };
+  if (z <= -1.0) return { stance: 'BEARISH', z: round(z, 2), insufficient: false };
+  return { stance: 'NEUTRAL', z: round(z, 2), insufficient: false };
+}
+
+export function computeMultiHorizon(closes) {
+  return {
+    short:  computeHorizonStance(closes, 20, 90),
+    medium: computeHorizonStance(closes, 90, 365),
+    long:   computeHorizonStance(closes, 180, 730),
+  };
+}
+
 // ─── Composite stance engine ────────────────────────────────────────────────
 
 export function computeAssetStance({
@@ -511,10 +548,13 @@ export function computeSignal({
     rsi, obvSlope, impulseZ, returns, macroZ, mhAlignment, isBtc, ablations,
   });
 
+  const horizon = computeMultiHorizon(closes);
+
   const verdict = mapStanceToVerdict(stance.stance, stance.confidence, thresholds);
   return {
     verdict, confidence: stance.confidence, stance: stance.stance,
     close: closes[closes.length - 1], drivers: stance.drivers,
+    horizon,
   };
 }
 

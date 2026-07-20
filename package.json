@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
-    "build:snapshot": "node scripts/build_snapshot.js"
+    "build:snapshot": "node scripts/build_snapshot.js",
+    "test": "node --test scripts/signal/compute.test.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.6",

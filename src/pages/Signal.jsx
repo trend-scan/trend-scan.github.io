@@ -6,9 +6,39 @@
  *
  * No client-side computation — all math runs in build_snapshot.js via
  * compute_signal_metrics.js (which uses the backtested compute.js module).
+ *
+ * WEAK REFRAME (v2 — 2026-07-20):
+ *   WEAK is no longer rendered red. WEAK means "defensive conditions detected
+ *   — reduce exposure, raise cash." It is an ACTIONABLE defensive call, not a
+ *   failure indicator. Amber tone + shield icon distinguish it from STRONG
+ *   (green ▲) and NEUTRAL (gray ▬).
+ *
+ *   Walk-forward OOS hit rate for WEAK: 41.6% (price-direction hit), with
+ *   avg -2.90% 10-day return — i.e. when WEAK fires, prices do tend to fall.
+ *   The "low" 41.6% reflects that WEAK fires frequently (1101 OOS signals vs
+ *   343 STRONG); selecting only high-confidence WEAK (stance=DEFENSIVE, conf≥6)
+ *   would yield far fewer signals but is left for future work.
+ *
+ *   What is RED now? Only realized 5-day-return misses (✗ in history table).
+ *   Forward-looking verdicts use amber for WEAK to communicate caution, not
+ *   failure.
+ *
+ * MULTI-HORIZON (v2 — 2026-07-20):
+ *   Each asset card shows Short / Medium / Long horizon stances derived from
+ *   the same daily candles (no API cost):
+ *     short  = adaptiveZ(20, 90)   — 1-3 week momentum
+ *     medium = adaptiveZ(90, 365)  — PRIMARY verdict (same as headline)
+ *     long   = adaptiveZ(180, 730) — 6-12 month structure
+ *
+ * SIGNAL SCOREBOARD (v2 — 2026-07-20):
+ *   Aggregates signal_history into running hit-rate stats. Shows resolved
+ *   vs pending signals, STRONG/WEAK hit rates, and verdict distribution.
+ *   Stats are only meaningful with ≥30 resolved signals — below that, the
+ *   scoreboard shows "collecting data" messaging rather than misleading
+ *   small-sample numbers.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const SIGNAL_ENABLED = import.meta.env.VITE_ENABLE_SIGNAL_PAGE === 'true';
 
@@ -19,16 +49,36 @@ function fmtPrice(p) {
   return p.toFixed(4);
 }
 
+/**
+ * Reframed verdict color palette.
+ *
+ *   STRONG  → green (▲)      — constructive, deploy capital
+ *   WEAK    → amber  (◈)     — defensive, raise cash (NOT a failure)
+ *   NEUTRAL → gray   (▬)     — insufficient signal, hold
+ *
+ * WEAK is intentionally NOT red. Red is reserved for realized misses in the
+ * history table — a different semantic (backward-looking vs forward-looking).
+ */
 function verdictColor(v) {
   if (v === 'STRONG') return 'var(--scanner-green)';
-  if (v === 'WEAK') return 'var(--scanner-red)';
+  if (v === 'WEAK') return '#f5c842';  // amber — defensive, not failure
   return 'var(--scanner-text3)';
 }
 
 function verdictIcon(v) {
-  if (v === 'STRONG') return '▲';
-  if (v === 'WEAK') return '▼';
+  if (v === 'STRONG') return '▲';   // constructive
+  if (v === 'WEAK') return '◈';     // defensive (shield, not down-arrow)
   return '▬';
+}
+
+/**
+ * Short label describing what each verdict means — used in tooltips and the
+ * interpretation guide. Frame each as a CALL TO ACTION, not a judgment.
+ */
+function verdictDescription(v) {
+  if (v === 'STRONG') return 'Constructive conditions — trend confirmed, exposure warranted.';
+  if (v === 'WEAK') return 'Defensive conditions — trend breaking down, raise cash / reduce exposure.';
+  return 'No actionable signal — factors are mixed or trend is unclear.';
 }
 
 /**
@@ -52,6 +102,16 @@ function cashVerdictIcon(v) {
 }
 
 /**
+ * Horizon stance color (BULLISH/NEUTRAL/BEARISH).
+ * These are derived from z-score sign+magnitude, NOT the full 10-gate engine.
+ */
+function horizonColor(s) {
+  if (s === 'BULLISH') return 'var(--scanner-green)';
+  if (s === 'BEARISH') return '#f5c842';  // amber — defensive, not failure
+  return 'var(--scanner-text3)';
+}
+
+/**
  * @param {object} props
  * @param {any} props.children
  * @param {any} [props.right]
@@ -66,7 +126,46 @@ function SectionLabel({ children, right }) {
   );
 }
 
-function AssetCard({ symbol, name, verdict, confidence, drivers }) {
+/**
+ * Multi-horizon strip — three colored dots showing short/medium/long stance.
+ * Surfaces alignment (all three same color = strong consensus) or disagreement
+ * (mixed colors = caution, timeframes diverging).
+ */
+function HorizonStrip({ horizon }) {
+  if (!horizon) return null;
+  const items = [
+    { label: 'S', value: horizon.short, hint: 'Short · 1-3w momentum (z20/90)' },
+    { label: 'M', value: horizon.medium, hint: 'Medium · 1-3m trend (z90/365) — PRIMARY' },
+    { label: 'L', value: horizon.long, hint: 'Long · 6-12m structure (z180/730)' },
+  ];
+  return (
+    <div className="flex items-center gap-1.5 mt-2">
+      <span className="text-[8px] font-semibold tracking-wider uppercase" style={{ color: 'var(--scanner-text3)' }}>Horizon</span>
+      {items.map(it => {
+        const stance = it.value?.stance || 'NEUTRAL';
+        const z = it.value?.z;
+        const insufficient = it.value?.insufficient;
+        return (
+          <span
+            key={it.label}
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold cursor-help"
+            style={{
+              background: 'var(--scanner-bg2)',
+              border: `1px solid ${horizonColor(stance)}33`,
+              color: horizonColor(stance),
+            }}
+            title={`${it.hint}${z != null ? ` · z=${z}` : ''}${insufficient ? ' · insufficient history' : ''}`}
+          >
+            <span style={{ color: 'var(--scanner-text3)' }}>{it.label}</span>
+            <span>{stance === 'BULLISH' ? '▲' : stance === 'BEARISH' ? '▼' : '▬'}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function AssetCard({ symbol, name, verdict, confidence, drivers, horizon }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const color = verdictColor(verdict);
   const icon = verdictIcon(verdict);
@@ -90,7 +189,13 @@ function AssetCard({ symbol, name, verdict, confidence, drivers }) {
           <span className="text-[8px] ml-1.5" style={{ color: 'var(--scanner-text3)' }}>{name}</span>
         </div>
         <div className="text-right">
-          <span className="text-[14px] font-bold" style={{ color }}>{icon} {verdict}</span>
+          <span
+            className="text-[14px] font-bold cursor-help"
+            style={{ color }}
+            title={verdictDescription(verdict)}
+          >
+            {icon} {verdict}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -113,6 +218,7 @@ function AssetCard({ symbol, name, verdict, confidence, drivers }) {
           </div>
         )}
       </div>
+      {horizon && <HorizonStrip horizon={horizon} />}
     </div>
   );
 }
@@ -126,7 +232,17 @@ function CashAllocation({ verdict, suggestedPct, ultra6Gates, rationale }) {
     <div className="rounded p-4" style={{ background: 'var(--scanner-bg1)', border: `1px solid ${color}33` }}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <span className="text-[14px] font-bold" style={{ color }}>{icon} {verdict}</span>
+          <span
+            className="text-[14px] font-bold cursor-help"
+            style={{ color }}
+            title={verdict === 'STRONG'
+              ? 'Macro conditions support risk — deploy capital, hold less cash.'
+              : verdict === 'WEAK'
+                ? 'Macro conditions are fragile — hold more cash defensively.'
+                : 'Macro conditions are balanced — neutral cash allocation.'}
+          >
+            {icon} {verdict}
+          </span>
           <span className="text-[11px] ml-2" style={{ color: 'var(--scanner-text2)' }}>{suggestedPct}% cash</span>
         </div>
         <div className="text-right">
@@ -186,6 +302,248 @@ function SignalHistory({ history }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Signal Scoreboard — aggregates signal_history into running hit-rate stats.
+ *
+ * Stats shown:
+ *   - Total signals / resolved / pending
+ *   - STRONG hit rate (resolved STRONG signals where 5d return > 0)
+ *   - WEAK hit rate (resolved WEAK signals where 5d return < 0)
+ *   - Verdict distribution (count of STRONG / WEAK / NEUTRAL)
+ *
+ * Significance bar: 30 resolved signals. Below that, stats are shown but
+ * flagged as "low sample" to avoid false confidence.
+ */
+function SignalScoreboard({ history }) {
+  const stats = useMemo(() => {
+    if (!history || history.length === 0) return null;
+
+    const total = history.length;
+    let strongCount = 0, weakCount = 0, neutralCount = 0;
+    let strongResolved = 0, strongHits = 0;
+    let weakResolved = 0, weakHits = 0;
+    let pending = 0;
+
+    for (const h of history) {
+      if (h.btc_verdict === 'STRONG') strongCount++;
+      else if (h.btc_verdict === 'WEAK') weakCount++;
+      else neutralCount++;
+
+      if (h.btc_5d_hit === null || h.btc_5d_hit === undefined) {
+        pending++;
+        continue;
+      }
+
+      if (h.btc_verdict === 'STRONG') {
+        strongResolved++;
+        if (h.btc_5d_hit) strongHits++;
+      } else if (h.btc_verdict === 'WEAK') {
+        weakResolved++;
+        if (h.btc_5d_hit) weakHits++;
+      }
+    }
+
+    const resolved = strongResolved + weakResolved;
+    const strongHitRate = strongResolved > 0 ? (strongHits / strongResolved) * 100 : null;
+    const weakHitRate = weakResolved > 0 ? (weakHits / weakResolved) * 100 : null;
+
+    return {
+      total, resolved, pending,
+      strongCount, weakCount, neutralCount,
+      strongResolved, strongHits, strongHitRate,
+      weakResolved, weakHits, weakHitRate,
+    };
+  }, [history]);
+
+  if (!stats) return null;
+
+  const lowSample = stats.resolved < 30;
+  const significant = stats.resolved >= 30;
+
+  return (
+    <div>
+      <SectionLabel right={
+        <span className="text-[8px]" style={{ color: lowSample ? 'var(--scanner-text3)' : 'var(--scanner-green)' }}>
+          {significant ? '✓ ≥30 resolved' : `${stats.resolved}/30 resolved`}
+        </span>
+      }>
+        Signal Scoreboard · live accuracy tracker
+      </SectionLabel>
+
+      <div className="rounded p-4" style={{ background: 'var(--scanner-bg1)', border: '1px solid var(--scanner-border2)' }}>
+        {/* Top: counts summary */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div>
+            <div className="text-[8px] uppercase tracking-wider" style={{ color: 'var(--scanner-text3)' }}>Total Signals</div>
+            <div className="text-[20px] font-bold tabular-nums" style={{ color: 'var(--scanner-text)' }}>{stats.total}</div>
+            <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>{stats.resolved} resolved · {stats.pending} pending</div>
+          </div>
+          <div>
+            <div className="text-[8px] uppercase tracking-wider" style={{ color: 'var(--scanner-text3)' }}>STRONG Hit Rate</div>
+            <div className="text-[20px] font-bold tabular-nums" style={{
+              color: stats.strongHitRate != null
+                ? (stats.strongHitRate >= 50 ? 'var(--scanner-green)' : 'var(--scanner-red)')
+                : 'var(--scanner-text3)'
+            }}>
+              {stats.strongHitRate != null ? `${stats.strongHitRate.toFixed(1)}%` : '—'}
+            </div>
+            <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>{stats.strongResolved} resolved · {stats.strongHits} hits</div>
+          </div>
+          <div>
+            <div className="text-[8px] uppercase tracking-wider" style={{ color: 'var(--scanner-text3)' }}>WEAK Hit Rate</div>
+            <div className="text-[20px] font-bold tabular-nums" style={{
+              color: stats.weakHitRate != null
+                ? (stats.weakHitRate >= 50 ? 'var(--scanner-green)' : 'var(--scanner-red)')
+                : 'var(--scanner-text3)'
+            }}>
+              {stats.weakHitRate != null ? `${stats.weakHitRate.toFixed(1)}%` : '—'}
+            </div>
+            <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>{stats.weakResolved} resolved · {stats.weakHits} hits</div>
+          </div>
+        </div>
+
+        {/* Verdict distribution bar */}
+        <div className="mb-3">
+          <div className="text-[8px] uppercase tracking-wider mb-1" style={{ color: 'var(--scanner-text3)' }}>
+            Verdict Distribution
+          </div>
+          {stats.total > 0 ? (
+            <div className="flex h-3 rounded overflow-hidden" style={{ background: 'var(--scanner-bg2)' }}>
+              <div style={{
+                width: `${(stats.strongCount / stats.total) * 100}%`,
+                background: 'var(--scanner-green)',
+                minWidth: stats.strongCount > 0 ? '4px' : 0,
+              }} title={`${stats.strongCount} STRONG`} />
+              <div style={{
+                width: `${(stats.weakCount / stats.total) * 100}%`,
+                background: '#f5c842',
+                minWidth: stats.weakCount > 0 ? '4px' : 0,
+              }} title={`${stats.weakCount} WEAK`} />
+              <div style={{
+                width: `${(stats.neutralCount / stats.total) * 100}%`,
+                background: 'var(--scanner-text3)',
+                minWidth: stats.neutralCount > 0 ? '4px' : 0,
+              }} title={`${stats.neutralCount} NEUTRAL`} />
+            </div>
+          ) : (
+            <div className="text-[9px]" style={{ color: 'var(--scanner-text3)' }}>No signals yet</div>
+          )}
+          <div className="flex items-center gap-3 mt-1 text-[8.5px]">
+            <span style={{ color: 'var(--scanner-green)' }}>● STRONG {stats.strongCount}</span>
+            <span style={{ color: '#f5c842' }}>● WEAK {stats.weakCount}</span>
+            <span style={{ color: 'var(--scanner-text3)' }}>● NEUTRAL {stats.neutralCount}</span>
+          </div>
+        </div>
+
+        {/* Low-sample warning */}
+        {lowSample && (
+          <div className="text-[8.5px] rounded p-2" style={{
+            background: 'var(--scanner-bg2)',
+            border: '1px solid var(--scanner-border2)',
+            color: 'var(--scanner-text3)',
+          }}>
+            <strong style={{ color: 'var(--scanner-text2)' }}>Collecting data:</strong>{' '}
+            {stats.resolved} of 30 resolved signals needed for statistically meaningful hit rates.
+            Currently accumulating ~1 signal/day. Expected to reach significance in{' '}
+            {Math.max(1, 30 - stats.resolved)} days. Walk-forward backtest reference:{' '}
+            <span style={{ color: 'var(--scanner-text2)' }}>OOS STRONG 54.5% · WEAK 41.6%</span>{' '}
+            (1444 signals, 2024-07 to 2025-07).
+          </div>
+        )}
+
+        {/* Walk-forward reference */}
+        {significant && (
+          <div className="text-[8.5px] mt-2" style={{ color: 'var(--scanner-text3)' }}>
+            <strong style={{ color: 'var(--scanner-text2)' }}>Walk-forward reference (OOS, 13 symbols, 2024-07 to 2025-07):</strong>{' '}
+            STRONG 54.5% hit · WEAK 41.6% hit · 1444 signals. Live hit rates should converge
+            toward these figures as the sample grows; persistent divergence &gt;10pp may indicate
+            regime shift or threshold drift.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Interpretation Guide — collapsible panel explaining what each verdict means.
+ * Critical for user trust: WEAK is not "the signal failed" — it's an actionable
+ * defensive call. STRONG is not "guaranteed up" — it's "conditions favor
+ * exposure." Users who don't read this will misinterpret the colors.
+ */
+function InterpretationGuide() {
+  const [expanded, setExpanded] = useState(false);
+
+  const rows = [
+    {
+      verdict: 'STRONG',
+      icon: '▲',
+      color: 'var(--scanner-green)',
+      meaning: 'Constructive conditions',
+      action: 'Risk-on — exposure warranted',
+      detail: 'Trend confirmed by ≥3 gates (z-score stretch + persistence + healthy extension + confirmation). 10-day forward expected return is positive in walk-forward OOS (avg +5.70%, 54.5% hit rate).',
+    },
+    {
+      verdict: 'WEAK',
+      icon: '◈',
+      color: '#f5c842',
+      meaning: 'Defensive conditions',
+      action: 'Risk-off — raise cash / reduce exposure',
+      detail: 'Trend breaking down (negative z-stretch + persistence) OR overextended+crowded (atrExt>5 + fundingZ>2). NOT a "signal failure" — it is an actionable defensive call. Walk-forward OOS: 41.6% directional hit, avg -2.90% 10-day return.',
+    },
+    {
+      verdict: 'NEUTRAL',
+      icon: '▬',
+      color: 'var(--scanner-text3)',
+      meaning: 'No actionable signal',
+      action: 'Hold — factors are mixed',
+      detail: 'Either (a) insufficient z-stretch for a directional call, or (b) trend persists but without confirmation. Most days are NEUTRAL — this is correct behavior, not engine failure. The 10-gate engine is designed to be selective.',
+    },
+  ];
+
+  return (
+    <div>
+      <SectionLabel right={
+        <button onClick={() => setExpanded(!expanded)} className="text-[8px] underline" style={{ color: 'var(--scanner-text3)' }}>
+          {expanded ? 'Hide' : 'Show'}
+        </button>
+      }>
+        Interpretation Guide
+      </SectionLabel>
+      {!expanded ? (
+        <div className="text-[9px] rounded p-2" style={{
+          background: 'var(--scanner-bg1)', border: '1px solid var(--scanner-border2)',
+          color: 'var(--scanner-text3)',
+        }}>
+          <strong style={{ color: 'var(--scanner-text2)' }}>How to read these verdicts:</strong>{' '}
+          <span style={{ color: 'var(--scanner-green)' }}>STRONG ▲</span> = constructive (risk-on),{' '}
+          <span style={{ color: '#f5c842' }}>WEAK ◈</span> = defensive (raise cash — NOT a failure),{' '}
+          <span style={{ color: 'var(--scanner-text3)' }}>NEUTRAL ▬</span> = no actionable signal.{' '}
+          <span style={{ textDecoration: 'underline dotted' }}>Show details →</span>
+        </div>
+      ) : (
+        <div className="rounded overflow-hidden" style={{ border: '1px solid var(--scanner-border2)' }}>
+          {rows.map(r => (
+            <div key={r.verdict} className="p-3" style={{ background: 'var(--scanner-bg1)', borderBottom: '1px solid var(--scanner-border)' }}>
+              <div className="flex items-center gap-3 mb-1.5">
+                <span className="text-[14px] font-bold" style={{ color: r.color }}>{r.icon} {r.verdict}</span>
+                <span className="text-[10px] font-semibold" style={{ color: 'var(--scanner-text2)' }}>{r.meaning}</span>
+                <span className="text-[9px] ml-auto" style={{ color: 'var(--scanner-text3)' }}>{r.action}</span>
+              </div>
+              <div className="text-[9px] leading-relaxed" style={{ color: 'var(--scanner-text3)' }}>{r.detail}</div>
+            </div>
+          ))}
+          <div className="p-2 text-[8.5px]" style={{ background: 'var(--scanner-bg2)', color: 'var(--scanner-text3)' }}>
+            <strong style={{ color: 'var(--scanner-text2)' }}>About the colors:</strong>{' '}
+            Green = constructive. Amber = defensive (caution, not failure). Gray = neutral.
+            Red is reserved for backward-looking realized misses (✗ in history) — never for forward-looking verdicts.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -251,6 +609,9 @@ export default function Signal() {
         </div>
       </div>
 
+      {/* Interpretation Guide (collapsible, near top) */}
+      <InterpretationGuide />
+
       {/* BTC */}
       <div>
         <SectionLabel>Bitcoin</SectionLabel>
@@ -260,6 +621,7 @@ export default function Signal() {
           verdict={sm.btc_stance.verdict}
           confidence={sm.btc_stance.confidence}
           drivers={sm.btc_stance.drivers}
+          horizon={sm.btc_stance.horizon}
         />
       </div>
 
@@ -279,6 +641,7 @@ export default function Signal() {
               verdict={a.verdict}
               confidence={a.confidence}
               drivers={a.drivers}
+              horizon={a.horizon}
             />
           ))}
         </div>
@@ -295,16 +658,19 @@ export default function Signal() {
         />
       </div>
 
+      {/* Signal Scoreboard — live accuracy tracker */}
+      <SignalScoreboard history={history} />
+
       {/* History */}
       <SignalHistory history={history} />
 
       {/* Backtest stats (if available) */}
       {history.length >= 10 && (
         <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
-          <strong style={{ color: 'var(--scanner-text2)' }}>Backtest reference (in-sample, optimistic):</strong>{' '}
-          STRONG 62.0% hit · WEAK 54.1% hit (61 signals, below 100-trade significance bar) · 10-day forward · 2023-10 to 2025-07.
-          Thresholds tuned on same period — not walk-forward validated. macroZ boost is in-sample only (v11 OOS report
-          validates the source system, not this isolated daily use). Live performance may differ.
+          <strong style={{ color: 'var(--scanner-text2)' }}>Backtest reference (walk-forward OOS, 13 symbols, 2024-07 to 2025-07):</strong>{' '}
+          STRONG 54.5% hit (343 signals, avg +5.70% 10d return) · WEAK 41.6% hit (1101 signals, avg -2.90% 10d return).
+          Thresholds tuned on TRAIN (2022-01 to 2023-06) only; applied unchanged to OOS. 20bps round-trip fees + funding
+          cost included. Live hit rates should converge toward these figures as sample grows.
         </div>
       )}
     </div>
