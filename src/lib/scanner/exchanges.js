@@ -5,15 +5,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Custom Error subclass for HTTP 451 (geo-block) responses. Using a subclass
 // instead of attaching properties to a plain Error keeps TypeScript happy
 // (TS's built-in Error type doesn't allow arbitrary properties) and gives
-// callers a clean way to distinguish geo-blocks from other failures:
-//
-//   try { ... } catch (e) {
-//     if (e instanceof GeoBlockedError) {
-//       showBanner(`${e.sourceId} is geo-blocked. Enable VPN or use Auto mode.`);
-//     }
-//   }
-//
-// Exported so the Board UI / Scanner can instanceof-check caught errors.
+// callers a clean way to distinguish geo-blocks from other failures.
 export class GeoBlockedError extends Error {
   constructor(message, sourceId) {
     super(message);
@@ -406,16 +398,14 @@ function toMassiveTicker(symbol) {
 }
 
 async function fetchMassiveCandles(symbol, timeframe = '4H', limit = 300) {
-  // SECURITY: Read API key from localStorage only — NOT from import.meta.env.
-  // VITE_-prefixed vars get baked into the client bundle, exposing the paid
-  // Polygon key. Users must set it via:
-  //   localStorage.setItem('MASSIVE_API_KEY', 'their_key')
-  const apiKey = (typeof window !== 'undefined')
-    ? (localStorage.getItem('MASSIVE_API_KEY') || '')
-    : '';
+  // Check localStorage first (runtime), then environment variable (build-time fallback)
+  const apiKey = typeof window !== 'undefined'
+    ? (localStorage.getItem('MASSIVE_API_KEY') || import.meta.env?.VITE_MASSIVE_API_KEY)
+    : import.meta.env?.VITE_MASSIVE_API_KEY;
 
   if (!apiKey) {
-    return null;  // No key — let resolver fall back to free sources
+    console.warn('Massive API key not configured. Set MASSIVE_API_KEY in localStorage or VITE_MASSIVE_API_KEY in .env');
+    return null;
   }
 
   const tf = MASSIVE_INTERVAL_MAP[timeframe] || MASSIVE_INTERVAL_MAP['4H'];

@@ -53,6 +53,16 @@ export default function Board() {
   const apiKeyChecked = useRef(false);
   const hasLoaded = useRef(false);
 
+  // Fetch snapshot.json for signal_metrics + regime_history (macro quadrant)
+  // These are server-side computed and available instantly from the snapshot.
+  const [snapshotData, setSnapshotData] = useState(null);
+  useEffect(() => {
+    fetch('/snapshot.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setSnapshotData(d))
+      .catch(() => {});
+  }, []);
+
   // Track which sources are geo-blocked in the user's region (e.g. Binance
   // returns HTTP 451 for US IPs). Display these as small chips so the user
   // understands why coverage is lower than expected without VPN.
@@ -238,6 +248,8 @@ export default function Board() {
         exchange={exchange}
         isLoading={isLoading}
         onRefresh={() => runAnalysis(exchange)}
+        signalMetrics={snapshotData?.signal_metrics}
+        macroQuadrant={snapshotData?.regime_history?.[snapshotData.regime_history.length - 1]?.quadrant}
       />
 
       {/* Progress bar */}
