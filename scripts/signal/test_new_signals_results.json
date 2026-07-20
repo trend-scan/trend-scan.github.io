@@ -1,0 +1,4830 @@
+{
+  "generated_at": "2026-07-20T05:39:44.784Z",
+  "config": {
+    "symbols": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "AVAX",
+      "LINK",
+      "DOGE",
+      "ARB",
+      "OP",
+      "INJ",
+      "SUI",
+      "NEAR",
+      "APT",
+      "TIA"
+    ],
+    "periods": {
+      "TRAIN": {
+        "start": "2022-01-01",
+        "end": "2023-06-30",
+        "label": "TRAIN (tune)"
+      },
+      "VALIDATION": {
+        "start": "2023-07-01",
+        "end": "2024-06-30",
+        "label": "VALIDATION (hold)"
+      },
+      "OOS": {
+        "start": "2024-07-01",
+        "end": "2025-07-31",
+        "label": "OOS (untouched)"
+      }
+    },
+    "forward_windows": [
+      1,
+      5,
+      10,
+      20
+    ],
+    "primary_forward_window": 10,
+    "min_signals_train": 50,
+    "min_signals_oos": 100,
+    "oos_hit_threshold": 0.5,
+    "vwap_thresholds_swept": [
+      0.5,
+      0.75,
+      1,
+      1.5,
+      2
+    ],
+    "vwap_periods_swept": [
+      20,
+      30
+    ],
+    "obv_periods_swept": [
+      10,
+      15,
+      20,
+      30
+    ],
+    "obv_slope_cuts_swept": [
+      0.02,
+      0.05,
+      0.1
+    ]
+  },
+  "vwap_extension": {
+    "sweep_grid": [
+      {
+        "config": {
+          "N": 20,
+          "threshold": 0.5
+        },
+        "train": {
+          "count": 3518,
+          "hitRate": 0.49118817509948837,
+          "avgRet": 0.004656978967293957,
+          "bull": {
+            "count": 1344,
+            "hitRate": 0.45089285714285715
+          },
+          "bear": {
+            "count": 2174,
+            "hitRate": 0.516099356025759
+          }
+        },
+        "val": {
+          "count": 3293,
+          "hitRate": 0.5608867294260552,
+          "avgRet": 0.03256839568445665
+        },
+        "oos": {
+          "count": 3725,
+          "hitRate": 0.46738255033557047,
+          "avgRet": -0.002223238921574684,
+          "bull": {
+            "count": 1733,
+            "hitRate": 0.47778418926716676
+          },
+          "bear": {
+            "count": 1992,
+            "hitRate": 0.4583333333333333
+          }
+        },
+        "train_reverse": {
+          "count": 3518,
+          "hitRate": 0.5076748152359295,
+          "avgRet": -0.004656978967293957
+        },
+        "oos_reverse": {
+          "count": 3725,
+          "hitRate": 0.5326174496644295,
+          "avgRet": 0.002223238921574684
+        }
+      },
+      {
+        "config": {
+          "N": 20,
+          "threshold": 0.75
+        },
+        "train": {
+          "count": 2955,
+          "hitRate": 0.4873096446700508,
+          "avgRet": 0.0037801505635239314,
+          "bull": {
+            "count": 1116,
+            "hitRate": 0.4453405017921147
+          },
+          "bear": {
+            "count": 1839,
+            "hitRate": 0.512778684067428
+          }
+        },
+        "val": {
+          "count": 2649,
+          "hitRate": 0.5681389203473008,
+          "avgRet": 0.03675635492453852
+        },
+        "oos": {
+          "count": 3078,
+          "hitRate": 0.4603638726445744,
+          "avgRet": -0.003287513171179847,
+          "bull": {
+            "count": 1511,
+            "hitRate": 0.47915287888815355
+          },
+          "bear": {
+            "count": 1567,
+            "hitRate": 0.44224633056796425
+          }
+        },
+        "train_reverse": {
+          "count": 2955,
+          "hitRate": 0.5116751269035533,
+          "avgRet": -0.0037801505635239314
+        },
+        "oos_reverse": {
+          "count": 3078,
+          "hitRate": 0.5396361273554257,
+          "avgRet": 0.003287513171179847
+        }
+      },
+      {
+        "config": {
+          "N": 20,
+          "threshold": 1
+        },
+        "train": {
+          "count": 2396,
+          "hitRate": 0.49081803005008345,
+          "avgRet": 0.005640408409307734,
+          "bull": {
+            "count": 889,
+            "hitRate": 0.45556805399325084
+          },
+          "bear": {
+            "count": 1507,
+            "hitRate": 0.5116124751161247
+          }
+        },
+        "val": {
+          "count": 2101,
+          "hitRate": 0.5702046644455021,
+          "avgRet": 0.03756732361979995
+        },
+        "oos": {
+          "count": 2493,
+          "hitRate": 0.45046129161652626,
+          "avgRet": -0.0068880208015759435,
+          "bull": {
+            "count": 1301,
+            "hitRate": 0.47578785549577246
+          },
+          "bear": {
+            "count": 1192,
+            "hitRate": 0.4228187919463087
+          }
+        },
+        "train_reverse": {
+          "count": 2396,
+          "hitRate": 0.508347245409015,
+          "avgRet": -0.005640408409307734
+        },
+        "oos_reverse": {
+          "count": 2493,
+          "hitRate": 0.5495387083834737,
+          "avgRet": 0.0068880208015759435
+        }
+      },
+      {
+        "config": {
+          "N": 20,
+          "threshold": 1.5
+        },
+        "train": {
+          "count": 1460,
+          "hitRate": 0.4815068493150685,
+          "avgRet": 0.0050446827293187425,
+          "bull": {
+            "count": 573,
+            "hitRate": 0.4781849912739965
+          },
+          "bear": {
+            "count": 887,
+            "hitRate": 0.4836527621195039
+          }
+        },
+        "val": {
+          "count": 1251,
+          "hitRate": 0.5771382893685052,
+          "avgRet": 0.04404724251066898
+        },
+        "oos": {
+          "count": 1516,
+          "hitRate": 0.43601583113456466,
+          "avgRet": -0.01112466982277356,
+          "bull": {
+            "count": 905,
+            "hitRate": 0.4861878453038674
+          },
+          "bear": {
+            "count": 611,
+            "hitRate": 0.3617021276595745
+          }
+        },
+        "train_reverse": {
+          "count": 1460,
+          "hitRate": 0.5184931506849315,
+          "avgRet": -0.0050446827293187425
+        },
+        "oos_reverse": {
+          "count": 1516,
+          "hitRate": 0.5639841688654353,
+          "avgRet": 0.01112466982277356
+        }
+      },
+      {
+        "config": {
+          "N": 20,
+          "threshold": 2
+        },
+        "train": {
+          "count": 701,
+          "hitRate": 0.4593437945791726,
+          "avgRet": 0.005986796546641273,
+          "bull": {
+            "count": 317,
+            "hitRate": 0.5110410094637224
+          },
+          "bear": {
+            "count": 384,
+            "hitRate": 0.4166666666666667
+          }
+        },
+        "val": {
+          "count": 674,
+          "hitRate": 0.6023738872403561,
+          "avgRet": 0.05614895364241944
+        },
+        "oos": {
+          "count": 792,
+          "hitRate": 0.42676767676767674,
+          "avgRet": -0.017071943575000074,
+          "bull": {
+            "count": 549,
+            "hitRate": 0.4899817850637523
+          },
+          "bear": {
+            "count": 243,
+            "hitRate": 0.2839506172839506
+          }
+        },
+        "train_reverse": {
+          "count": 701,
+          "hitRate": 0.5406562054208274,
+          "avgRet": -0.005986796546641273
+        },
+        "oos_reverse": {
+          "count": 792,
+          "hitRate": 0.5732323232323232,
+          "avgRet": 0.017071943575000074
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "threshold": 0.5
+        },
+        "train": {
+          "count": 3655,
+          "hitRate": 0.5020519835841313,
+          "avgRet": 0.00591996018883955,
+          "bull": {
+            "count": 1292,
+            "hitRate": 0.46594427244582043
+          },
+          "bear": {
+            "count": 2363,
+            "hitRate": 0.5217943292424884
+          }
+        },
+        "val": {
+          "count": 3697,
+          "hitRate": 0.5796591831214498,
+          "avgRet": 0.037872393607461335
+        },
+        "oos": {
+          "count": 3994,
+          "hitRate": 0.47346019028542813,
+          "avgRet": -0.002870298226554299,
+          "bull": {
+            "count": 1734,
+            "hitRate": 0.4826989619377163
+          },
+          "bear": {
+            "count": 2260,
+            "hitRate": 0.4663716814159292
+          }
+        },
+        "train_reverse": {
+          "count": 3655,
+          "hitRate": 0.4971272229822161,
+          "avgRet": -0.00591996018883955
+        },
+        "oos_reverse": {
+          "count": 3994,
+          "hitRate": 0.5265398097145718,
+          "avgRet": 0.002870298226554299
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "threshold": 0.75
+        },
+        "train": {
+          "count": 3213,
+          "hitRate": 0.5057578586990352,
+          "avgRet": 0.007764579796942805,
+          "bull": {
+            "count": 1103,
+            "hitRate": 0.4696282864913871
+          },
+          "bear": {
+            "count": 2110,
+            "hitRate": 0.5246445497630332
+          }
+        },
+        "val": {
+          "count": 3204,
+          "hitRate": 0.5808364544319601,
+          "avgRet": 0.03992450401715242
+        },
+        "oos": {
+          "count": 3484,
+          "hitRate": 0.47388059701492535,
+          "avgRet": -0.0018868877327772784,
+          "bull": {
+            "count": 1541,
+            "hitRate": 0.4899415963659961
+          },
+          "bear": {
+            "count": 1943,
+            "hitRate": 0.4611425630468348
+          }
+        },
+        "train_reverse": {
+          "count": 3213,
+          "hitRate": 0.4933084344849051,
+          "avgRet": -0.007764579796942805
+        },
+        "oos_reverse": {
+          "count": 3484,
+          "hitRate": 0.5261194029850746,
+          "avgRet": 0.0018868877327772784
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "threshold": 1
+        },
+        "train": {
+          "count": 2760,
+          "hitRate": 0.5083333333333333,
+          "avgRet": 0.010120137304601373,
+          "bull": {
+            "count": 931,
+            "hitRate": 0.4822771213748657
+          },
+          "bear": {
+            "count": 1829,
+            "hitRate": 0.5215965008201203
+          }
+        },
+        "val": {
+          "count": 2744,
+          "hitRate": 0.5776239067055393,
+          "avgRet": 0.040042603244759674
+        },
+        "oos": {
+          "count": 3011,
+          "hitRate": 0.4749252739953504,
+          "avgRet": -0.0012284593689640948,
+          "bull": {
+            "count": 1378,
+            "hitRate": 0.4941944847605225
+          },
+          "bear": {
+            "count": 1633,
+            "hitRate": 0.45866503368034295
+          }
+        },
+        "train_reverse": {
+          "count": 2760,
+          "hitRate": 0.4905797101449275,
+          "avgRet": -0.010120137304601373
+        },
+        "oos_reverse": {
+          "count": 3011,
+          "hitRate": 0.5250747260046497,
+          "avgRet": 0.0012284593689640948
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "threshold": 1.5
+        },
+        "train": {
+          "count": 1939,
+          "hitRate": 0.4951005673027334,
+          "avgRet": 0.010070793360627,
+          "bull": {
+            "count": 668,
+            "hitRate": 0.4745508982035928
+          },
+          "bear": {
+            "count": 1271,
+            "hitRate": 0.5059008654602675
+          }
+        },
+        "val": {
+          "count": 1853,
+          "hitRate": 0.5876956287101996,
+          "avgRet": 0.04640296048821847
+        },
+        "oos": {
+          "count": 2101,
+          "hitRate": 0.46977629700142787,
+          "avgRet": -0.0021644648373187287,
+          "bull": {
+            "count": 1059,
+            "hitRate": 0.5070821529745042
+          },
+          "bear": {
+            "count": 1042,
+            "hitRate": 0.43186180422264875
+          }
+        },
+        "train_reverse": {
+          "count": 1939,
+          "hitRate": 0.5033522434244456,
+          "avgRet": -0.010070793360627
+        },
+        "oos_reverse": {
+          "count": 2101,
+          "hitRate": 0.5302237029985721,
+          "avgRet": 0.0021644648373187287
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "threshold": 2
+        },
+        "train": {
+          "count": 1238,
+          "hitRate": 0.47334410339256866,
+          "avgRet": 0.007983479569805614,
+          "bull": {
+            "count": 448,
+            "hitRate": 0.4732142857142857
+          },
+          "bear": {
+            "count": 790,
+            "hitRate": 0.47341772151898737
+          }
+        },
+        "val": {
+          "count": 1202,
+          "hitRate": 0.5965058236272879,
+          "avgRet": 0.048026834561107644
+        },
+        "oos": {
+          "count": 1286,
+          "hitRate": 0.45878693623639194,
+          "avgRet": -0.007035863125498792,
+          "bull": {
+            "count": 745,
+            "hitRate": 0.5248322147651007
+          },
+          "bear": {
+            "count": 541,
+            "hitRate": 0.3678373382624769
+          }
+        },
+        "train_reverse": {
+          "count": 1238,
+          "hitRate": 0.5258481421647819,
+          "avgRet": -0.007983479569805614
+        },
+        "oos_reverse": {
+          "count": 1286,
+          "hitRate": 0.5412130637636081,
+          "avgRet": 0.007035863125498792
+        }
+      }
+    ],
+    "best_config": {
+      "config": {
+        "N": 30,
+        "threshold": 1
+      },
+      "train": {
+        "count": 2760,
+        "hitRate": 0.5083333333333333,
+        "avgRet": 0.010120137304601373,
+        "bull": {
+          "count": 931,
+          "hitRate": 0.4822771213748657
+        },
+        "bear": {
+          "count": 1829,
+          "hitRate": 0.5215965008201203
+        }
+      },
+      "val": {
+        "count": 2744,
+        "hitRate": 0.5776239067055393,
+        "avgRet": 0.040042603244759674
+      },
+      "oos": {
+        "count": 3011,
+        "hitRate": 0.4749252739953504,
+        "avgRet": -0.0012284593689640948,
+        "bull": {
+          "count": 1378,
+          "hitRate": 0.4941944847605225
+        },
+        "bear": {
+          "count": 1633,
+          "hitRate": 0.45866503368034295
+        }
+      },
+      "oos_reverse": {
+        "count": 3011,
+        "hitRate": 0.5250747260046497,
+        "avgRet": 0.0012284593689640948
+      }
+    },
+    "windows_breakdown": {
+      "1": {
+        "TRAIN": {
+          "total": {
+            "count": 2760,
+            "hits": 1321,
+            "retSum": 3.9537461415098965,
+            "hitRate": 0.4786231884057971,
+            "avgSignedRet": 0.0014325167179383683
+          },
+          "bullish": {
+            "count": 931,
+            "hits": 439,
+            "retSum": 4.325179430772126,
+            "hitRate": 0.4715359828141783,
+            "avgSignedRet": 0.004645735156575861
+          },
+          "bearish": {
+            "count": 1829,
+            "hits": 882,
+            "retSum": -0.3714332892622243,
+            "hitRate": 0.4822307271733188,
+            "avgSignedRet": -0.00020307998319421777
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 2744,
+            "hits": 1344,
+            "retSum": 8.306402963896373,
+            "hitRate": 0.4897959183673469,
+            "avgSignedRet": 0.0030271147827610687
+          },
+          "bullish": {
+            "count": 1465,
+            "hits": 717,
+            "retSum": 7.634946306371562,
+            "hitRate": 0.489419795221843,
+            "avgSignedRet": 0.0052115674446222265
+          },
+          "bearish": {
+            "count": 1279,
+            "hits": 627,
+            "retSum": 0.6714566575247973,
+            "hitRate": 0.490226739640344,
+            "avgSignedRet": 0.0005249856587371363
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 3088,
+            "hits": 1525,
+            "retSum": 0.835833097207174,
+            "hitRate": 0.49384715025906734,
+            "avgSignedRet": 0.00027067133976916256
+          },
+          "bullish": {
+            "count": 1453,
+            "hits": 741,
+            "retSum": 5.145003232376433,
+            "hitRate": 0.5099793530626291,
+            "avgSignedRet": 0.003540951983741523
+          },
+          "bearish": {
+            "count": 1635,
+            "hits": 784,
+            "retSum": -4.309170135169254,
+            "hitRate": 0.4795107033639144,
+            "avgSignedRet": -0.002635578064323703
+          }
+        }
+      },
+      "5": {
+        "TRAIN": {
+          "total": {
+            "count": 2760,
+            "hits": 1430,
+            "retSum": 15.492326733390094,
+            "hitRate": 0.5181159420289855,
+            "avgSignedRet": 0.005613161859923947
+          },
+          "bullish": {
+            "count": 931,
+            "hits": 469,
+            "retSum": 11.65228197465711,
+            "hitRate": 0.5037593984962406,
+            "avgSignedRet": 0.012515877523799257
+          },
+          "bearish": {
+            "count": 1829,
+            "hits": 961,
+            "retSum": 3.8400447587329882,
+            "hitRate": 0.5254237288135594,
+            "avgSignedRet": 0.002099532399525964
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 2744,
+            "hits": 1444,
+            "retSum": 48.77446923916699,
+            "hitRate": 0.5262390670553936,
+            "avgSignedRet": 0.0177749523466352
+          },
+          "bullish": {
+            "count": 1465,
+            "hits": 780,
+            "retSum": 42.468323551221275,
+            "hitRate": 0.5324232081911263,
+            "avgSignedRet": 0.028988616758512817
+          },
+          "bearish": {
+            "count": 1279,
+            "hits": 664,
+            "retSum": 6.3061456879456745,
+            "hitRate": 0.5191555903049258,
+            "avgSignedRet": 0.004930528293937197
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 3062,
+            "hits": 1443,
+            "retSum": -13.643738195193023,
+            "hitRate": 0.4712606139777923,
+            "avgSignedRet": -0.00445582566792718
+          },
+          "bullish": {
+            "count": 1429,
+            "hits": 709,
+            "retSum": 13.020813880386834,
+            "hitRate": 0.49615115465360393,
+            "avgSignedRet": 0.009111836165421158
+          },
+          "bearish": {
+            "count": 1633,
+            "hits": 734,
+            "retSum": -26.664552075579834,
+            "hitRate": 0.449479485609308,
+            "avgSignedRet": -0.016328568325523474
+          }
+        }
+      },
+      "10": {
+        "TRAIN": {
+          "total": {
+            "count": 2760,
+            "hits": 1403,
+            "retSum": 27.931578960699788,
+            "hitRate": 0.5083333333333333,
+            "avgSignedRet": 0.010120137304601373
+          },
+          "bullish": {
+            "count": 931,
+            "hits": 449,
+            "retSum": 23.467632323252378,
+            "hitRate": 0.4822771213748657,
+            "avgSignedRet": 0.025206909047532092
+          },
+          "bearish": {
+            "count": 1829,
+            "hits": 954,
+            "retSum": 4.4639466374473855,
+            "hitRate": 0.5215965008201203,
+            "avgSignedRet": 0.002440648790293814
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 2744,
+            "hits": 1585,
+            "retSum": 109.87690330362055,
+            "hitRate": 0.5776239067055393,
+            "avgSignedRet": 0.040042603244759674
+          },
+          "bullish": {
+            "count": 1465,
+            "hits": 847,
+            "retSum": 90.95122371656896,
+            "hitRate": 0.5781569965870307,
+            "avgSignedRet": 0.062082746564210894
+          },
+          "bearish": {
+            "count": 1279,
+            "hits": 738,
+            "retSum": 18.92567958705141,
+            "hitRate": 0.5770132916340891,
+            "avgSignedRet": 0.014797247527014393
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 3011,
+            "hits": 1430,
+            "retSum": -3.6988911599508896,
+            "hitRate": 0.4749252739953504,
+            "avgSignedRet": -0.0012284593689640948
+          },
+          "bullish": {
+            "count": 1378,
+            "hits": 681,
+            "retSum": 29.17765362232468,
+            "hitRate": 0.4941944847605225,
+            "avgSignedRet": 0.02117391409457524
+          },
+          "bearish": {
+            "count": 1633,
+            "hits": 749,
+            "retSum": -32.87654478227557,
+            "hitRate": 0.45866503368034295,
+            "avgSignedRet": -0.020132605500474937
+          }
+        }
+      },
+      "20": {
+        "TRAIN": {
+          "total": {
+            "count": 2760,
+            "hits": 1384,
+            "retSum": 17.344059067087894,
+            "hitRate": 0.5014492753623189,
+            "avgSignedRet": 0.006284079372133295
+          },
+          "bullish": {
+            "count": 931,
+            "hits": 378,
+            "retSum": 19.58078084953433,
+            "hitRate": 0.40601503759398494,
+            "avgSignedRet": 0.021031988023130326
+          },
+          "bearish": {
+            "count": 1829,
+            "hits": 1006,
+            "retSum": -2.236721782446436,
+            "hitRate": 0.5500273373428103,
+            "avgSignedRet": -0.001222920602759123
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 2744,
+            "hits": 1648,
+            "retSum": 185.5851771656097,
+            "hitRate": 0.6005830903790087,
+            "avgSignedRet": 0.06763308205743794
+          },
+          "bullish": {
+            "count": 1465,
+            "hits": 892,
+            "retSum": 175.1147212239503,
+            "hitRate": 0.6088737201365187,
+            "avgSignedRet": 0.11953223291737222
+          },
+          "bearish": {
+            "count": 1279,
+            "hits": 756,
+            "retSum": 10.470455941659553,
+            "hitRate": 0.5910867865519938,
+            "avgSignedRet": 0.00818643936017166
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 2884,
+            "hits": 1486,
+            "retSum": 2.115384469651948,
+            "hitRate": 0.515256588072122,
+            "avgSignedRet": 0.000733489760628276
+          },
+          "bullish": {
+            "count": 1251,
+            "hits": 615,
+            "retSum": 42.813932106222786,
+            "hitRate": 0.49160671462829736,
+            "avgSignedRet": 0.03422376667164092
+          },
+          "bearish": {
+            "count": 1633,
+            "hits": 871,
+            "retSum": -40.69854763657078,
+            "hitRate": 0.5333741579914268,
+            "avgSignedRet": -0.02492256438246833
+          }
+        }
+      }
+    },
+    "per_symbol": {
+      "TRAIN": {
+        "BTC": {
+          "total": {
+            "count": 318,
+            "hitRate": 0.48427672955974843,
+            "avgRet": -0.011310827456659038
+          },
+          "bull": {
+            "count": 151,
+            "hitRate": 0.5099337748344371
+          },
+          "bear": {
+            "count": 167,
+            "hitRate": 0.46107784431137727
+          }
+        },
+        "ETH": {
+          "total": {
+            "count": 312,
+            "hitRate": 0.5384615384615384,
+            "avgRet": 0.007938223913098494
+          },
+          "bull": {
+            "count": 155,
+            "hitRate": 0.567741935483871
+          },
+          "bear": {
+            "count": 157,
+            "hitRate": 0.5095541401273885
+          }
+        },
+        "SOL": {
+          "total": {
+            "count": 269,
+            "hitRate": 0.4795539033457249,
+            "avgRet": 0.010074981088206938
+          },
+          "bull": {
+            "count": 75,
+            "hitRate": 0.38666666666666666
+          },
+          "bear": {
+            "count": 194,
+            "hitRate": 0.5154639175257731
+          }
+        },
+        "AVAX": {
+          "total": {
+            "count": 350,
+            "hitRate": 0.5542857142857143,
+            "avgRet": 0.01468934799932894
+          },
+          "bull": {
+            "count": 105,
+            "hitRate": 0.42857142857142855
+          },
+          "bear": {
+            "count": 245,
+            "hitRate": 0.6081632653061224
+          }
+        },
+        "LINK": {
+          "total": {
+            "count": 295,
+            "hitRate": 0.4440677966101695,
+            "avgRet": -0.021973869571579683
+          },
+          "bull": {
+            "count": 90,
+            "hitRate": 0.3333333333333333
+          },
+          "bear": {
+            "count": 205,
+            "hitRate": 0.4926829268292683
+          }
+        },
+        "DOGE": {
+          "total": {
+            "count": 286,
+            "hitRate": 0.506993006993007,
+            "avgRet": -0.0013851944180014572
+          },
+          "bull": {
+            "count": 55,
+            "hitRate": 0.43636363636363634
+          },
+          "bear": {
+            "count": 231,
+            "hitRate": 0.5238095238095238
+          }
+        },
+        "ARB": {
+          "total": {
+            "count": 32,
+            "hitRate": 0.3125,
+            "avgRet": -0.054495182165609266
+          },
+          "bull": {
+            "count": 1,
+            "hitRate": 0
+          },
+          "bear": {
+            "count": 31,
+            "hitRate": 0.3225806451612903
+          }
+        },
+        "OP": {
+          "total": {
+            "count": 222,
+            "hitRate": 0.5315315315315315,
+            "avgRet": 0.02769859293640462
+          },
+          "bull": {
+            "count": 81,
+            "hitRate": 0.5061728395061729
+          },
+          "bear": {
+            "count": 141,
+            "hitRate": 0.5460992907801419
+          }
+        },
+        "INJ": {
+          "total": {
+            "count": 178,
+            "hitRate": 0.4550561797752809,
+            "avgRet": 0.0161038664493581
+          },
+          "bull": {
+            "count": 96,
+            "hitRate": 0.5416666666666666
+          },
+          "bear": {
+            "count": 82,
+            "hitRate": 0.35365853658536583
+          }
+        },
+        "SUI": {
+          "total": {
+            "count": 17,
+            "hitRate": 0.5294117647058824,
+            "avgRet": 0.008876247517449368
+          },
+          "bull": {
+            "count": 0,
+            "hitRate": null
+          },
+          "bear": {
+            "count": 17,
+            "hitRate": 0.5294117647058824
+          }
+        },
+        "NEAR": {
+          "total": {
+            "count": 348,
+            "hitRate": 0.5833333333333334,
+            "avgRet": 0.03548012755815618
+          },
+          "bull": {
+            "count": 90,
+            "hitRate": 0.5111111111111111
+          },
+          "bear": {
+            "count": 258,
+            "hitRate": 0.6085271317829457
+          }
+        },
+        "APT": {
+          "total": {
+            "count": 133,
+            "hitRate": 0.45864661654135336,
+            "avgRet": 0.06247369185788859
+          },
+          "bull": {
+            "count": 32,
+            "hitRate": 0.53125
+          },
+          "bear": {
+            "count": 101,
+            "hitRate": 0.43564356435643564
+          }
+        },
+        "TIA": {
+          "total": {
+            "count": 0,
+            "hitRate": null,
+            "avgRet": null
+          },
+          "bull": {
+            "count": 0,
+            "hitRate": null
+          },
+          "bear": {
+            "count": 0,
+            "hitRate": null
+          }
+        }
+      },
+      "VALIDATION": {
+        "BTC": {
+          "total": {
+            "count": 230,
+            "hitRate": 0.6043478260869565,
+            "avgRet": 0.02717631538450354
+          },
+          "bull": {
+            "count": 163,
+            "hitRate": 0.6380368098159509
+          },
+          "bear": {
+            "count": 67,
+            "hitRate": 0.5223880597014925
+          }
+        },
+        "ETH": {
+          "total": {
+            "count": 202,
+            "hitRate": 0.5643564356435643,
+            "avgRet": 0.0051371142321684354
+          },
+          "bull": {
+            "count": 119,
+            "hitRate": 0.5966386554621849
+          },
+          "bear": {
+            "count": 83,
+            "hitRate": 0.5180722891566265
+          }
+        },
+        "SOL": {
+          "total": {
+            "count": 246,
+            "hitRate": 0.5975609756097561,
+            "avgRet": 0.07927659228289774
+          },
+          "bull": {
+            "count": 178,
+            "hitRate": 0.6292134831460674
+          },
+          "bear": {
+            "count": 68,
+            "hitRate": 0.5147058823529411
+          }
+        },
+        "AVAX": {
+          "total": {
+            "count": 246,
+            "hitRate": 0.6219512195121951,
+            "avgRet": 0.07301898941735342
+          },
+          "bull": {
+            "count": 111,
+            "hitRate": 0.5945945945945946
+          },
+          "bear": {
+            "count": 135,
+            "hitRate": 0.6444444444444445
+          }
+        },
+        "LINK": {
+          "total": {
+            "count": 211,
+            "hitRate": 0.5876777251184834,
+            "avgRet": 0.0312649843899101
+          },
+          "bull": {
+            "count": 134,
+            "hitRate": 0.582089552238806
+          },
+          "bear": {
+            "count": 77,
+            "hitRate": 0.5974025974025974
+          }
+        },
+        "DOGE": {
+          "total": {
+            "count": 184,
+            "hitRate": 0.4945652173913043,
+            "avgRet": 0.02045252871379214
+          },
+          "bull": {
+            "count": 92,
+            "hitRate": 0.4782608695652174
+          },
+          "bear": {
+            "count": 92,
+            "hitRate": 0.5108695652173914
+          }
+        },
+        "ARB": {
+          "total": {
+            "count": 221,
+            "hitRate": 0.6108597285067874,
+            "avgRet": 0.03292629430466952
+          },
+          "bull": {
+            "count": 80,
+            "hitRate": 0.3875
+          },
+          "bear": {
+            "count": 141,
+            "hitRate": 0.7375886524822695
+          }
+        },
+        "OP": {
+          "total": {
+            "count": 227,
+            "hitRate": 0.4801762114537445,
+            "avgRet": 0.010194770774173254
+          },
+          "bull": {
+            "count": 109,
+            "hitRate": 0.5321100917431193
+          },
+          "bear": {
+            "count": 118,
+            "hitRate": 0.4322033898305085
+          }
+        },
+        "INJ": {
+          "total": {
+            "count": 205,
+            "hitRate": 0.526829268292683,
+            "avgRet": 0.05233356964876704
+          },
+          "bull": {
+            "count": 118,
+            "hitRate": 0.5508474576271186
+          },
+          "bear": {
+            "count": 87,
+            "hitRate": 0.4942528735632184
+          }
+        },
+        "SUI": {
+          "total": {
+            "count": 224,
+            "hitRate": 0.6026785714285714,
+            "avgRet": 0.03474851751656186
+          },
+          "bull": {
+            "count": 91,
+            "hitRate": 0.5604395604395604
+          },
+          "bear": {
+            "count": 133,
+            "hitRate": 0.631578947368421
+          }
+        },
+        "NEAR": {
+          "total": {
+            "count": 225,
+            "hitRate": 0.6,
+            "avgRet": 0.06891174423361537
+          },
+          "bull": {
+            "count": 129,
+            "hitRate": 0.6589147286821705
+          },
+          "bear": {
+            "count": 96,
+            "hitRate": 0.5208333333333334
+          }
+        },
+        "APT": {
+          "total": {
+            "count": 203,
+            "hitRate": 0.6009852216748769,
+            "avgRet": 0.017048573689526333
+          },
+          "bull": {
+            "count": 84,
+            "hitRate": 0.5714285714285714
+          },
+          "bear": {
+            "count": 119,
+            "hitRate": 0.6218487394957983
+          }
+        },
+        "TIA": {
+          "total": {
+            "count": 120,
+            "hitRate": 0.6083333333333333,
+            "avgRet": 0.06412322485085126
+          },
+          "bull": {
+            "count": 57,
+            "hitRate": 0.5964912280701754
+          },
+          "bear": {
+            "count": 63,
+            "hitRate": 0.6190476190476191
+          }
+        }
+      },
+      "OOS": {
+        "BTC": {
+          "total": {
+            "count": 212,
+            "hitRate": 0.5330188679245284,
+            "avgRet": 0.004314297775228393
+          },
+          "bull": {
+            "count": 165,
+            "hitRate": 0.6
+          },
+          "bear": {
+            "count": 47,
+            "hitRate": 0.2978723404255319
+          }
+        },
+        "ETH": {
+          "total": {
+            "count": 249,
+            "hitRate": 0.5220883534136547,
+            "avgRet": 0.022334825727217938
+          },
+          "bull": {
+            "count": 121,
+            "hitRate": 0.5537190082644629
+          },
+          "bear": {
+            "count": 128,
+            "hitRate": 0.4921875
+          }
+        },
+        "SOL": {
+          "total": {
+            "count": 240,
+            "hitRate": 0.5041666666666667,
+            "avgRet": 0.009184332468002128
+          },
+          "bull": {
+            "count": 133,
+            "hitRate": 0.5112781954887218
+          },
+          "bear": {
+            "count": 107,
+            "hitRate": 0.4953271028037383
+          }
+        },
+        "AVAX": {
+          "total": {
+            "count": 226,
+            "hitRate": 0.49557522123893805,
+            "avgRet": -0.005521871278492725
+          },
+          "bull": {
+            "count": 96,
+            "hitRate": 0.46875
+          },
+          "bear": {
+            "count": 130,
+            "hitRate": 0.5153846153846153
+          }
+        },
+        "LINK": {
+          "total": {
+            "count": 211,
+            "hitRate": 0.4786729857819905,
+            "avgRet": 0.01224467098199279
+          },
+          "bull": {
+            "count": 95,
+            "hitRate": 0.5263157894736842
+          },
+          "bear": {
+            "count": 116,
+            "hitRate": 0.4396551724137931
+          }
+        },
+        "DOGE": {
+          "total": {
+            "count": 251,
+            "hitRate": 0.5737051792828686,
+            "avgRet": 0.05807621244659359
+          },
+          "bull": {
+            "count": 112,
+            "hitRate": 0.5982142857142857
+          },
+          "bear": {
+            "count": 139,
+            "hitRate": 0.5539568345323741
+          }
+        },
+        "ARB": {
+          "total": {
+            "count": 238,
+            "hitRate": 0.47478991596638653,
+            "avgRet": 0.003716035300060418
+          },
+          "bull": {
+            "count": 81,
+            "hitRate": 0.4567901234567901
+          },
+          "bear": {
+            "count": 157,
+            "hitRate": 0.4840764331210191
+          }
+        },
+        "OP": {
+          "total": {
+            "count": 225,
+            "hitRate": 0.4533333333333333,
+            "avgRet": -0.018281894154885046
+          },
+          "bull": {
+            "count": 77,
+            "hitRate": 0.38961038961038963
+          },
+          "bear": {
+            "count": 148,
+            "hitRate": 0.4864864864864865
+          }
+        },
+        "INJ": {
+          "total": {
+            "count": 243,
+            "hitRate": 0.4444444444444444,
+            "avgRet": -0.01838477938915688
+          },
+          "bull": {
+            "count": 105,
+            "hitRate": 0.47619047619047616
+          },
+          "bear": {
+            "count": 138,
+            "hitRate": 0.42028985507246375
+          }
+        },
+        "SUI": {
+          "total": {
+            "count": 242,
+            "hitRate": 0.512396694214876,
+            "avgRet": 0.026448310665875066
+          },
+          "bull": {
+            "count": 146,
+            "hitRate": 0.547945205479452
+          },
+          "bear": {
+            "count": 96,
+            "hitRate": 0.4583333333333333
+          }
+        },
+        "NEAR": {
+          "total": {
+            "count": 239,
+            "hitRate": 0.40585774058577406,
+            "avgRet": -0.02949519068706373
+          },
+          "bull": {
+            "count": 85,
+            "hitRate": 0.4117647058823529
+          },
+          "bear": {
+            "count": 154,
+            "hitRate": 0.4025974025974026
+          }
+        },
+        "APT": {
+          "total": {
+            "count": 223,
+            "hitRate": 0.3811659192825112,
+            "avgRet": -0.03697646547211214
+          },
+          "bull": {
+            "count": 101,
+            "hitRate": 0.37623762376237624
+          },
+          "bear": {
+            "count": 122,
+            "hitRate": 0.38524590163934425
+          }
+        },
+        "TIA": {
+          "total": {
+            "count": 212,
+            "hitRate": 0.37735849056603776,
+            "avgRet": -0.05519256278634838
+          },
+          "bull": {
+            "count": 61,
+            "hitRate": 0.2459016393442623
+          },
+          "bear": {
+            "count": 151,
+            "hitRate": 0.4304635761589404
+          }
+        }
+      }
+    },
+    "decision": {
+      "has_predictive_value": false,
+      "config": {
+        "N": 30,
+        "threshold": 1
+      },
+      "train": {
+        "count": 2760,
+        "hitRate": 0.5083333333333333,
+        "avgRet": 0.010120137304601373,
+        "bull": {
+          "count": 931,
+          "hitRate": 0.4822771213748657
+        },
+        "bear": {
+          "count": 1829,
+          "hitRate": 0.5215965008201203
+        }
+      },
+      "val": {
+        "count": 2744,
+        "hitRate": 0.5776239067055393,
+        "avgRet": 0.040042603244759674
+      },
+      "oos": {
+        "count": 3011,
+        "hitRate": 0.4749252739953504,
+        "avgRet": -0.0012284593689640948,
+        "bull": {
+          "count": 1378,
+          "hitRate": 0.4941944847605225
+        },
+        "bear": {
+          "count": 1633,
+          "hitRate": 0.45866503368034295
+        }
+      },
+      "oos_reverse": {
+        "count": 3011,
+        "hitRate": 0.5250747260046497,
+        "avgRet": 0.0012284593689640948
+      },
+      "reverse_has_predictive_value": true,
+      "all_configs_oos": [
+        {
+          "config": {
+            "N": 20,
+            "threshold": 0.5
+          },
+          "train": {
+            "count": 3518,
+            "hitRate": 0.49118817509948837,
+            "avgRet": 0.004656978967293957,
+            "bull": {
+              "count": 1344,
+              "hitRate": 0.45089285714285715
+            },
+            "bear": {
+              "count": 2174,
+              "hitRate": 0.516099356025759
+            }
+          },
+          "val": {
+            "count": 3293,
+            "hitRate": 0.5608867294260552,
+            "avgRet": 0.03256839568445665
+          },
+          "oos": {
+            "count": 3725,
+            "hitRate": 0.46738255033557047,
+            "avgRet": -0.002223238921574684,
+            "bull": {
+              "count": 1733,
+              "hitRate": 0.47778418926716676
+            },
+            "bear": {
+              "count": 1992,
+              "hitRate": 0.4583333333333333
+            }
+          },
+          "train_reverse": {
+            "count": 3518,
+            "hitRate": 0.5076748152359295,
+            "avgRet": -0.004656978967293957
+          },
+          "oos_reverse": {
+            "count": 3725,
+            "hitRate": 0.5326174496644295,
+            "avgRet": 0.002223238921574684
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 0.75
+          },
+          "train": {
+            "count": 2955,
+            "hitRate": 0.4873096446700508,
+            "avgRet": 0.0037801505635239314,
+            "bull": {
+              "count": 1116,
+              "hitRate": 0.4453405017921147
+            },
+            "bear": {
+              "count": 1839,
+              "hitRate": 0.512778684067428
+            }
+          },
+          "val": {
+            "count": 2649,
+            "hitRate": 0.5681389203473008,
+            "avgRet": 0.03675635492453852
+          },
+          "oos": {
+            "count": 3078,
+            "hitRate": 0.4603638726445744,
+            "avgRet": -0.003287513171179847,
+            "bull": {
+              "count": 1511,
+              "hitRate": 0.47915287888815355
+            },
+            "bear": {
+              "count": 1567,
+              "hitRate": 0.44224633056796425
+            }
+          },
+          "train_reverse": {
+            "count": 2955,
+            "hitRate": 0.5116751269035533,
+            "avgRet": -0.0037801505635239314
+          },
+          "oos_reverse": {
+            "count": 3078,
+            "hitRate": 0.5396361273554257,
+            "avgRet": 0.003287513171179847
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 1
+          },
+          "train": {
+            "count": 2396,
+            "hitRate": 0.49081803005008345,
+            "avgRet": 0.005640408409307734,
+            "bull": {
+              "count": 889,
+              "hitRate": 0.45556805399325084
+            },
+            "bear": {
+              "count": 1507,
+              "hitRate": 0.5116124751161247
+            }
+          },
+          "val": {
+            "count": 2101,
+            "hitRate": 0.5702046644455021,
+            "avgRet": 0.03756732361979995
+          },
+          "oos": {
+            "count": 2493,
+            "hitRate": 0.45046129161652626,
+            "avgRet": -0.0068880208015759435,
+            "bull": {
+              "count": 1301,
+              "hitRate": 0.47578785549577246
+            },
+            "bear": {
+              "count": 1192,
+              "hitRate": 0.4228187919463087
+            }
+          },
+          "train_reverse": {
+            "count": 2396,
+            "hitRate": 0.508347245409015,
+            "avgRet": -0.005640408409307734
+          },
+          "oos_reverse": {
+            "count": 2493,
+            "hitRate": 0.5495387083834737,
+            "avgRet": 0.0068880208015759435
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 1.5
+          },
+          "train": {
+            "count": 1460,
+            "hitRate": 0.4815068493150685,
+            "avgRet": 0.0050446827293187425,
+            "bull": {
+              "count": 573,
+              "hitRate": 0.4781849912739965
+            },
+            "bear": {
+              "count": 887,
+              "hitRate": 0.4836527621195039
+            }
+          },
+          "val": {
+            "count": 1251,
+            "hitRate": 0.5771382893685052,
+            "avgRet": 0.04404724251066898
+          },
+          "oos": {
+            "count": 1516,
+            "hitRate": 0.43601583113456466,
+            "avgRet": -0.01112466982277356,
+            "bull": {
+              "count": 905,
+              "hitRate": 0.4861878453038674
+            },
+            "bear": {
+              "count": 611,
+              "hitRate": 0.3617021276595745
+            }
+          },
+          "train_reverse": {
+            "count": 1460,
+            "hitRate": 0.5184931506849315,
+            "avgRet": -0.0050446827293187425
+          },
+          "oos_reverse": {
+            "count": 1516,
+            "hitRate": 0.5639841688654353,
+            "avgRet": 0.01112466982277356
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 2
+          },
+          "train": {
+            "count": 701,
+            "hitRate": 0.4593437945791726,
+            "avgRet": 0.005986796546641273,
+            "bull": {
+              "count": 317,
+              "hitRate": 0.5110410094637224
+            },
+            "bear": {
+              "count": 384,
+              "hitRate": 0.4166666666666667
+            }
+          },
+          "val": {
+            "count": 674,
+            "hitRate": 0.6023738872403561,
+            "avgRet": 0.05614895364241944
+          },
+          "oos": {
+            "count": 792,
+            "hitRate": 0.42676767676767674,
+            "avgRet": -0.017071943575000074,
+            "bull": {
+              "count": 549,
+              "hitRate": 0.4899817850637523
+            },
+            "bear": {
+              "count": 243,
+              "hitRate": 0.2839506172839506
+            }
+          },
+          "train_reverse": {
+            "count": 701,
+            "hitRate": 0.5406562054208274,
+            "avgRet": -0.005986796546641273
+          },
+          "oos_reverse": {
+            "count": 792,
+            "hitRate": 0.5732323232323232,
+            "avgRet": 0.017071943575000074
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 0.5
+          },
+          "train": {
+            "count": 3655,
+            "hitRate": 0.5020519835841313,
+            "avgRet": 0.00591996018883955,
+            "bull": {
+              "count": 1292,
+              "hitRate": 0.46594427244582043
+            },
+            "bear": {
+              "count": 2363,
+              "hitRate": 0.5217943292424884
+            }
+          },
+          "val": {
+            "count": 3697,
+            "hitRate": 0.5796591831214498,
+            "avgRet": 0.037872393607461335
+          },
+          "oos": {
+            "count": 3994,
+            "hitRate": 0.47346019028542813,
+            "avgRet": -0.002870298226554299,
+            "bull": {
+              "count": 1734,
+              "hitRate": 0.4826989619377163
+            },
+            "bear": {
+              "count": 2260,
+              "hitRate": 0.4663716814159292
+            }
+          },
+          "train_reverse": {
+            "count": 3655,
+            "hitRate": 0.4971272229822161,
+            "avgRet": -0.00591996018883955
+          },
+          "oos_reverse": {
+            "count": 3994,
+            "hitRate": 0.5265398097145718,
+            "avgRet": 0.002870298226554299
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 0.75
+          },
+          "train": {
+            "count": 3213,
+            "hitRate": 0.5057578586990352,
+            "avgRet": 0.007764579796942805,
+            "bull": {
+              "count": 1103,
+              "hitRate": 0.4696282864913871
+            },
+            "bear": {
+              "count": 2110,
+              "hitRate": 0.5246445497630332
+            }
+          },
+          "val": {
+            "count": 3204,
+            "hitRate": 0.5808364544319601,
+            "avgRet": 0.03992450401715242
+          },
+          "oos": {
+            "count": 3484,
+            "hitRate": 0.47388059701492535,
+            "avgRet": -0.0018868877327772784,
+            "bull": {
+              "count": 1541,
+              "hitRate": 0.4899415963659961
+            },
+            "bear": {
+              "count": 1943,
+              "hitRate": 0.4611425630468348
+            }
+          },
+          "train_reverse": {
+            "count": 3213,
+            "hitRate": 0.4933084344849051,
+            "avgRet": -0.007764579796942805
+          },
+          "oos_reverse": {
+            "count": 3484,
+            "hitRate": 0.5261194029850746,
+            "avgRet": 0.0018868877327772784
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 1
+          },
+          "train": {
+            "count": 2760,
+            "hitRate": 0.5083333333333333,
+            "avgRet": 0.010120137304601373,
+            "bull": {
+              "count": 931,
+              "hitRate": 0.4822771213748657
+            },
+            "bear": {
+              "count": 1829,
+              "hitRate": 0.5215965008201203
+            }
+          },
+          "val": {
+            "count": 2744,
+            "hitRate": 0.5776239067055393,
+            "avgRet": 0.040042603244759674
+          },
+          "oos": {
+            "count": 3011,
+            "hitRate": 0.4749252739953504,
+            "avgRet": -0.0012284593689640948,
+            "bull": {
+              "count": 1378,
+              "hitRate": 0.4941944847605225
+            },
+            "bear": {
+              "count": 1633,
+              "hitRate": 0.45866503368034295
+            }
+          },
+          "train_reverse": {
+            "count": 2760,
+            "hitRate": 0.4905797101449275,
+            "avgRet": -0.010120137304601373
+          },
+          "oos_reverse": {
+            "count": 3011,
+            "hitRate": 0.5250747260046497,
+            "avgRet": 0.0012284593689640948
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 1.5
+          },
+          "train": {
+            "count": 1939,
+            "hitRate": 0.4951005673027334,
+            "avgRet": 0.010070793360627,
+            "bull": {
+              "count": 668,
+              "hitRate": 0.4745508982035928
+            },
+            "bear": {
+              "count": 1271,
+              "hitRate": 0.5059008654602675
+            }
+          },
+          "val": {
+            "count": 1853,
+            "hitRate": 0.5876956287101996,
+            "avgRet": 0.04640296048821847
+          },
+          "oos": {
+            "count": 2101,
+            "hitRate": 0.46977629700142787,
+            "avgRet": -0.0021644648373187287,
+            "bull": {
+              "count": 1059,
+              "hitRate": 0.5070821529745042
+            },
+            "bear": {
+              "count": 1042,
+              "hitRate": 0.43186180422264875
+            }
+          },
+          "train_reverse": {
+            "count": 1939,
+            "hitRate": 0.5033522434244456,
+            "avgRet": -0.010070793360627
+          },
+          "oos_reverse": {
+            "count": 2101,
+            "hitRate": 0.5302237029985721,
+            "avgRet": 0.0021644648373187287
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 2
+          },
+          "train": {
+            "count": 1238,
+            "hitRate": 0.47334410339256866,
+            "avgRet": 0.007983479569805614,
+            "bull": {
+              "count": 448,
+              "hitRate": 0.4732142857142857
+            },
+            "bear": {
+              "count": 790,
+              "hitRate": 0.47341772151898737
+            }
+          },
+          "val": {
+            "count": 1202,
+            "hitRate": 0.5965058236272879,
+            "avgRet": 0.048026834561107644
+          },
+          "oos": {
+            "count": 1286,
+            "hitRate": 0.45878693623639194,
+            "avgRet": -0.007035863125498792,
+            "bull": {
+              "count": 745,
+              "hitRate": 0.5248322147651007
+            },
+            "bear": {
+              "count": 541,
+              "hitRate": 0.3678373382624769
+            }
+          },
+          "train_reverse": {
+            "count": 1238,
+            "hitRate": 0.5258481421647819,
+            "avgRet": -0.007983479569805614
+          },
+          "oos_reverse": {
+            "count": 1286,
+            "hitRate": 0.5412130637636081,
+            "avgRet": 0.007035863125498792
+          }
+        }
+      ]
+    }
+  },
+  "obv_divergence": {
+    "sweep_grid": [
+      {
+        "config": {
+          "N": 10,
+          "slopeCut": 0.02
+        },
+        "train": {
+          "count": 2287,
+          "hitRate": 0.5085264538696983,
+          "avgRet": 0.0019494263466967468,
+          "bull": {
+            "count": 1316,
+            "hitRate": 0.4886018237082067
+          },
+          "bear": {
+            "count": 971,
+            "hitRate": 0.5355303810504635
+          }
+        },
+        "val": {
+          "count": 1360,
+          "hitRate": 0.4411764705882353,
+          "avgRet": -0.026797539844772716
+        },
+        "oos": {
+          "count": 1256,
+          "hitRate": 0.5191082802547771,
+          "avgRet": -0.004468825037307812,
+          "bull": {
+            "count": 612,
+            "hitRate": 0.5669934640522876
+          },
+          "bear": {
+            "count": 644,
+            "hitRate": 0.47360248447204967
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 10,
+          "slopeCut": 0.05
+        },
+        "train": {
+          "count": 1892,
+          "hitRate": 0.5068710359408034,
+          "avgRet": 0.0018590106158954142,
+          "bull": {
+            "count": 1104,
+            "hitRate": 0.4927536231884058
+          },
+          "bear": {
+            "count": 788,
+            "hitRate": 0.5266497461928934
+          }
+        },
+        "val": {
+          "count": 945,
+          "hitRate": 0.4433862433862434,
+          "avgRet": -0.025730420994013032
+        },
+        "oos": {
+          "count": 920,
+          "hitRate": 0.525,
+          "avgRet": -0.0033902043881095982,
+          "bull": {
+            "count": 450,
+            "hitRate": 0.5755555555555556
+          },
+          "bear": {
+            "count": 470,
+            "hitRate": 0.4765957446808511
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 10,
+          "slopeCut": 0.1
+        },
+        "train": {
+          "count": 1312,
+          "hitRate": 0.5038109756097561,
+          "avgRet": -0.001602036082733739,
+          "bull": {
+            "count": 766,
+            "hitRate": 0.4869451697127937
+          },
+          "bear": {
+            "count": 546,
+            "hitRate": 0.5274725274725275
+          }
+        },
+        "val": {
+          "count": 532,
+          "hitRate": 0.4417293233082707,
+          "avgRet": -0.04695870802810013
+        },
+        "oos": {
+          "count": 512,
+          "hitRate": 0.53515625,
+          "avgRet": -0.006431792642548269,
+          "bull": {
+            "count": 260,
+            "hitRate": 0.6192307692307693
+          },
+          "bear": {
+            "count": 252,
+            "hitRate": 0.44841269841269843
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 15,
+          "slopeCut": 0.02
+        },
+        "train": {
+          "count": 2420,
+          "hitRate": 0.515702479338843,
+          "avgRet": 0.005963077986840555,
+          "bull": {
+            "count": 1447,
+            "hitRate": 0.48445058742225294
+          },
+          "bear": {
+            "count": 973,
+            "hitRate": 0.5621788283658787
+          }
+        },
+        "val": {
+          "count": 1451,
+          "hitRate": 0.4203997243280496,
+          "avgRet": -0.03224449510872385
+        },
+        "oos": {
+          "count": 1416,
+          "hitRate": 0.5310734463276836,
+          "avgRet": -0.0019894506212753474,
+          "bull": {
+            "count": 685,
+            "hitRate": 0.5708029197080292
+          },
+          "bear": {
+            "count": 731,
+            "hitRate": 0.493844049247606
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 15,
+          "slopeCut": 0.05
+        },
+        "train": {
+          "count": 2043,
+          "hitRate": 0.5159079784630446,
+          "avgRet": 0.0077990695997102455,
+          "bull": {
+            "count": 1221,
+            "hitRate": 0.48894348894348894
+          },
+          "bear": {
+            "count": 822,
+            "hitRate": 0.5559610705596107
+          }
+        },
+        "val": {
+          "count": 1131,
+          "hitRate": 0.41644562334217505,
+          "avgRet": -0.037471062560424775
+        },
+        "oos": {
+          "count": 1136,
+          "hitRate": 0.539612676056338,
+          "avgRet": -0.0016705816761262912,
+          "bull": {
+            "count": 558,
+            "hitRate": 0.5967741935483871
+          },
+          "bear": {
+            "count": 578,
+            "hitRate": 0.4844290657439446
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 15,
+          "slopeCut": 0.1
+        },
+        "train": {
+          "count": 1524,
+          "hitRate": 0.5045931758530183,
+          "avgRet": 0.004728346289682625,
+          "bull": {
+            "count": 903,
+            "hitRate": 0.4883720930232558
+          },
+          "bear": {
+            "count": 621,
+            "hitRate": 0.5281803542673108
+          }
+        },
+        "val": {
+          "count": 684,
+          "hitRate": 0.3888888888888889,
+          "avgRet": -0.05376149638840723
+        },
+        "oos": {
+          "count": 730,
+          "hitRate": 0.541095890410959,
+          "avgRet": -0.001968349165169595,
+          "bull": {
+            "count": 349,
+            "hitRate": 0.6246418338108882
+          },
+          "bear": {
+            "count": 381,
+            "hitRate": 0.4645669291338583
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 20,
+          "slopeCut": 0.02
+        },
+        "train": {
+          "count": 2469,
+          "hitRate": 0.5232887808829486,
+          "avgRet": 0.010015801141944562,
+          "bull": {
+            "count": 1529,
+            "hitRate": 0.4970568999345978
+          },
+          "bear": {
+            "count": 940,
+            "hitRate": 0.5659574468085107
+          }
+        },
+        "val": {
+          "count": 1605,
+          "hitRate": 0.4305295950155763,
+          "avgRet": -0.03279801099578273
+        },
+        "oos": {
+          "count": 1435,
+          "hitRate": 0.5491289198606272,
+          "avgRet": 0.013377859076856265,
+          "bull": {
+            "count": 743,
+            "hitRate": 0.5464333781965006
+          },
+          "bear": {
+            "count": 692,
+            "hitRate": 0.5520231213872833
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 20,
+          "slopeCut": 0.05
+        },
+        "train": {
+          "count": 2148,
+          "hitRate": 0.5162942271880819,
+          "avgRet": 0.009204212946644209,
+          "bull": {
+            "count": 1331,
+            "hitRate": 0.48534936138241924
+          },
+          "bear": {
+            "count": 817,
+            "hitRate": 0.5667074663402693
+          }
+        },
+        "val": {
+          "count": 1281,
+          "hitRate": 0.42232630757220924,
+          "avgRet": -0.03645538272317832
+        },
+        "oos": {
+          "count": 1207,
+          "hitRate": 0.5617232808616405,
+          "avgRet": 0.01893760642269063,
+          "bull": {
+            "count": 627,
+            "hitRate": 0.5757575757575758
+          },
+          "bear": {
+            "count": 580,
+            "hitRate": 0.5465517241379311
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 20,
+          "slopeCut": 0.1
+        },
+        "train": {
+          "count": 1666,
+          "hitRate": 0.5126050420168067,
+          "avgRet": 0.006475350637502869,
+          "bull": {
+            "count": 1034,
+            "hitRate": 0.48936170212765956
+          },
+          "bear": {
+            "count": 632,
+            "hitRate": 0.5506329113924051
+          }
+        },
+        "val": {
+          "count": 892,
+          "hitRate": 0.40582959641255606,
+          "avgRet": -0.048016931555557786
+        },
+        "oos": {
+          "count": 843,
+          "hitRate": 0.571767497034401,
+          "avgRet": 0.01685398205921985,
+          "bull": {
+            "count": 436,
+            "hitRate": 0.6123853211009175
+          },
+          "bear": {
+            "count": 407,
+            "hitRate": 0.5282555282555282
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "slopeCut": 0.02
+        },
+        "train": {
+          "count": 2475,
+          "hitRate": 0.5103030303030303,
+          "avgRet": -0.0007453087209716261,
+          "bull": {
+            "count": 1642,
+            "hitRate": 0.4890377588306943
+          },
+          "bear": {
+            "count": 833,
+            "hitRate": 0.5522208883553421
+          }
+        },
+        "val": {
+          "count": 1646,
+          "hitRate": 0.4204131227217497,
+          "avgRet": -0.031185380223611843
+        },
+        "oos": {
+          "count": 1558,
+          "hitRate": 0.5102695763799743,
+          "avgRet": 0.00518104245238682,
+          "bull": {
+            "count": 890,
+            "hitRate": 0.503370786516854
+          },
+          "bear": {
+            "count": 668,
+            "hitRate": 0.5194610778443114
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "slopeCut": 0.05
+        },
+        "train": {
+          "count": 2223,
+          "hitRate": 0.5065227170490328,
+          "avgRet": -0.0030825955518772774,
+          "bull": {
+            "count": 1471,
+            "hitRate": 0.4908225696804895
+          },
+          "bear": {
+            "count": 752,
+            "hitRate": 0.5372340425531915
+          }
+        },
+        "val": {
+          "count": 1417,
+          "hitRate": 0.4100211714890614,
+          "avgRet": -0.03569366644715616
+        },
+        "oos": {
+          "count": 1314,
+          "hitRate": 0.5091324200913242,
+          "avgRet": 0.004703016692106613,
+          "bull": {
+            "count": 750,
+            "hitRate": 0.512
+          },
+          "bear": {
+            "count": 564,
+            "hitRate": 0.5053191489361702
+          }
+        }
+      },
+      {
+        "config": {
+          "N": 30,
+          "slopeCut": 0.1
+        },
+        "train": {
+          "count": 1830,
+          "hitRate": 0.49781420765027323,
+          "avgRet": -0.005694480158371909,
+          "bull": {
+            "count": 1219,
+            "hitRate": 0.4831829368334701
+          },
+          "bear": {
+            "count": 611,
+            "hitRate": 0.5270049099836334
+          }
+        },
+        "val": {
+          "count": 1070,
+          "hitRate": 0.3766355140186916,
+          "avgRet": -0.04813584150208189
+        },
+        "oos": {
+          "count": 934,
+          "hitRate": 0.5042826552462527,
+          "avgRet": 0.00019603585250829492,
+          "bull": {
+            "count": 521,
+            "hitRate": 0.525911708253359
+          },
+          "bear": {
+            "count": 413,
+            "hitRate": 0.47699757869249393
+          }
+        }
+      }
+    ],
+    "best_config": {
+      "config": {
+        "N": 20,
+        "slopeCut": 0.02
+      },
+      "train": {
+        "count": 2469,
+        "hitRate": 0.5232887808829486,
+        "avgRet": 0.010015801141944562,
+        "bull": {
+          "count": 1529,
+          "hitRate": 0.4970568999345978
+        },
+        "bear": {
+          "count": 940,
+          "hitRate": 0.5659574468085107
+        }
+      },
+      "val": {
+        "count": 1605,
+        "hitRate": 0.4305295950155763,
+        "avgRet": -0.03279801099578273
+      },
+      "oos": {
+        "count": 1435,
+        "hitRate": 0.5491289198606272,
+        "avgRet": 0.013377859076856265,
+        "bull": {
+          "count": 743,
+          "hitRate": 0.5464333781965006
+        },
+        "bear": {
+          "count": 692,
+          "hitRate": 0.5520231213872833
+        }
+      }
+    },
+    "windows_breakdown": {
+      "1": {
+        "TRAIN": {
+          "total": {
+            "count": 2469,
+            "hits": 1272,
+            "retSum": 1.3270236865510476,
+            "hitRate": 0.5151883353584447,
+            "avgSignedRet": 0.0005374741541316516
+          },
+          "bullish": {
+            "count": 1529,
+            "hits": 775,
+            "retSum": -0.47513955069492253,
+            "hitRate": 0.5068672334859385,
+            "avgSignedRet": -0.0003107518317167577
+          },
+          "bearish": {
+            "count": 940,
+            "hits": 497,
+            "retSum": 1.8021632372459704,
+            "hitRate": 0.5287234042553192,
+            "avgSignedRet": 0.001917194933240394
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 1605,
+            "hits": 779,
+            "retSum": -6.884651586368728,
+            "hitRate": 0.4853582554517134,
+            "avgSignedRet": -0.004289502546024129
+          },
+          "bullish": {
+            "count": 739,
+            "hits": 350,
+            "retSum": -1.256819145068814,
+            "hitRate": 0.4736129905277402,
+            "avgSignedRet": -0.0017007024967101677
+          },
+          "bearish": {
+            "count": 866,
+            "hits": 429,
+            "retSum": -5.627832441299913,
+            "hitRate": 0.4953810623556582,
+            "avgSignedRet": -0.006498651779792047
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 1454,
+            "hits": 716,
+            "retSum": -2.6936702124459204,
+            "hitRate": 0.4924346629986245,
+            "avgSignedRet": -0.0018525929934291062
+          },
+          "bullish": {
+            "count": 745,
+            "hits": 368,
+            "retSum": -1.2949616077454649,
+            "hitRate": 0.49395973154362416,
+            "avgSignedRet": -0.0017382035003294832
+          },
+          "bearish": {
+            "count": 709,
+            "hits": 348,
+            "retSum": -1.3987086047004542,
+            "hitRate": 0.4908321579689704,
+            "avgSignedRet": -0.001972790697743941
+          }
+        }
+      },
+      "5": {
+        "TRAIN": {
+          "total": {
+            "count": 2469,
+            "hits": 1270,
+            "retSum": 13.22878621098412,
+            "hitRate": 0.5143782908059943,
+            "avgSignedRet": 0.0053579531028692265
+          },
+          "bullish": {
+            "count": 1529,
+            "hits": 765,
+            "retSum": 5.7356280518518625,
+            "hitRate": 0.5003270111183781,
+            "avgSignedRet": 0.003751228287672899
+          },
+          "bearish": {
+            "count": 940,
+            "hits": 505,
+            "retSum": 7.493158159132295,
+            "hitRate": 0.5372340425531915,
+            "avgSignedRet": 0.00797144485014074
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 1605,
+            "hits": 760,
+            "retSum": -25.046986722008032,
+            "hitRate": 0.4735202492211838,
+            "avgSignedRet": -0.015605599203743322
+          },
+          "bullish": {
+            "count": 739,
+            "hits": 361,
+            "retSum": -0.760034036005061,
+            "hitRate": 0.4884979702300406,
+            "avgSignedRet": -0.0010284628362720717
+          },
+          "bearish": {
+            "count": 866,
+            "hits": 399,
+            "retSum": -24.286952686002962,
+            "hitRate": 0.4607390300230947,
+            "avgSignedRet": -0.028044980006931827
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 1446,
+            "hits": 755,
+            "retSum": 3.205235911197064,
+            "hitRate": 0.5221300138312587,
+            "avgSignedRet": 0.0022166223452261854
+          },
+          "bullish": {
+            "count": 743,
+            "hits": 413,
+            "retSum": 6.654641772235653,
+            "hitRate": 0.5558546433378196,
+            "avgSignedRet": 0.008956449222389843
+          },
+          "bearish": {
+            "count": 703,
+            "hits": 342,
+            "retSum": -3.449405861038597,
+            "hitRate": 0.4864864864864865,
+            "avgSignedRet": -0.004906693970182926
+          }
+        }
+      },
+      "10": {
+        "TRAIN": {
+          "total": {
+            "count": 2469,
+            "hits": 1292,
+            "retSum": 24.72901301946112,
+            "hitRate": 0.5232887808829486,
+            "avgSignedRet": 0.010015801141944562
+          },
+          "bullish": {
+            "count": 1529,
+            "hits": 760,
+            "retSum": 10.525719771457467,
+            "hitRate": 0.4970568999345978,
+            "avgSignedRet": 0.006884054788395989
+          },
+          "bearish": {
+            "count": 940,
+            "hits": 532,
+            "retSum": 14.20329324800363,
+            "hitRate": 0.5659574468085107,
+            "avgSignedRet": 0.015109886434046415
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 1605,
+            "hits": 691,
+            "retSum": -52.64080764823128,
+            "hitRate": 0.4305295950155763,
+            "avgSignedRet": -0.03279801099578273
+          },
+          "bullish": {
+            "count": 739,
+            "hits": 300,
+            "retSum": -4.708521278864112,
+            "hitRate": 0.4059539918809202,
+            "avgSignedRet": -0.006371476696703806
+          },
+          "bearish": {
+            "count": 866,
+            "hits": 391,
+            "retSum": -47.93228636936712,
+            "hitRate": 0.4515011547344111,
+            "avgSignedRet": -0.0553490604727103
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 1435,
+            "hits": 788,
+            "retSum": 19.19722777528874,
+            "hitRate": 0.5491289198606272,
+            "avgSignedRet": 0.013377859076856265
+          },
+          "bullish": {
+            "count": 743,
+            "hits": 406,
+            "retSum": 17.671326186155625,
+            "hitRate": 0.5464333781965006,
+            "avgSignedRet": 0.023783749914072172
+          },
+          "bearish": {
+            "count": 692,
+            "hits": 382,
+            "retSum": 1.5259015891331071,
+            "hitRate": 0.5520231213872833,
+            "avgSignedRet": 0.002205060099903334
+          }
+        }
+      },
+      "20": {
+        "TRAIN": {
+          "total": {
+            "count": 2469,
+            "hits": 1268,
+            "retSum": 20.081264080836206,
+            "hitRate": 0.5135682462535439,
+            "avgSignedRet": 0.008133359287499475
+          },
+          "bullish": {
+            "count": 1529,
+            "hits": 671,
+            "retSum": 1.8875819692300495,
+            "hitRate": 0.43884892086330934,
+            "avgSignedRet": 0.001234520581576226
+          },
+          "bearish": {
+            "count": 940,
+            "hits": 597,
+            "retSum": 18.19368211160614,
+            "hitRate": 0.6351063829787233,
+            "avgSignedRet": 0.019354980969793767
+          }
+        },
+        "VALIDATION": {
+          "total": {
+            "count": 1605,
+            "hits": 621,
+            "retSum": -102.72233676025238,
+            "hitRate": 0.38691588785046727,
+            "avgSignedRet": -0.06400145592539089
+          },
+          "bullish": {
+            "count": 739,
+            "hits": 273,
+            "retSum": -5.46590653079352,
+            "hitRate": 0.36941813261163736,
+            "avgSignedRet": -0.00739635525141207
+          },
+          "bearish": {
+            "count": 866,
+            "hits": 348,
+            "retSum": -97.25643022945884,
+            "hitRate": 0.4018475750577367,
+            "avgSignedRet": -0.11230534668528734
+          }
+        },
+        "OOS": {
+          "total": {
+            "count": 1398,
+            "hits": 694,
+            "retSum": 7.453014191606375,
+            "hitRate": 0.49642346208869814,
+            "avgSignedRet": 0.005331197561950197
+          },
+          "bullish": {
+            "count": 743,
+            "hits": 347,
+            "retSum": 18.597138629902474,
+            "hitRate": 0.4670255720053836,
+            "avgSignedRet": 0.025029796271739534
+          },
+          "bearish": {
+            "count": 655,
+            "hits": 347,
+            "retSum": -11.144124438296114,
+            "hitRate": 0.5297709923664122,
+            "avgSignedRet": -0.01701393044014674
+          }
+        }
+      }
+    },
+    "per_symbol": {
+      "TRAIN": {
+        "BTC": {
+          "total": {
+            "count": 337,
+            "hitRate": 0.5489614243323442,
+            "avgRet": 0.02088428222588954
+          },
+          "bull": {
+            "count": 204,
+            "hitRate": 0.5833333333333334
+          },
+          "bear": {
+            "count": 133,
+            "hitRate": 0.49624060150375937
+          }
+        },
+        "ETH": {
+          "total": {
+            "count": 435,
+            "hitRate": 0.5241379310344828,
+            "avgRet": 0.006400374848558522
+          },
+          "bull": {
+            "count": 245,
+            "hitRate": 0.5265306122448979
+          },
+          "bear": {
+            "count": 190,
+            "hitRate": 0.5210526315789473
+          }
+        },
+        "SOL": {
+          "total": {
+            "count": 405,
+            "hitRate": 0.5506172839506173,
+            "avgRet": 0.022341446016624356
+          },
+          "bull": {
+            "count": 253,
+            "hitRate": 0.5019762845849802
+          },
+          "bear": {
+            "count": 152,
+            "hitRate": 0.631578947368421
+          }
+        },
+        "AVAX": {
+          "total": {
+            "count": 390,
+            "hitRate": 0.49230769230769234,
+            "avgRet": 0.007416944864184301
+          },
+          "bull": {
+            "count": 230,
+            "hitRate": 0.46956521739130436
+          },
+          "bear": {
+            "count": 160,
+            "hitRate": 0.525
+          }
+        },
+        "LINK": {
+          "total": {
+            "count": 212,
+            "hitRate": 0.5330188679245284,
+            "avgRet": 0.01803617482010834
+          },
+          "bull": {
+            "count": 116,
+            "hitRate": 0.5172413793103449
+          },
+          "bear": {
+            "count": 96,
+            "hitRate": 0.5520833333333334
+          }
+        },
+        "DOGE": {
+          "total": {
+            "count": 112,
+            "hitRate": 0.44642857142857145,
+            "avgRet": -0.03085497813726346
+          },
+          "bull": {
+            "count": 86,
+            "hitRate": 0.36046511627906974
+          },
+          "bear": {
+            "count": 26,
+            "hitRate": 0.7307692307692307
+          }
+        },
+        "ARB": {
+          "total": {
+            "count": 25,
+            "hitRate": 0.88,
+            "avgRet": 0.08494288351027611
+          },
+          "bull": {
+            "count": 14,
+            "hitRate": 0.7857142857142857
+          },
+          "bear": {
+            "count": 11,
+            "hitRate": 1
+          }
+        },
+        "OP": {
+          "total": {
+            "count": 49,
+            "hitRate": 0.4897959183673469,
+            "avgRet": -0.09380029838715055
+          },
+          "bull": {
+            "count": 34,
+            "hitRate": 0.5294117647058824
+          },
+          "bear": {
+            "count": 15,
+            "hitRate": 0.4
+          }
+        },
+        "INJ": {
+          "total": {
+            "count": 71,
+            "hitRate": 0.4507042253521127,
+            "avgRet": 0.008709301080497079
+          },
+          "bull": {
+            "count": 55,
+            "hitRate": 0.509090909090909
+          },
+          "bear": {
+            "count": 16,
+            "hitRate": 0.25
+          }
+        },
+        "SUI": {
+          "total": {
+            "count": 34,
+            "hitRate": 0.4411764705882353,
+            "avgRet": -0.03858164466943387
+          },
+          "bull": {
+            "count": 27,
+            "hitRate": 0.2962962962962963
+          },
+          "bear": {
+            "count": 7,
+            "hitRate": 1
+          }
+        },
+        "NEAR": {
+          "total": {
+            "count": 323,
+            "hitRate": 0.5201238390092879,
+            "avgRet": 0.008079385571006011
+          },
+          "bull": {
+            "count": 200,
+            "hitRate": 0.455
+          },
+          "bear": {
+            "count": 123,
+            "hitRate": 0.6260162601626016
+          }
+        },
+        "APT": {
+          "total": {
+            "count": 76,
+            "hitRate": 0.5263157894736842,
+            "avgRet": 0.04150602291819974
+          },
+          "bull": {
+            "count": 65,
+            "hitRate": 0.46153846153846156
+          },
+          "bear": {
+            "count": 11,
+            "hitRate": 0.9090909090909091
+          }
+        },
+        "TIA": {
+          "total": {
+            "count": 0,
+            "hitRate": null,
+            "avgRet": null
+          },
+          "bull": {
+            "count": 0,
+            "hitRate": null
+          },
+          "bear": {
+            "count": 0,
+            "hitRate": null
+          }
+        }
+      },
+      "VALIDATION": {
+        "BTC": {
+          "total": {
+            "count": 261,
+            "hitRate": 0.38697318007662834,
+            "avgRet": -0.022986216001027945
+          },
+          "bull": {
+            "count": 95,
+            "hitRate": 0.45263157894736844
+          },
+          "bear": {
+            "count": 166,
+            "hitRate": 0.3493975903614458
+          }
+        },
+        "ETH": {
+          "total": {
+            "count": 275,
+            "hitRate": 0.41818181818181815,
+            "avgRet": 0.0010464847501650354
+          },
+          "bull": {
+            "count": 133,
+            "hitRate": 0.42105263157894735
+          },
+          "bear": {
+            "count": 142,
+            "hitRate": 0.4154929577464789
+          }
+        },
+        "SOL": {
+          "total": {
+            "count": 121,
+            "hitRate": 0.4049586776859504,
+            "avgRet": -0.07431885499363593
+          },
+          "bull": {
+            "count": 48,
+            "hitRate": 0.375
+          },
+          "bear": {
+            "count": 73,
+            "hitRate": 0.4246575342465753
+          }
+        },
+        "AVAX": {
+          "total": {
+            "count": 154,
+            "hitRate": 0.42207792207792205,
+            "avgRet": -0.04007040670027895
+          },
+          "bull": {
+            "count": 82,
+            "hitRate": 0.36585365853658536
+          },
+          "bear": {
+            "count": 72,
+            "hitRate": 0.4861111111111111
+          }
+        },
+        "LINK": {
+          "total": {
+            "count": 60,
+            "hitRate": 0.5333333333333333,
+            "avgRet": 0.030558935197430588
+          },
+          "bull": {
+            "count": 31,
+            "hitRate": 0.5161290322580645
+          },
+          "bear": {
+            "count": 29,
+            "hitRate": 0.5517241379310345
+          }
+        },
+        "DOGE": {
+          "total": {
+            "count": 47,
+            "hitRate": 0.48936170212765956,
+            "avgRet": -0.00866154732046806
+          },
+          "bull": {
+            "count": 30,
+            "hitRate": 0.43333333333333335
+          },
+          "bear": {
+            "count": 17,
+            "hitRate": 0.5882352941176471
+          }
+        },
+        "ARB": {
+          "total": {
+            "count": 119,
+            "hitRate": 0.5798319327731093,
+            "avgRet": -0.0071539125997357005
+          },
+          "bull": {
+            "count": 61,
+            "hitRate": 0.5245901639344263
+          },
+          "bear": {
+            "count": 58,
+            "hitRate": 0.6379310344827587
+          }
+        },
+        "OP": {
+          "total": {
+            "count": 73,
+            "hitRate": 0.5068493150684932,
+            "avgRet": -0.02773979024461263
+          },
+          "bull": {
+            "count": 49,
+            "hitRate": 0.42857142857142855
+          },
+          "bear": {
+            "count": 24,
+            "hitRate": 0.6666666666666666
+          }
+        },
+        "INJ": {
+          "total": {
+            "count": 101,
+            "hitRate": 0.43564356435643564,
+            "avgRet": -0.11002589997596852
+          },
+          "bull": {
+            "count": 29,
+            "hitRate": 0.27586206896551724
+          },
+          "bear": {
+            "count": 72,
+            "hitRate": 0.5
+          }
+        },
+        "SUI": {
+          "total": {
+            "count": 176,
+            "hitRate": 0.3806818181818182,
+            "avgRet": -0.05936962542106032
+          },
+          "bull": {
+            "count": 85,
+            "hitRate": 0.35294117647058826
+          },
+          "bear": {
+            "count": 91,
+            "hitRate": 0.4065934065934066
+          }
+        },
+        "NEAR": {
+          "total": {
+            "count": 76,
+            "hitRate": 0.40789473684210525,
+            "avgRet": -0.03591950565231003
+          },
+          "bull": {
+            "count": 29,
+            "hitRate": 0.27586206896551724
+          },
+          "bear": {
+            "count": 47,
+            "hitRate": 0.48936170212765956
+          }
+        },
+        "APT": {
+          "total": {
+            "count": 81,
+            "hitRate": 0.5185185185185185,
+            "avgRet": -0.016550441925634082
+          },
+          "bull": {
+            "count": 35,
+            "hitRate": 0.6
+          },
+          "bear": {
+            "count": 46,
+            "hitRate": 0.45652173913043476
+          }
+        },
+        "TIA": {
+          "total": {
+            "count": 61,
+            "hitRate": 0.26229508196721313,
+            "avgRet": -0.07678277697561693
+          },
+          "bull": {
+            "count": 32,
+            "hitRate": 0.125
+          },
+          "bear": {
+            "count": 29,
+            "hitRate": 0.41379310344827586
+          }
+        }
+      },
+      "OOS": {
+        "BTC": {
+          "total": {
+            "count": 279,
+            "hitRate": 0.4838709677419355,
+            "avgRet": 0.0004894097374424062
+          },
+          "bull": {
+            "count": 116,
+            "hitRate": 0.603448275862069
+          },
+          "bear": {
+            "count": 163,
+            "hitRate": 0.3987730061349693
+          }
+        },
+        "ETH": {
+          "total": {
+            "count": 306,
+            "hitRate": 0.5130718954248366,
+            "avgRet": -0.010216521136165791
+          },
+          "bull": {
+            "count": 180,
+            "hitRate": 0.5333333333333333
+          },
+          "bear": {
+            "count": 126,
+            "hitRate": 0.48412698412698413
+          }
+        },
+        "SOL": {
+          "total": {
+            "count": 45,
+            "hitRate": 0.5555555555555556,
+            "avgRet": -0.009977263065343404
+          },
+          "bull": {
+            "count": 22,
+            "hitRate": 0.7272727272727273
+          },
+          "bear": {
+            "count": 23,
+            "hitRate": 0.391304347826087
+          }
+        },
+        "AVAX": {
+          "total": {
+            "count": 53,
+            "hitRate": 0.37735849056603776,
+            "avgRet": -0.040018976058953194
+          },
+          "bull": {
+            "count": 32,
+            "hitRate": 0.1875
+          },
+          "bear": {
+            "count": 21,
+            "hitRate": 0.6666666666666666
+          }
+        },
+        "LINK": {
+          "total": {
+            "count": 90,
+            "hitRate": 0.5888888888888889,
+            "avgRet": 0.029666339169604154
+          },
+          "bull": {
+            "count": 38,
+            "hitRate": 0.42105263157894735
+          },
+          "bear": {
+            "count": 52,
+            "hitRate": 0.7115384615384616
+          }
+        },
+        "DOGE": {
+          "total": {
+            "count": 70,
+            "hitRate": 0.9285714285714286,
+            "avgRet": 0.1351199020279566
+          },
+          "bull": {
+            "count": 45,
+            "hitRate": 0.8888888888888888
+          },
+          "bear": {
+            "count": 25,
+            "hitRate": 1
+          }
+        },
+        "ARB": {
+          "total": {
+            "count": 210,
+            "hitRate": 0.6,
+            "avgRet": 0.01392527253937256
+          },
+          "bull": {
+            "count": 126,
+            "hitRate": 0.6111111111111112
+          },
+          "bear": {
+            "count": 84,
+            "hitRate": 0.5833333333333334
+          }
+        },
+        "OP": {
+          "total": {
+            "count": 72,
+            "hitRate": 0.5,
+            "avgRet": -0.031042270626373263
+          },
+          "bull": {
+            "count": 32,
+            "hitRate": 0.4375
+          },
+          "bear": {
+            "count": 40,
+            "hitRate": 0.55
+          }
+        },
+        "INJ": {
+          "total": {
+            "count": 63,
+            "hitRate": 0.5396825396825397,
+            "avgRet": 0.03216267050710288
+          },
+          "bull": {
+            "count": 43,
+            "hitRate": 0.37209302325581395
+          },
+          "bear": {
+            "count": 20,
+            "hitRate": 0.9
+          }
+        },
+        "SUI": {
+          "total": {
+            "count": 54,
+            "hitRate": 0.6296296296296297,
+            "avgRet": 0.078365982029312
+          },
+          "bull": {
+            "count": 15,
+            "hitRate": 0.6
+          },
+          "bear": {
+            "count": 39,
+            "hitRate": 0.6410256410256411
+          }
+        },
+        "NEAR": {
+          "total": {
+            "count": 57,
+            "hitRate": 0.3508771929824561,
+            "avgRet": -0.01669643522885859
+          },
+          "bull": {
+            "count": 46,
+            "hitRate": 0.32608695652173914
+          },
+          "bear": {
+            "count": 11,
+            "hitRate": 0.45454545454545453
+          }
+        },
+        "APT": {
+          "total": {
+            "count": 69,
+            "hitRate": 0.5072463768115942,
+            "avgRet": 0.02213027345501382
+          },
+          "bull": {
+            "count": 19,
+            "hitRate": 0.7368421052631579
+          },
+          "bear": {
+            "count": 50,
+            "hitRate": 0.42
+          }
+        },
+        "TIA": {
+          "total": {
+            "count": 67,
+            "hitRate": 0.7164179104477612,
+            "avgRet": 0.07620880220898477
+          },
+          "bull": {
+            "count": 29,
+            "hitRate": 0.5862068965517241
+          },
+          "bear": {
+            "count": 38,
+            "hitRate": 0.8157894736842105
+          }
+        }
+      }
+    },
+    "decision": {
+      "has_predictive_value": true,
+      "config": {
+        "N": 20,
+        "slopeCut": 0.02
+      },
+      "train": {
+        "count": 2469,
+        "hitRate": 0.5232887808829486,
+        "avgRet": 0.010015801141944562,
+        "bull": {
+          "count": 1529,
+          "hitRate": 0.4970568999345978
+        },
+        "bear": {
+          "count": 940,
+          "hitRate": 0.5659574468085107
+        }
+      },
+      "val": {
+        "count": 1605,
+        "hitRate": 0.4305295950155763,
+        "avgRet": -0.03279801099578273
+      },
+      "oos": {
+        "count": 1435,
+        "hitRate": 0.5491289198606272,
+        "avgRet": 0.013377859076856265,
+        "bull": {
+          "count": 743,
+          "hitRate": 0.5464333781965006
+        },
+        "bear": {
+          "count": 692,
+          "hitRate": 0.5520231213872833
+        }
+      },
+      "all_configs_oos": [
+        {
+          "config": {
+            "N": 10,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2287,
+            "hitRate": 0.5085264538696983,
+            "avgRet": 0.0019494263466967468,
+            "bull": {
+              "count": 1316,
+              "hitRate": 0.4886018237082067
+            },
+            "bear": {
+              "count": 971,
+              "hitRate": 0.5355303810504635
+            }
+          },
+          "val": {
+            "count": 1360,
+            "hitRate": 0.4411764705882353,
+            "avgRet": -0.026797539844772716
+          },
+          "oos": {
+            "count": 1256,
+            "hitRate": 0.5191082802547771,
+            "avgRet": -0.004468825037307812,
+            "bull": {
+              "count": 612,
+              "hitRate": 0.5669934640522876
+            },
+            "bear": {
+              "count": 644,
+              "hitRate": 0.47360248447204967
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 10,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 1892,
+            "hitRate": 0.5068710359408034,
+            "avgRet": 0.0018590106158954142,
+            "bull": {
+              "count": 1104,
+              "hitRate": 0.4927536231884058
+            },
+            "bear": {
+              "count": 788,
+              "hitRate": 0.5266497461928934
+            }
+          },
+          "val": {
+            "count": 945,
+            "hitRate": 0.4433862433862434,
+            "avgRet": -0.025730420994013032
+          },
+          "oos": {
+            "count": 920,
+            "hitRate": 0.525,
+            "avgRet": -0.0033902043881095982,
+            "bull": {
+              "count": 450,
+              "hitRate": 0.5755555555555556
+            },
+            "bear": {
+              "count": 470,
+              "hitRate": 0.4765957446808511
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 10,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1312,
+            "hitRate": 0.5038109756097561,
+            "avgRet": -0.001602036082733739,
+            "bull": {
+              "count": 766,
+              "hitRate": 0.4869451697127937
+            },
+            "bear": {
+              "count": 546,
+              "hitRate": 0.5274725274725275
+            }
+          },
+          "val": {
+            "count": 532,
+            "hitRate": 0.4417293233082707,
+            "avgRet": -0.04695870802810013
+          },
+          "oos": {
+            "count": 512,
+            "hitRate": 0.53515625,
+            "avgRet": -0.006431792642548269,
+            "bull": {
+              "count": 260,
+              "hitRate": 0.6192307692307693
+            },
+            "bear": {
+              "count": 252,
+              "hitRate": 0.44841269841269843
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 15,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2420,
+            "hitRate": 0.515702479338843,
+            "avgRet": 0.005963077986840555,
+            "bull": {
+              "count": 1447,
+              "hitRate": 0.48445058742225294
+            },
+            "bear": {
+              "count": 973,
+              "hitRate": 0.5621788283658787
+            }
+          },
+          "val": {
+            "count": 1451,
+            "hitRate": 0.4203997243280496,
+            "avgRet": -0.03224449510872385
+          },
+          "oos": {
+            "count": 1416,
+            "hitRate": 0.5310734463276836,
+            "avgRet": -0.0019894506212753474,
+            "bull": {
+              "count": 685,
+              "hitRate": 0.5708029197080292
+            },
+            "bear": {
+              "count": 731,
+              "hitRate": 0.493844049247606
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 15,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 2043,
+            "hitRate": 0.5159079784630446,
+            "avgRet": 0.0077990695997102455,
+            "bull": {
+              "count": 1221,
+              "hitRate": 0.48894348894348894
+            },
+            "bear": {
+              "count": 822,
+              "hitRate": 0.5559610705596107
+            }
+          },
+          "val": {
+            "count": 1131,
+            "hitRate": 0.41644562334217505,
+            "avgRet": -0.037471062560424775
+          },
+          "oos": {
+            "count": 1136,
+            "hitRate": 0.539612676056338,
+            "avgRet": -0.0016705816761262912,
+            "bull": {
+              "count": 558,
+              "hitRate": 0.5967741935483871
+            },
+            "bear": {
+              "count": 578,
+              "hitRate": 0.4844290657439446
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 15,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1524,
+            "hitRate": 0.5045931758530183,
+            "avgRet": 0.004728346289682625,
+            "bull": {
+              "count": 903,
+              "hitRate": 0.4883720930232558
+            },
+            "bear": {
+              "count": 621,
+              "hitRate": 0.5281803542673108
+            }
+          },
+          "val": {
+            "count": 684,
+            "hitRate": 0.3888888888888889,
+            "avgRet": -0.05376149638840723
+          },
+          "oos": {
+            "count": 730,
+            "hitRate": 0.541095890410959,
+            "avgRet": -0.001968349165169595,
+            "bull": {
+              "count": 349,
+              "hitRate": 0.6246418338108882
+            },
+            "bear": {
+              "count": 381,
+              "hitRate": 0.4645669291338583
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2469,
+            "hitRate": 0.5232887808829486,
+            "avgRet": 0.010015801141944562,
+            "bull": {
+              "count": 1529,
+              "hitRate": 0.4970568999345978
+            },
+            "bear": {
+              "count": 940,
+              "hitRate": 0.5659574468085107
+            }
+          },
+          "val": {
+            "count": 1605,
+            "hitRate": 0.4305295950155763,
+            "avgRet": -0.03279801099578273
+          },
+          "oos": {
+            "count": 1435,
+            "hitRate": 0.5491289198606272,
+            "avgRet": 0.013377859076856265,
+            "bull": {
+              "count": 743,
+              "hitRate": 0.5464333781965006
+            },
+            "bear": {
+              "count": 692,
+              "hitRate": 0.5520231213872833
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 2148,
+            "hitRate": 0.5162942271880819,
+            "avgRet": 0.009204212946644209,
+            "bull": {
+              "count": 1331,
+              "hitRate": 0.48534936138241924
+            },
+            "bear": {
+              "count": 817,
+              "hitRate": 0.5667074663402693
+            }
+          },
+          "val": {
+            "count": 1281,
+            "hitRate": 0.42232630757220924,
+            "avgRet": -0.03645538272317832
+          },
+          "oos": {
+            "count": 1207,
+            "hitRate": 0.5617232808616405,
+            "avgRet": 0.01893760642269063,
+            "bull": {
+              "count": 627,
+              "hitRate": 0.5757575757575758
+            },
+            "bear": {
+              "count": 580,
+              "hitRate": 0.5465517241379311
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1666,
+            "hitRate": 0.5126050420168067,
+            "avgRet": 0.006475350637502869,
+            "bull": {
+              "count": 1034,
+              "hitRate": 0.48936170212765956
+            },
+            "bear": {
+              "count": 632,
+              "hitRate": 0.5506329113924051
+            }
+          },
+          "val": {
+            "count": 892,
+            "hitRate": 0.40582959641255606,
+            "avgRet": -0.048016931555557786
+          },
+          "oos": {
+            "count": 843,
+            "hitRate": 0.571767497034401,
+            "avgRet": 0.01685398205921985,
+            "bull": {
+              "count": 436,
+              "hitRate": 0.6123853211009175
+            },
+            "bear": {
+              "count": 407,
+              "hitRate": 0.5282555282555282
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2475,
+            "hitRate": 0.5103030303030303,
+            "avgRet": -0.0007453087209716261,
+            "bull": {
+              "count": 1642,
+              "hitRate": 0.4890377588306943
+            },
+            "bear": {
+              "count": 833,
+              "hitRate": 0.5522208883553421
+            }
+          },
+          "val": {
+            "count": 1646,
+            "hitRate": 0.4204131227217497,
+            "avgRet": -0.031185380223611843
+          },
+          "oos": {
+            "count": 1558,
+            "hitRate": 0.5102695763799743,
+            "avgRet": 0.00518104245238682,
+            "bull": {
+              "count": 890,
+              "hitRate": 0.503370786516854
+            },
+            "bear": {
+              "count": 668,
+              "hitRate": 0.5194610778443114
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 2223,
+            "hitRate": 0.5065227170490328,
+            "avgRet": -0.0030825955518772774,
+            "bull": {
+              "count": 1471,
+              "hitRate": 0.4908225696804895
+            },
+            "bear": {
+              "count": 752,
+              "hitRate": 0.5372340425531915
+            }
+          },
+          "val": {
+            "count": 1417,
+            "hitRate": 0.4100211714890614,
+            "avgRet": -0.03569366644715616
+          },
+          "oos": {
+            "count": 1314,
+            "hitRate": 0.5091324200913242,
+            "avgRet": 0.004703016692106613,
+            "bull": {
+              "count": 750,
+              "hitRate": 0.512
+            },
+            "bear": {
+              "count": 564,
+              "hitRate": 0.5053191489361702
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1830,
+            "hitRate": 0.49781420765027323,
+            "avgRet": -0.005694480158371909,
+            "bull": {
+              "count": 1219,
+              "hitRate": 0.4831829368334701
+            },
+            "bear": {
+              "count": 611,
+              "hitRate": 0.5270049099836334
+            }
+          },
+          "val": {
+            "count": 1070,
+            "hitRate": 0.3766355140186916,
+            "avgRet": -0.04813584150208189
+          },
+          "oos": {
+            "count": 934,
+            "hitRate": 0.5042826552462527,
+            "avgRet": 0.00019603585250829492,
+            "bull": {
+              "count": 521,
+              "hitRate": 0.525911708253359
+            },
+            "bear": {
+              "count": 413,
+              "hitRate": 0.47699757869249393
+            }
+          }
+        }
+      ]
+    }
+  },
+  "summary": {
+    "vwap_extension": {
+      "has_predictive_value": false,
+      "config": {
+        "N": 30,
+        "threshold": 1
+      },
+      "train": {
+        "count": 2760,
+        "hitRate": 0.5083333333333333,
+        "avgRet": 0.010120137304601373,
+        "bull": {
+          "count": 931,
+          "hitRate": 0.4822771213748657
+        },
+        "bear": {
+          "count": 1829,
+          "hitRate": 0.5215965008201203
+        }
+      },
+      "val": {
+        "count": 2744,
+        "hitRate": 0.5776239067055393,
+        "avgRet": 0.040042603244759674
+      },
+      "oos": {
+        "count": 3011,
+        "hitRate": 0.4749252739953504,
+        "avgRet": -0.0012284593689640948,
+        "bull": {
+          "count": 1378,
+          "hitRate": 0.4941944847605225
+        },
+        "bear": {
+          "count": 1633,
+          "hitRate": 0.45866503368034295
+        }
+      },
+      "oos_reverse": {
+        "count": 3011,
+        "hitRate": 0.5250747260046497,
+        "avgRet": 0.0012284593689640948
+      },
+      "reverse_has_predictive_value": true,
+      "all_configs_oos": [
+        {
+          "config": {
+            "N": 20,
+            "threshold": 0.5
+          },
+          "train": {
+            "count": 3518,
+            "hitRate": 0.49118817509948837,
+            "avgRet": 0.004656978967293957,
+            "bull": {
+              "count": 1344,
+              "hitRate": 0.45089285714285715
+            },
+            "bear": {
+              "count": 2174,
+              "hitRate": 0.516099356025759
+            }
+          },
+          "val": {
+            "count": 3293,
+            "hitRate": 0.5608867294260552,
+            "avgRet": 0.03256839568445665
+          },
+          "oos": {
+            "count": 3725,
+            "hitRate": 0.46738255033557047,
+            "avgRet": -0.002223238921574684,
+            "bull": {
+              "count": 1733,
+              "hitRate": 0.47778418926716676
+            },
+            "bear": {
+              "count": 1992,
+              "hitRate": 0.4583333333333333
+            }
+          },
+          "train_reverse": {
+            "count": 3518,
+            "hitRate": 0.5076748152359295,
+            "avgRet": -0.004656978967293957
+          },
+          "oos_reverse": {
+            "count": 3725,
+            "hitRate": 0.5326174496644295,
+            "avgRet": 0.002223238921574684
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 0.75
+          },
+          "train": {
+            "count": 2955,
+            "hitRate": 0.4873096446700508,
+            "avgRet": 0.0037801505635239314,
+            "bull": {
+              "count": 1116,
+              "hitRate": 0.4453405017921147
+            },
+            "bear": {
+              "count": 1839,
+              "hitRate": 0.512778684067428
+            }
+          },
+          "val": {
+            "count": 2649,
+            "hitRate": 0.5681389203473008,
+            "avgRet": 0.03675635492453852
+          },
+          "oos": {
+            "count": 3078,
+            "hitRate": 0.4603638726445744,
+            "avgRet": -0.003287513171179847,
+            "bull": {
+              "count": 1511,
+              "hitRate": 0.47915287888815355
+            },
+            "bear": {
+              "count": 1567,
+              "hitRate": 0.44224633056796425
+            }
+          },
+          "train_reverse": {
+            "count": 2955,
+            "hitRate": 0.5116751269035533,
+            "avgRet": -0.0037801505635239314
+          },
+          "oos_reverse": {
+            "count": 3078,
+            "hitRate": 0.5396361273554257,
+            "avgRet": 0.003287513171179847
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 1
+          },
+          "train": {
+            "count": 2396,
+            "hitRate": 0.49081803005008345,
+            "avgRet": 0.005640408409307734,
+            "bull": {
+              "count": 889,
+              "hitRate": 0.45556805399325084
+            },
+            "bear": {
+              "count": 1507,
+              "hitRate": 0.5116124751161247
+            }
+          },
+          "val": {
+            "count": 2101,
+            "hitRate": 0.5702046644455021,
+            "avgRet": 0.03756732361979995
+          },
+          "oos": {
+            "count": 2493,
+            "hitRate": 0.45046129161652626,
+            "avgRet": -0.0068880208015759435,
+            "bull": {
+              "count": 1301,
+              "hitRate": 0.47578785549577246
+            },
+            "bear": {
+              "count": 1192,
+              "hitRate": 0.4228187919463087
+            }
+          },
+          "train_reverse": {
+            "count": 2396,
+            "hitRate": 0.508347245409015,
+            "avgRet": -0.005640408409307734
+          },
+          "oos_reverse": {
+            "count": 2493,
+            "hitRate": 0.5495387083834737,
+            "avgRet": 0.0068880208015759435
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 1.5
+          },
+          "train": {
+            "count": 1460,
+            "hitRate": 0.4815068493150685,
+            "avgRet": 0.0050446827293187425,
+            "bull": {
+              "count": 573,
+              "hitRate": 0.4781849912739965
+            },
+            "bear": {
+              "count": 887,
+              "hitRate": 0.4836527621195039
+            }
+          },
+          "val": {
+            "count": 1251,
+            "hitRate": 0.5771382893685052,
+            "avgRet": 0.04404724251066898
+          },
+          "oos": {
+            "count": 1516,
+            "hitRate": 0.43601583113456466,
+            "avgRet": -0.01112466982277356,
+            "bull": {
+              "count": 905,
+              "hitRate": 0.4861878453038674
+            },
+            "bear": {
+              "count": 611,
+              "hitRate": 0.3617021276595745
+            }
+          },
+          "train_reverse": {
+            "count": 1460,
+            "hitRate": 0.5184931506849315,
+            "avgRet": -0.0050446827293187425
+          },
+          "oos_reverse": {
+            "count": 1516,
+            "hitRate": 0.5639841688654353,
+            "avgRet": 0.01112466982277356
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "threshold": 2
+          },
+          "train": {
+            "count": 701,
+            "hitRate": 0.4593437945791726,
+            "avgRet": 0.005986796546641273,
+            "bull": {
+              "count": 317,
+              "hitRate": 0.5110410094637224
+            },
+            "bear": {
+              "count": 384,
+              "hitRate": 0.4166666666666667
+            }
+          },
+          "val": {
+            "count": 674,
+            "hitRate": 0.6023738872403561,
+            "avgRet": 0.05614895364241944
+          },
+          "oos": {
+            "count": 792,
+            "hitRate": 0.42676767676767674,
+            "avgRet": -0.017071943575000074,
+            "bull": {
+              "count": 549,
+              "hitRate": 0.4899817850637523
+            },
+            "bear": {
+              "count": 243,
+              "hitRate": 0.2839506172839506
+            }
+          },
+          "train_reverse": {
+            "count": 701,
+            "hitRate": 0.5406562054208274,
+            "avgRet": -0.005986796546641273
+          },
+          "oos_reverse": {
+            "count": 792,
+            "hitRate": 0.5732323232323232,
+            "avgRet": 0.017071943575000074
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 0.5
+          },
+          "train": {
+            "count": 3655,
+            "hitRate": 0.5020519835841313,
+            "avgRet": 0.00591996018883955,
+            "bull": {
+              "count": 1292,
+              "hitRate": 0.46594427244582043
+            },
+            "bear": {
+              "count": 2363,
+              "hitRate": 0.5217943292424884
+            }
+          },
+          "val": {
+            "count": 3697,
+            "hitRate": 0.5796591831214498,
+            "avgRet": 0.037872393607461335
+          },
+          "oos": {
+            "count": 3994,
+            "hitRate": 0.47346019028542813,
+            "avgRet": -0.002870298226554299,
+            "bull": {
+              "count": 1734,
+              "hitRate": 0.4826989619377163
+            },
+            "bear": {
+              "count": 2260,
+              "hitRate": 0.4663716814159292
+            }
+          },
+          "train_reverse": {
+            "count": 3655,
+            "hitRate": 0.4971272229822161,
+            "avgRet": -0.00591996018883955
+          },
+          "oos_reverse": {
+            "count": 3994,
+            "hitRate": 0.5265398097145718,
+            "avgRet": 0.002870298226554299
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 0.75
+          },
+          "train": {
+            "count": 3213,
+            "hitRate": 0.5057578586990352,
+            "avgRet": 0.007764579796942805,
+            "bull": {
+              "count": 1103,
+              "hitRate": 0.4696282864913871
+            },
+            "bear": {
+              "count": 2110,
+              "hitRate": 0.5246445497630332
+            }
+          },
+          "val": {
+            "count": 3204,
+            "hitRate": 0.5808364544319601,
+            "avgRet": 0.03992450401715242
+          },
+          "oos": {
+            "count": 3484,
+            "hitRate": 0.47388059701492535,
+            "avgRet": -0.0018868877327772784,
+            "bull": {
+              "count": 1541,
+              "hitRate": 0.4899415963659961
+            },
+            "bear": {
+              "count": 1943,
+              "hitRate": 0.4611425630468348
+            }
+          },
+          "train_reverse": {
+            "count": 3213,
+            "hitRate": 0.4933084344849051,
+            "avgRet": -0.007764579796942805
+          },
+          "oos_reverse": {
+            "count": 3484,
+            "hitRate": 0.5261194029850746,
+            "avgRet": 0.0018868877327772784
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 1
+          },
+          "train": {
+            "count": 2760,
+            "hitRate": 0.5083333333333333,
+            "avgRet": 0.010120137304601373,
+            "bull": {
+              "count": 931,
+              "hitRate": 0.4822771213748657
+            },
+            "bear": {
+              "count": 1829,
+              "hitRate": 0.5215965008201203
+            }
+          },
+          "val": {
+            "count": 2744,
+            "hitRate": 0.5776239067055393,
+            "avgRet": 0.040042603244759674
+          },
+          "oos": {
+            "count": 3011,
+            "hitRate": 0.4749252739953504,
+            "avgRet": -0.0012284593689640948,
+            "bull": {
+              "count": 1378,
+              "hitRate": 0.4941944847605225
+            },
+            "bear": {
+              "count": 1633,
+              "hitRate": 0.45866503368034295
+            }
+          },
+          "train_reverse": {
+            "count": 2760,
+            "hitRate": 0.4905797101449275,
+            "avgRet": -0.010120137304601373
+          },
+          "oos_reverse": {
+            "count": 3011,
+            "hitRate": 0.5250747260046497,
+            "avgRet": 0.0012284593689640948
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 1.5
+          },
+          "train": {
+            "count": 1939,
+            "hitRate": 0.4951005673027334,
+            "avgRet": 0.010070793360627,
+            "bull": {
+              "count": 668,
+              "hitRate": 0.4745508982035928
+            },
+            "bear": {
+              "count": 1271,
+              "hitRate": 0.5059008654602675
+            }
+          },
+          "val": {
+            "count": 1853,
+            "hitRate": 0.5876956287101996,
+            "avgRet": 0.04640296048821847
+          },
+          "oos": {
+            "count": 2101,
+            "hitRate": 0.46977629700142787,
+            "avgRet": -0.0021644648373187287,
+            "bull": {
+              "count": 1059,
+              "hitRate": 0.5070821529745042
+            },
+            "bear": {
+              "count": 1042,
+              "hitRate": 0.43186180422264875
+            }
+          },
+          "train_reverse": {
+            "count": 1939,
+            "hitRate": 0.5033522434244456,
+            "avgRet": -0.010070793360627
+          },
+          "oos_reverse": {
+            "count": 2101,
+            "hitRate": 0.5302237029985721,
+            "avgRet": 0.0021644648373187287
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "threshold": 2
+          },
+          "train": {
+            "count": 1238,
+            "hitRate": 0.47334410339256866,
+            "avgRet": 0.007983479569805614,
+            "bull": {
+              "count": 448,
+              "hitRate": 0.4732142857142857
+            },
+            "bear": {
+              "count": 790,
+              "hitRate": 0.47341772151898737
+            }
+          },
+          "val": {
+            "count": 1202,
+            "hitRate": 0.5965058236272879,
+            "avgRet": 0.048026834561107644
+          },
+          "oos": {
+            "count": 1286,
+            "hitRate": 0.45878693623639194,
+            "avgRet": -0.007035863125498792,
+            "bull": {
+              "count": 745,
+              "hitRate": 0.5248322147651007
+            },
+            "bear": {
+              "count": 541,
+              "hitRate": 0.3678373382624769
+            }
+          },
+          "train_reverse": {
+            "count": 1238,
+            "hitRate": 0.5258481421647819,
+            "avgRet": -0.007983479569805614
+          },
+          "oos_reverse": {
+            "count": 1286,
+            "hitRate": 0.5412130637636081,
+            "avgRet": 0.007035863125498792
+          }
+        }
+      ]
+    },
+    "obv_divergence": {
+      "has_predictive_value": true,
+      "config": {
+        "N": 20,
+        "slopeCut": 0.02
+      },
+      "train": {
+        "count": 2469,
+        "hitRate": 0.5232887808829486,
+        "avgRet": 0.010015801141944562,
+        "bull": {
+          "count": 1529,
+          "hitRate": 0.4970568999345978
+        },
+        "bear": {
+          "count": 940,
+          "hitRate": 0.5659574468085107
+        }
+      },
+      "val": {
+        "count": 1605,
+        "hitRate": 0.4305295950155763,
+        "avgRet": -0.03279801099578273
+      },
+      "oos": {
+        "count": 1435,
+        "hitRate": 0.5491289198606272,
+        "avgRet": 0.013377859076856265,
+        "bull": {
+          "count": 743,
+          "hitRate": 0.5464333781965006
+        },
+        "bear": {
+          "count": 692,
+          "hitRate": 0.5520231213872833
+        }
+      },
+      "all_configs_oos": [
+        {
+          "config": {
+            "N": 10,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2287,
+            "hitRate": 0.5085264538696983,
+            "avgRet": 0.0019494263466967468,
+            "bull": {
+              "count": 1316,
+              "hitRate": 0.4886018237082067
+            },
+            "bear": {
+              "count": 971,
+              "hitRate": 0.5355303810504635
+            }
+          },
+          "val": {
+            "count": 1360,
+            "hitRate": 0.4411764705882353,
+            "avgRet": -0.026797539844772716
+          },
+          "oos": {
+            "count": 1256,
+            "hitRate": 0.5191082802547771,
+            "avgRet": -0.004468825037307812,
+            "bull": {
+              "count": 612,
+              "hitRate": 0.5669934640522876
+            },
+            "bear": {
+              "count": 644,
+              "hitRate": 0.47360248447204967
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 10,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 1892,
+            "hitRate": 0.5068710359408034,
+            "avgRet": 0.0018590106158954142,
+            "bull": {
+              "count": 1104,
+              "hitRate": 0.4927536231884058
+            },
+            "bear": {
+              "count": 788,
+              "hitRate": 0.5266497461928934
+            }
+          },
+          "val": {
+            "count": 945,
+            "hitRate": 0.4433862433862434,
+            "avgRet": -0.025730420994013032
+          },
+          "oos": {
+            "count": 920,
+            "hitRate": 0.525,
+            "avgRet": -0.0033902043881095982,
+            "bull": {
+              "count": 450,
+              "hitRate": 0.5755555555555556
+            },
+            "bear": {
+              "count": 470,
+              "hitRate": 0.4765957446808511
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 10,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1312,
+            "hitRate": 0.5038109756097561,
+            "avgRet": -0.001602036082733739,
+            "bull": {
+              "count": 766,
+              "hitRate": 0.4869451697127937
+            },
+            "bear": {
+              "count": 546,
+              "hitRate": 0.5274725274725275
+            }
+          },
+          "val": {
+            "count": 532,
+            "hitRate": 0.4417293233082707,
+            "avgRet": -0.04695870802810013
+          },
+          "oos": {
+            "count": 512,
+            "hitRate": 0.53515625,
+            "avgRet": -0.006431792642548269,
+            "bull": {
+              "count": 260,
+              "hitRate": 0.6192307692307693
+            },
+            "bear": {
+              "count": 252,
+              "hitRate": 0.44841269841269843
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 15,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2420,
+            "hitRate": 0.515702479338843,
+            "avgRet": 0.005963077986840555,
+            "bull": {
+              "count": 1447,
+              "hitRate": 0.48445058742225294
+            },
+            "bear": {
+              "count": 973,
+              "hitRate": 0.5621788283658787
+            }
+          },
+          "val": {
+            "count": 1451,
+            "hitRate": 0.4203997243280496,
+            "avgRet": -0.03224449510872385
+          },
+          "oos": {
+            "count": 1416,
+            "hitRate": 0.5310734463276836,
+            "avgRet": -0.0019894506212753474,
+            "bull": {
+              "count": 685,
+              "hitRate": 0.5708029197080292
+            },
+            "bear": {
+              "count": 731,
+              "hitRate": 0.493844049247606
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 15,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 2043,
+            "hitRate": 0.5159079784630446,
+            "avgRet": 0.0077990695997102455,
+            "bull": {
+              "count": 1221,
+              "hitRate": 0.48894348894348894
+            },
+            "bear": {
+              "count": 822,
+              "hitRate": 0.5559610705596107
+            }
+          },
+          "val": {
+            "count": 1131,
+            "hitRate": 0.41644562334217505,
+            "avgRet": -0.037471062560424775
+          },
+          "oos": {
+            "count": 1136,
+            "hitRate": 0.539612676056338,
+            "avgRet": -0.0016705816761262912,
+            "bull": {
+              "count": 558,
+              "hitRate": 0.5967741935483871
+            },
+            "bear": {
+              "count": 578,
+              "hitRate": 0.4844290657439446
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 15,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1524,
+            "hitRate": 0.5045931758530183,
+            "avgRet": 0.004728346289682625,
+            "bull": {
+              "count": 903,
+              "hitRate": 0.4883720930232558
+            },
+            "bear": {
+              "count": 621,
+              "hitRate": 0.5281803542673108
+            }
+          },
+          "val": {
+            "count": 684,
+            "hitRate": 0.3888888888888889,
+            "avgRet": -0.05376149638840723
+          },
+          "oos": {
+            "count": 730,
+            "hitRate": 0.541095890410959,
+            "avgRet": -0.001968349165169595,
+            "bull": {
+              "count": 349,
+              "hitRate": 0.6246418338108882
+            },
+            "bear": {
+              "count": 381,
+              "hitRate": 0.4645669291338583
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2469,
+            "hitRate": 0.5232887808829486,
+            "avgRet": 0.010015801141944562,
+            "bull": {
+              "count": 1529,
+              "hitRate": 0.4970568999345978
+            },
+            "bear": {
+              "count": 940,
+              "hitRate": 0.5659574468085107
+            }
+          },
+          "val": {
+            "count": 1605,
+            "hitRate": 0.4305295950155763,
+            "avgRet": -0.03279801099578273
+          },
+          "oos": {
+            "count": 1435,
+            "hitRate": 0.5491289198606272,
+            "avgRet": 0.013377859076856265,
+            "bull": {
+              "count": 743,
+              "hitRate": 0.5464333781965006
+            },
+            "bear": {
+              "count": 692,
+              "hitRate": 0.5520231213872833
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 2148,
+            "hitRate": 0.5162942271880819,
+            "avgRet": 0.009204212946644209,
+            "bull": {
+              "count": 1331,
+              "hitRate": 0.48534936138241924
+            },
+            "bear": {
+              "count": 817,
+              "hitRate": 0.5667074663402693
+            }
+          },
+          "val": {
+            "count": 1281,
+            "hitRate": 0.42232630757220924,
+            "avgRet": -0.03645538272317832
+          },
+          "oos": {
+            "count": 1207,
+            "hitRate": 0.5617232808616405,
+            "avgRet": 0.01893760642269063,
+            "bull": {
+              "count": 627,
+              "hitRate": 0.5757575757575758
+            },
+            "bear": {
+              "count": 580,
+              "hitRate": 0.5465517241379311
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 20,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1666,
+            "hitRate": 0.5126050420168067,
+            "avgRet": 0.006475350637502869,
+            "bull": {
+              "count": 1034,
+              "hitRate": 0.48936170212765956
+            },
+            "bear": {
+              "count": 632,
+              "hitRate": 0.5506329113924051
+            }
+          },
+          "val": {
+            "count": 892,
+            "hitRate": 0.40582959641255606,
+            "avgRet": -0.048016931555557786
+          },
+          "oos": {
+            "count": 843,
+            "hitRate": 0.571767497034401,
+            "avgRet": 0.01685398205921985,
+            "bull": {
+              "count": 436,
+              "hitRate": 0.6123853211009175
+            },
+            "bear": {
+              "count": 407,
+              "hitRate": 0.5282555282555282
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "slopeCut": 0.02
+          },
+          "train": {
+            "count": 2475,
+            "hitRate": 0.5103030303030303,
+            "avgRet": -0.0007453087209716261,
+            "bull": {
+              "count": 1642,
+              "hitRate": 0.4890377588306943
+            },
+            "bear": {
+              "count": 833,
+              "hitRate": 0.5522208883553421
+            }
+          },
+          "val": {
+            "count": 1646,
+            "hitRate": 0.4204131227217497,
+            "avgRet": -0.031185380223611843
+          },
+          "oos": {
+            "count": 1558,
+            "hitRate": 0.5102695763799743,
+            "avgRet": 0.00518104245238682,
+            "bull": {
+              "count": 890,
+              "hitRate": 0.503370786516854
+            },
+            "bear": {
+              "count": 668,
+              "hitRate": 0.5194610778443114
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "slopeCut": 0.05
+          },
+          "train": {
+            "count": 2223,
+            "hitRate": 0.5065227170490328,
+            "avgRet": -0.0030825955518772774,
+            "bull": {
+              "count": 1471,
+              "hitRate": 0.4908225696804895
+            },
+            "bear": {
+              "count": 752,
+              "hitRate": 0.5372340425531915
+            }
+          },
+          "val": {
+            "count": 1417,
+            "hitRate": 0.4100211714890614,
+            "avgRet": -0.03569366644715616
+          },
+          "oos": {
+            "count": 1314,
+            "hitRate": 0.5091324200913242,
+            "avgRet": 0.004703016692106613,
+            "bull": {
+              "count": 750,
+              "hitRate": 0.512
+            },
+            "bear": {
+              "count": 564,
+              "hitRate": 0.5053191489361702
+            }
+          }
+        },
+        {
+          "config": {
+            "N": 30,
+            "slopeCut": 0.1
+          },
+          "train": {
+            "count": 1830,
+            "hitRate": 0.49781420765027323,
+            "avgRet": -0.005694480158371909,
+            "bull": {
+              "count": 1219,
+              "hitRate": 0.4831829368334701
+            },
+            "bear": {
+              "count": 611,
+              "hitRate": 0.5270049099836334
+            }
+          },
+          "val": {
+            "count": 1070,
+            "hitRate": 0.3766355140186916,
+            "avgRet": -0.04813584150208189
+          },
+          "oos": {
+            "count": 934,
+            "hitRate": 0.5042826552462527,
+            "avgRet": 0.00019603585250829492,
+            "bull": {
+              "count": 521,
+              "hitRate": 0.525911708253359
+            },
+            "bear": {
+              "count": 413,
+              "hitRate": 0.47699757869249393
+            }
+          }
+        }
+      ]
+    }
+  }
+}

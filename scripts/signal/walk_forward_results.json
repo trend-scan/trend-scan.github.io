@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-20T03:30:55.947Z",
+  "generated_at": "2026-07-20T06:06:44.016Z",
   "config": {
     "symbols": [
       "BTC",
@@ -54,6 +54,7 @@
       "rsiPenalty",
       "impulseZPenalty",
       "macroZBoost",
+      "mhAlignment",
       "returns"
     ]
   },
@@ -296,79 +297,79 @@
       {
         "strong": 8,
         "weak": 5,
-        "strongCount": 227,
+        "strongCount": 231,
         "weakCount": 1076,
-        "total": 1303,
-        "strongPreHit": 0.41409691629955947,
+        "total": 1307,
+        "strongPreHit": 0.4155844155844156,
         "weakPreHit": 0.5195167286245354,
-        "combinedPreHit": 0.501151189562548,
-        "combinedPostHit": 0.49424405218726014,
-        "strongPostHit": 0.4052863436123348,
+        "combinedPreHit": 0.5011476664116297,
+        "combinedPostHit": 0.4934965570007651,
+        "strongPostHit": 0.4025974025974026,
         "weakPostHit": 0.5130111524163569
       },
       {
         "strong": 8,
         "weak": 6,
-        "strongCount": 227,
+        "strongCount": 231,
         "weakCount": 886,
-        "total": 1113,
-        "strongPreHit": 0.41409691629955947,
+        "total": 1117,
+        "strongPreHit": 0.4155844155844156,
         "weakPreHit": 0.5282167042889391,
-        "combinedPreHit": 0.504941599281222,
-        "combinedPostHit": 0.4968553459119497,
-        "strongPostHit": 0.4052863436123348,
+        "combinedPreHit": 0.5049239033124441,
+        "combinedPostHit": 0.4959713518352731,
+        "strongPostHit": 0.4025974025974026,
         "weakPostHit": 0.5203160270880361
       },
       {
         "strong": 8,
         "weak": 7,
-        "strongCount": 227,
+        "strongCount": 231,
         "weakCount": 510,
-        "total": 737,
-        "strongPreHit": 0.41409691629955947,
+        "total": 741,
+        "strongPreHit": 0.4155844155844156,
         "weakPreHit": 0.5117647058823529,
-        "combinedPreHit": 0.4816824966078697,
-        "combinedPostHit": 0.4735413839891452,
-        "strongPostHit": 0.4052863436123348,
+        "combinedPreHit": 0.4817813765182186,
+        "combinedPostHit": 0.47233468286099867,
+        "strongPostHit": 0.4025974025974026,
         "weakPostHit": 0.503921568627451
       },
       {
         "strong": 8,
         "weak": 8,
-        "strongCount": 227,
+        "strongCount": 231,
         "weakCount": 161,
-        "total": 388,
-        "strongPreHit": 0.41409691629955947,
+        "total": 392,
+        "strongPreHit": 0.4155844155844156,
         "weakPreHit": 0.40372670807453415,
-        "combinedPreHit": 0.4097938144329897,
-        "combinedPostHit": 0.4020618556701031,
-        "strongPostHit": 0.4052863436123348,
+        "combinedPreHit": 0.4107142857142857,
+        "combinedPostHit": 0.4005102040816326,
+        "strongPostHit": 0.4025974025974026,
         "weakPostHit": 0.39751552795031053
       },
       {
         "strong": 8,
         "weak": 9,
-        "strongCount": 227,
+        "strongCount": 231,
         "weakCount": 5,
-        "total": 232,
-        "strongPreHit": 0.41409691629955947,
+        "total": 236,
+        "strongPreHit": 0.4155844155844156,
         "weakPreHit": 0.4,
-        "combinedPreHit": 0.41379310344827586,
-        "combinedPostHit": 0.4051724137931034,
-        "strongPostHit": 0.4052863436123348,
+        "combinedPreHit": 0.4152542372881356,
+        "combinedPostHit": 0.4025423728813559,
+        "strongPostHit": 0.4025974025974026,
         "weakPostHit": 0.4
       },
       {
         "strong": 8,
         "weak": 10,
-        "strongCount": 227,
+        "strongCount": 231,
         "weakCount": 0,
-        "total": 227,
-        "strongPreHit": 0.41409691629955947,
+        "total": 231,
+        "strongPreHit": 0.4155844155844156,
         "weakPreHit": null,
-        "combinedPreHit": 0.41409691629955947,
-        "combinedPostHit": 0.4052863436123348,
-        "strongPostHit": 0.4052863436123348,
+        "combinedPreHit": 0.4155844155844156,
+        "combinedPostHit": 0.4025974025974026,
+        "strongPostHit": 0.4025974025974026,
         "weakPostHit": null
       },
       {
@@ -1607,6 +1608,71 @@
           },
           "delta_combined_preHit": 0.0010852937528424422,
           "delta_strong_preHit": 0.016901998894796044
+        }
+      },
+      "mhAlignment": {
+        "TRAIN": {
+          "strong": {
+            "count": 97,
+            "preHit": 0.4329896907216495,
+            "postHit": 0.422680412371134
+          },
+          "weak": {
+            "count": 886,
+            "preHit": 0.5282167042889391,
+            "postHit": 0.5203160270880361
+          },
+          "combined": {
+            "count": 983,
+            "preHits": 510,
+            "postHits": 502,
+            "preHitRate": 0.5188199389623601,
+            "postHitRate": 0.5106815869786369
+          },
+          "delta_combined_preHit": 0,
+          "delta_strong_preHit": 0
+        },
+        "VALIDATION": {
+          "strong": {
+            "count": 420,
+            "preHit": 0.5642857142857143,
+            "postHit": 0.5380952380952381
+          },
+          "weak": {
+            "count": 512,
+            "preHit": 0.55078125,
+            "postHit": 0.541015625
+          },
+          "combined": {
+            "count": 932,
+            "preHits": 519,
+            "postHits": 503,
+            "preHitRate": 0.5568669527896996,
+            "postHitRate": 0.5396995708154506
+          },
+          "delta_combined_preHit": 0,
+          "delta_strong_preHit": 0
+        },
+        "OOS": {
+          "strong": {
+            "count": 343,
+            "preHit": 0.5451895043731778,
+            "postHit": 0.5335276967930029
+          },
+          "weak": {
+            "count": 1101,
+            "preHit": 0.4159854677565849,
+            "postHit": 0.4123524069028156
+          },
+          "combined": {
+            "count": 1444,
+            "preHits": 645,
+            "postHits": 637,
+            "preHitRate": 0.4466759002770083,
+            "postHitRate": 0.44113573407202217
+          },
+          "delta_combined_preHit": 0,
+          "delta_strong_preHit": 0
         }
       },
       "returns": {

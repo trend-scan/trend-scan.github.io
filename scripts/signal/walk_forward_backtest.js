@@ -93,6 +93,7 @@ const ABLATION_GATES = [
   'rsiPenalty',
   'impulseZPenalty',
   'macroZBoost',
+  'mhAlignment',
   'returns',
 ];
 
