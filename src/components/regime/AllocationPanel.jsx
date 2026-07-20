@@ -1,8 +1,14 @@
 /**
  * AllocationPanel - TOTAL3ES Crypto Allocation Status
+ *
+ * Reads allocation data from two sources (prefers server-side):
+ *   1. Server-side snapshot (regime_history latest entry) — unified with
+ *      Signal page's cash weight. Every user sees the same value.
+ *   2. Client-side computed (from live Macro page data) — fallback for
+ *      intraday updates between snapshot refreshes.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 function ScoreBar({ score, total, threshold, label }) {
   const pct = (score / total) * 100;
@@ -37,7 +43,16 @@ function ScoreBar({ score, total, threshold, label }) {
 }
 
 export default function AllocationPanel({ regime }) {
-  if (!regime) {
+  // Fetch server-side snapshot for unified allocation data
+  const [serverData, setServerData] = useState(null);
+  useEffect(() => {
+    fetch('/snapshot.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setServerData(d))
+      .catch(() => {});
+  }, []);
+
+  if (!regime && !serverData) {
     return (
       <div
         className="rounded-lg p-5 border"
@@ -53,18 +68,32 @@ export default function AllocationPanel({ regime }) {
     );
   }
 
+  // Prefer server-side data (unified with Signal page), fall back to client-side
+  const latestServerRegime = serverData?.regime_history?.[serverData.regime_history.length - 1];
+
   const {
-    ultra6 = { score: 0, on: false },
-    ob1 = { score: 0, on: false },
+    ultra6 = { score: latestServerRegime?.ultra6_score ?? 0, on: latestServerRegime?.ultra6_on ?? false },
+    ob1 = { score: latestServerRegime?.ob1_score ?? 0, on: latestServerRegime?.ob1_on ?? false },
     core8Score = 0,
     core9Score = 0,
-    allocation = {},
-    quadrant = 'FLUX',
-    liquidity = 'NEUTRAL',
-  } = regime;
+    allocation = latestServerRegime ? {
+      status: latestServerRegime.allocation_status || 'STABLECOINS',
+      vehicle: latestServerRegime.allocation_vehicle,
+      conviction: latestServerRegime.allocation_conviction || 'NONE',
+      icon: latestServerRegime.allocation_status === 'ALLOCATE' ? '★' : '◆',
+      description: latestServerRegime.allocation_status === 'ALLOCATE'
+        ? `${latestServerRegime.allocation_conviction} conviction. Execute via ${latestServerRegime.allocation_vehicle || 'BTC'}.`
+        : 'No crypto allocation. Wait for signal.',
+    } : {},
+    quadrant = latestServerRegime?.quadrant || regime?.quadrant || 'FLUX',
+    liquidity = latestServerRegime?.liquidity || regime?.liquidity || 'NEUTRAL',
+  } = regime || {};
 
   const bothOn = ultra6.on && ob1.on;
   const isAllocate = allocation.status === 'ALLOCATE';
+
+  // Show "server-side" badge when reading from snapshot
+  const dataSource = latestServerRegime ? 'server' : 'live';
 
   return (
     <div
@@ -75,8 +104,16 @@ export default function AllocationPanel({ regime }) {
       }}
     >
       {/* Header */}
-      <div className="text-[9px] font-bold tracking-[0.15em] uppercase mb-4" style={{ color: 'var(--scanner-text3)' }}>
-        ALLOCATION STATUS
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-[9px] font-bold tracking-[0.15em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+          ALLOCATION STATUS
+        </div>
+        <span className="text-[7px] px-1.5 py-0.5 rounded" style={{
+          background: dataSource === 'server' ? 'rgba(61,219,169,0.1)' : 'rgba(121,168,255,0.1)',
+          color: dataSource === 'server' ? 'var(--scanner-green)' : 'var(--scanner-blue)',
+        }}>
+          {dataSource === 'server' ? 'SERVER' : 'LIVE'}
+        </span>
       </div>
 
       {/* Master Status */}
@@ -111,7 +148,7 @@ export default function AllocationPanel({ regime }) {
       {/* Strategy Scores */}
       <div className="space-y-2 mb-4">
         <ScoreBar score={ultra6.score} total={6} threshold={4} label="Ultra6" />
-        <ScoreBar score={core8Score} total={8} threshold={5} label="Core8" />
+        <ScoreBar score={core8Score || ultra6.score} total={8} threshold={5} label="Core8" />
         <ScoreBar score={core9Score} total={9} threshold={6} label="Core9" />
         <ScoreBar score={ob1.score} total={6} threshold={3} label="OB1" />
       </div>

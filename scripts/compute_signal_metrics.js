@@ -204,8 +204,17 @@ export async function computeSignalMetrics({
 
   const sectorSummary = `${strongCount}/${majorResults.length} STRONG`;
 
-  // ── Cash weight ──────────────────────────────────────────────────────────
-  const ultra6Gates = ultra6?.score ?? 0;
+  // ── Cash weight (from server-side Ultra6 in regime_history) ──────────────
+  // Uses the Ultra6 score computed in computeRegimeHistory (server-side, unified
+  // with the Macro page's allocation signal). This ensures the Signal page's
+  // cash weight and the Macro page's allocation panel show the same data.
+  const latestRegime = prevSnapshot?.regime_history?.[prevSnapshot.regime_history.length - 1];
+  const ultra6Gates = latestRegime?.ultra6_score ?? ultra6?.score ?? 0;
+  const ultra6On = latestRegime?.ultra6_on ?? false;
+  const ob1Score = latestRegime?.ob1_score ?? 0;
+  const allocationStatus = latestRegime?.allocation_status ?? 'STABLECOINS';
+  const allocationConviction = latestRegime?.allocation_conviction ?? 'NONE';
+
   let cashPct, cashVerdict;
   if (ultra6Gates >= 5) { cashPct = 15; cashVerdict = 'STRONG'; }
   else if (ultra6Gates >= 3) { cashPct = 40; cashVerdict = 'NEUTRAL'; }
@@ -229,7 +238,11 @@ export async function computeSignalMetrics({
       verdict: cashVerdict,
       suggested_pct: cashPct,
       ultra6_gates: ultra6Gates,
-      rationale: `${ultra6Gates}/6 Ultra6 gates constructive`,
+      ultra6_on: ultra6On,
+      ob1_score: ob1Score,
+      allocation_status: allocationStatus,
+      allocation_conviction: allocationConviction,
+      rationale: `${ultra6Gates}/6 Ultra6 gates · ${allocationStatus} (${allocationConviction})`,
     },
   };
 

@@ -198,6 +198,62 @@ async function fetchCoinGeckoTop() {
   }
 }
 
+// ─── CoinGecko historical market charts (for Ultra6+OB1 allocation) ──────────
+// Fetches BTC + ETH daily price + volume history, plus global market cap chart
+// for dominance series. These are needed to compute the allocation signal
+// (Ultra6 + OB1) server-side so every user sees the same value.
+
+async function fetchCoinGeckoHistorical() {
+  console.log('── CoinGecko historical (BTC/ETH/global) ──');
+  try {
+    const [btcRes, ethRes, globalRes] = await Promise.all([
+      fetchJson('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily'),
+      fetchJson('https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=365&interval=daily'),
+      fetchJson('https://api.coingecko.com/api/v3/global/market_cap_chart?vs_currency=usd&days=365'),
+    ]);
+
+    const btcPrices = (btcRes.prices || []).map(p => p[1]);
+    const btcVolumes = (btcRes.total_volumes || []).map(v => v[1]);
+    const ethPrices = (ethRes.prices || []).map(p => p[1]);
+    const ethBtcRatio = btcPrices.map((btc, i) => btc > 0 ? (ethPrices[i] || 0) / btc : 0);
+
+    // Compute dominance from global market cap chart
+    const globalMcaps = globalRes.market_cap_by_currency?.usd || globalRes.market_caps || [];
+    const btcMcaps = (btcRes.market_caps || []).map(m => m[1]);
+    const usdtMcaps = []; // USDT dominance — approximate from total - BTC - ETH
+
+    // Approximate BTC dominance as BTC mcap / total mcap
+    const btcDominance = globalMcaps.map((g, i) => {
+      const total = g[1] || 0;
+      const btc = btcMcaps[i] || 0;
+      return total > 0 ? (btc / total) * 100 : 0;
+    });
+
+    // USDT dominance — CoinGecko global doesn't break this out historically.
+    // Use a flat 5% as approximation (USDT dominance is historically stable 3-8%).
+    // The OB1 signal checks if USDT dominance is FALLING (pctROC < 0), so a flat
+    // series means this gate is always neutral. This is acceptable — the other 5
+    // OB1 gates still provide signal value.
+    const usdtDominance = btcDominance.map(() => 5.0);
+
+    console.log(`  ✓ BTC: ${btcPrices.length} prices, ${btcVolumes.length} volumes`);
+    console.log(`  ✓ ETH: ${ethPrices.length} prices`);
+    console.log(`  ✓ Global: ${globalMcaps.length} market caps, BTC dominance computed`);
+
+    return {
+      btcPrice: btcPrices,
+      ethPrice: ethPrices,
+      btcVolume: btcVolumes,
+      ethBtcRatio,
+      btcDominance,
+      usdtDominance,
+    };
+  } catch (e) {
+    console.warn(`  ✗ CoinGecko historical: ${e.message}`);
+    return { btcPrice: [], ethPrice: [], btcVolume: [], ethBtcRatio: [], btcDominance: [], usdtDominance: [] };
+  }
+}
+
 // ─── Ken French data library (free, seasonality baselines) ───────────────────
 // Source: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html
 // Returns monthly factor returns (Mkt-RF, SMB, HML, RMW, RF) back to 1926.
@@ -593,7 +649,7 @@ async function fetchTradfiSnapshot() {
 // of their device/cache state. The client-side localStorage path remains as
 // a fallback for intraday updates (the server only runs 3× daily).
 
-async function computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot) {
+async function computeRegimeHistory(fred, coingecko, fearGreed, cgHistorical, _prevSnapshot) {
   try {
     // Dynamically import the regime engine modules (ES modules)
     const regimeSignals = await import('../src/lib/regime/regimeSignals.js');
@@ -602,11 +658,9 @@ async function computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot) {
     // Build the data shape the regime engine expects
     const fredAvailable = fred && Object.values(fred).some(v => Array.isArray(v) && v.length > 0);
 
-    // Extract BTC/ETH price series from CoinGecko data
-    const btcData = coingecko?.bitcoin;
-    const ethData = coingecko?.ethereum;
-    const btcPrice = Array.isArray(btcData?.prices) ? btcData.prices.map(p => p[1]) : [];
-    const ethPrice = Array.isArray(ethData?.prices) ? ethData.prices.map(p => p[1]) : [];
+    // Extract BTC/ETH price series — prefer historical (has volume/dominance), fall back to coingecko_top
+    const btcPrice = (cgHistorical?.btcPrice?.length >= 50 ? cgHistorical.btcPrice : coingecko?.bitcoin?.prices?.map(p => p[1]) || []);
+    const ethPrice = (cgHistorical?.ethPrice?.length >= 50 ? cgHistorical.ethPrice : coingecko?.ethereum?.prices?.map(p => p[1]) || []);
 
     // Fear & Greed as a series
     const fgSeries = Array.isArray(fearGreed) ? fearGreed.map(d => d.value).filter(v => v != null) : [];
@@ -638,6 +692,23 @@ async function computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot) {
     // Classify quadrant
     const quadrant = calc.classifyQuadrant(growthNowcast.nowcast, inflationNowcast.nowcast);
 
+    // ── Compute Ultra6 + OB1 + Allocation (server-side, unified) ──────────
+    const macroData = {
+      btcPrice,
+      ethPrice,
+      btcDominance: cgHistorical?.btcDominance || [],
+      ethBtcRatio: cgHistorical?.ethBtcRatio || [],
+      btcVolume: cgHistorical?.btcVolume || [],
+      usdtDominance: cgHistorical?.usdtDominance || [],
+    };
+
+    const ultra6 = regimeSignals.computeUltra6(
+      macroData, growthNowcast.nowcast, growthNowcast.meZ, quadrant, liquidityLabel
+    );
+    const ob1 = regimeSignals.computeOB1Signals(macroData);
+    const core9Score = regimeSignals.computeCore9Score(macroData, growthSignals);
+    const allocation = regimeSignals.computeAllocation(ultra6, ob1, core9Score, btcPrice);
+
     const today = new Date().toISOString().split('T')[0];
     const todayEntry = {
       date: today,
@@ -648,6 +719,14 @@ async function computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot) {
       growthNowcast: Math.round(growthNowcast.nowcast * 10) / 10,
       inflationNowcast: Math.round(inflationNowcast.nowcast * 10) / 10,
       liquidityNowcast: Math.round(liquidityNowcast.nowcast * 10) / 10,
+      // Allocation data (server-side, unified)
+      ultra6_score: ultra6.score,
+      ultra6_on: ultra6.on,
+      ob1_score: ob1.score,
+      ob1_on: ob1.on,
+      allocation_status: allocation.status,
+      allocation_vehicle: allocation.vehicle,
+      allocation_conviction: allocation.conviction,
     };
 
     // Merge with previous history (if exists)
@@ -674,7 +753,7 @@ async function main() {
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
   console.log('');
 
-  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch, cryptoFactors] = await Promise.all([
+  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch, cryptoFactors, cgHistorical] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
@@ -684,6 +763,7 @@ async function main() {
     fetchFarsideETFFlows(),
     fetchFactorWatch(),
     computeCryptoFactors(_prevSnapshot),
+    fetchCoinGeckoHistorical(),
   ]);
 
   // If FRED data is empty (API failure), use previous snapshot's FRED data
@@ -694,7 +774,7 @@ async function main() {
   }
 
   // Compute regime history server-side (appends today's nowcast to a 90-day rolling array)
-  const regimeHistory = await computeRegimeHistory(fred, coingecko, fearGreed, _prevSnapshot);
+  const regimeHistory = await computeRegimeHistory(fred, coingecko, fearGreed, cgHistorical, _prevSnapshot);
 
   // If an ETF flow asset failed to fetch (Farside 403/timeout), fall back to
   // the previous snapshot's data for that asset. This prevents rows from

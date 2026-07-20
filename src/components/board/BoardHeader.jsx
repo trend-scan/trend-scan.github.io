@@ -64,7 +64,7 @@ function BreadthSpectrum({ pct50, pct200, total, newHigh20d, upBig, downBig }) {
     <div className="flex flex-col gap-1.5 min-w-[180px]">
       <div className="flex items-center justify-between">
         <span className="text-[8px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
-          Crypto Breadth (>50MA)
+          Crypto Breadth ({'>50MA'})
         </span>
         <span className="text-[9px] font-bold tabular-nums" style={{
           color: pct >= 50 ? 'var(--scanner-green)' : pct >= 35 ? '#f5c842' : 'var(--scanner-red)'
