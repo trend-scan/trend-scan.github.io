@@ -15,7 +15,11 @@ import { runBoardAnalysis } from '@/lib/board/boardEngine';
 import { fetchTradMarketData, buildTradDataFromSnapshot } from '@/lib/board/traditionalMarkets';
 import { getGloballyBlockedSources } from '@/lib/scanner/sourceResolver';
 
-const TABS = ['Daily', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'TradFi', 'Factor Monitor'];
+// TradFi moved to position 1 (right after Daily) so cross-asset breadth
+// comparison is the first thing users see when they explore beyond Daily.
+// Indices/sectors/commodities/FX/rates (~80 assets) — same Yahoo data the
+// BoardHeader's new TradFi breadth spectrum uses.
+const TABS = ['Daily', 'TradFi', 'Themes', 'Breadth', 'Momentum Scan', 'Momentum', 'Extension', 'Factor Monitor'];
 
 const DEFAULT_EXCHANGE = 'auto';
 
@@ -143,12 +147,12 @@ export default function Board() {
     }
   }, []);
 
-  // Auto-refresh: when the user first visits the TradFi tab (activeTab === 6)
+  // Auto-refresh: when the user first visits the TradFi tab (activeTab === 1)
   // and we only have snapshot data (not yet refreshed with live data), kick
   // off the live background refresh automatically. This gives the user the
   // instant snapshot view, then seamlessly updates with live data as it arrives.
   useEffect(() => {
-    if (activeTab === 6 && tradDataSource === 'snapshot' && !tradLoading && !tradAutoRefreshed) {
+    if (activeTab === 1 && tradDataSource === 'snapshot' && !tradLoading && !tradAutoRefreshed) {
       setTradAutoRefreshed(true);
       runTradAnalysis();
     }
@@ -251,6 +255,7 @@ export default function Board() {
         onRefresh={() => runAnalysis(exchange)}
         signalMetrics={snapshotData?.signal_metrics}
         macroQuadrant={snapshotData?.regime_history?.[snapshotData.regime_history.length - 1]?.quadrant}
+        tradRegime={tradData?.tradRegime}
       />
 
       {/* Snapshot freshness banner — alerts when Board header's signal/quadrant
@@ -328,12 +333,12 @@ export default function Board() {
               themeSectorRotation={themeSectorRotation}
             />
           )}
-          {activeTab === 1 && <ThemesTab themes={themes} constituents={constituents} />}
-          {activeTab === 2 && <BreadthTab breadthSeries={breadthSeries} />}
-          {activeTab === 3 && <MomentumScanTab momentumScan={momentumScan} />}
-          {activeTab === 4 && <MomentumTab cleanMomentum={cleanMomentum} />}
-          {activeTab === 5 && <ExtensionTab tooHot={tooHot} fading={fading} />}
-          {activeTab === 6 && <MacroTab tradData={tradData} isLoading={tradLoading} snapshotLoading={tradSnapshotLoading} onRefresh={runTradAnalysis} />}
+          {activeTab === 1 && <MacroTab tradData={tradData} isLoading={tradLoading} snapshotLoading={tradSnapshotLoading} onRefresh={runTradAnalysis} />}
+          {activeTab === 2 && <ThemesTab themes={themes} constituents={constituents} />}
+          {activeTab === 3 && <BreadthTab breadthSeries={breadthSeries} />}
+          {activeTab === 4 && <MomentumScanTab momentumScan={momentumScan} />}
+          {activeTab === 5 && <MomentumTab cleanMomentum={cleanMomentum} />}
+          {activeTab === 6 && <ExtensionTab tooHot={tooHot} fading={fading} />}
           {activeTab === 7 && <FactorMonitor />}
         </>
       )}

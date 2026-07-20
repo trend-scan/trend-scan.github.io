@@ -107,6 +107,75 @@ function BreadthSpectrum({ pct50, pct200, total, newHigh20d, upBig, downBig }) {
 }
 
 /**
+ * TradFi breadth spectrum — same visual language as Crypto BreadthSpectrum
+ * but reads from tradData.tradRegime (computed by MacroTab's data source).
+ *
+ * Shows what % of the TradFi universe (indices, sectors, commodities, FX,
+ * rates — ~80 assets) is above its 50-MA. Same 4-zone color scheme as
+ * crypto so users can compare crypto vs TradFi breadth at a glance.
+ *
+ * Layout decision: rendered BELOW the Crypto spectrum in the BoardHeader
+ * to form a stacked pair. This makes the cross-asset breadth comparison
+ * the dominant visual element of the header — appropriate since breadth
+ * is the single most predictive macro signal for crypto regime shifts.
+ */
+function TradFiBreadthSpectrum({ tradRegime }) {
+  const pct = tradRegime?.pctAbove50 ?? 0;
+  const pct200 = tradRegime?.pctAbove200;
+  const pct20 = tradRegime?.pctAbove20;
+  const total = tradRegime?.total ?? 0;
+  const avgRet5d = tradRegime?.avgRet5d;
+  const avgRet20d = tradRegime?.avgRet20d;
+  const isNum = typeof tradRegime?.pctAbove50 === 'number' && total > 0;
+
+  const pctColor = pct >= 50 ? 'var(--scanner-green)' : pct >= 35 ? '#f5c842' : 'var(--scanner-red)';
+
+  return (
+    <div className="flex flex-col gap-1.5 min-w-[180px]">
+      <div className="flex items-center justify-between">
+        <span className="text-[8px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+          TradFi Breadth ({'>50MA'})
+        </span>
+        <span className="text-[9px] font-bold tabular-nums" style={{ color: isNum ? pctColor : 'var(--scanner-text3)' }}>
+          {isNum ? `${pct}%` : '—'}
+        </span>
+      </div>
+      {/* Spectrum bar */}
+      <div className="relative h-2 rounded-full overflow-hidden" style={{ background: 'var(--scanner-bg1)' }}>
+        <div className="absolute inset-y-0 left-0" style={{ width: '35%', background: 'rgba(255,68,68,0.15)' }} />
+        <div className="absolute inset-y-0" style={{ left: '35%', width: '15%', background: 'rgba(245,200,66,0.15)' }} />
+        <div className="absolute inset-y-0" style={{ left: '50%', width: '10%', background: 'rgba(121,168,255,0.15)' }} />
+        <div className="absolute inset-y-0" style={{ left: '60%', right: 0, background: 'rgba(61,219,169,0.15)' }} />
+        {isNum && (
+          <div
+            className="absolute top-0 bottom-0 w-0.5"
+            style={{
+              left: `${Math.min(pct, 100)}%`,
+              background: pctColor,
+              boxShadow: '0 0 4px currentColor',
+            }}
+          />
+        )}
+        <div className="absolute top-0 bottom-0 w-px" style={{ left: '35%', background: 'rgba(255,255,255,0.15)' }} />
+        <div className="absolute top-0 bottom-0 w-px" style={{ left: '50%', background: 'rgba(255,255,255,0.15)' }} />
+        <div className="absolute top-0 bottom-0 w-px" style={{ left: '60%', background: 'rgba(255,255,255,0.15)' }} />
+      </div>
+      {/* Mini stats — mirror Crypto layout for visual alignment */}
+      <div className="flex items-center gap-2 text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
+        <span>▲20MA: {isNum && pct20 != null ? `${pct20}%` : '—'}</span>
+        <span>▲200MA: {isNum && pct200 != null ? `${pct200}%` : '—'}</span>
+        <span style={{ color: avgRet5d != null ? (avgRet5d >= 0 ? 'var(--scanner-green)' : 'var(--scanner-red)') : 'var(--scanner-text3)' }}>
+          5D: {avgRet5d != null ? `${avgRet5d > 0 ? '+' : ''}${avgRet5d.toFixed(1)}%` : '—'}
+        </span>
+        <span style={{ color: avgRet20d != null ? (avgRet20d >= 0 ? 'var(--scanner-green)' : 'var(--scanner-red)') : 'var(--scanner-text3)' }}>
+          20D: {avgRet20d != null ? `${avgRet20d > 0 ? '+' : ''}${avgRet20d.toFixed(1)}%` : '—'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Compact signal overview showing all three perspectives.
  */
 function SignalOverview({ regime, signalMetrics, macroQuadrant }) {
@@ -189,7 +258,7 @@ function SignalOverview({ regime, signalMetrics, macroQuadrant }) {
   );
 }
 
-export default function BoardHeader({ regime, regimeLabel, updatedAt, exchange, isLoading, onRefresh, signalMetrics, macroQuadrant }) {
+export default function BoardHeader({ regime, regimeLabel, updatedAt, exchange, isLoading, onRefresh, signalMetrics, macroQuadrant, tradRegime }) {
   const pct20  = regime?.pctAbove20  ?? '—';
   const pct50  = regime?.pctAbove50  ?? '—';
   const pct200 = regime?.pctAbove200 ?? '—';
@@ -200,16 +269,20 @@ export default function BoardHeader({ regime, regimeLabel, updatedAt, exchange, 
       borderBottom: '1px solid var(--scanner-border2)'
     }}>
       <div className="flex items-center justify-between flex-wrap gap-3">
-        {/* Left: Breadth spectrum + signal overview */}
+        {/* Left: Breadth spectra (Crypto + TradFi stacked) + signal overview */}
         <div className="flex items-center gap-3 flex-wrap">
-          <BreadthSpectrum
-            pct50={pct50}
-            pct200={pct200}
-            total={regime?.total}
-            newHigh20d={regime?.newHigh20d}
-            upBig={regime?.upBig}
-            downBig={regime?.downBig}
-          />
+          {/* Stacked breadth spectra: Crypto on top, TradFi directly below */}
+          <div className="flex flex-col gap-2">
+            <BreadthSpectrum
+              pct50={pct50}
+              pct200={pct200}
+              total={regime?.total}
+              newHigh20d={regime?.newHigh20d}
+              upBig={regime?.upBig}
+              downBig={regime?.downBig}
+            />
+            <TradFiBreadthSpectrum tradRegime={tradRegime} />
+          </div>
 
           <SignalOverview
             regime={regime}
