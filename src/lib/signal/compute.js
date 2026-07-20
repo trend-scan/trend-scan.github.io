@@ -403,14 +403,16 @@ export function computeAssetStance({
     if (crowdingRisk) confidence -= 2;
     if (rsiOverbought && !skipRsiPenalty) confidence -= 1;
     if (decelerating && !skipImpulsePenalty) confidence -= 1;
-    // macroZ boost: conf 7→8 when macroZ > 1.5, conf 7→9 when > 2.5
-    if (confidence === 7 && macroZEff) {
-      if (macroZEff.macroZ > 2.5) confidence = 9;
-      else if (macroZEff.macroZ > 1.5) confidence = 8;
+    // Boosts fire at 7→8 (walk-forward validated: threshold 8 + 7→8 boosts = 54.5% OOS hit).
+    // The 8→9 restructure was tested and REJECTED — it starved the boost of candidates
+    // (only 36 OOS signals vs 343) and dropped hit rate to 47.2%. The walk-forward
+    // "optimal threshold 9" was misleading because the threshold sweep tested WITHOUT
+    // boosts active. With boosts, threshold 8 captures the boosted signals and they
+    // perform well OOS.
+    if (macroZEff) {
+      if (confidence === 7 && macroZEff.macroZ > 2.5) confidence = 9;
+      else if (confidence === 7 && macroZEff.macroZ > 1.5) confidence = 8;
     }
-    // Multi-horizon alignment boost (walk-forward validated OOS 55.2% at 10d):
-    // Both bull alignment (momentum continuation) and bear alignment (mean reversion)
-    // predict upward forward returns. Boost confidence when either fires.
     if (confidence === 7 && mhAlignmentEff?.aligned) {
       confidence = 8;
     }
@@ -465,8 +467,8 @@ export function computeAssetStance({
 // ─── Verdict mapper ──────────────────────────────────────────────────────────
 
 export const DEFAULT_THRESHOLDS = {
-  STRONG: 8,  // 62.0% hit, +5.02% avg 10d return
-  WEAK: 8,    // 54.1% hit, -1.37% avg 10d return
+  STRONG: 8,  // Walk-forward validated: 54.5% OOS hit, +5.70% avg (343 signals)
+  WEAK: 8,    // OOS 41.6% hit — directional but below coin flip (expected for crypto)
 };
 
 export function mapStanceToVerdict(stance, confidence, thresholds = DEFAULT_THRESHOLDS) {
