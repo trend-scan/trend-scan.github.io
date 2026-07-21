@@ -323,7 +323,16 @@ export function getCurrentFunding(fundingHistory, asOfTs) {
 
 export function fundingZScore(fundingHistory, asOfTs, lookback = 90) {
   if (!fundingHistory || fundingHistory.length < 10) return 0;
-  const window = fundingHistory.filter(f => f.ts <= asOfTs).slice(-lookback);
+  // Accept either .ts (production format from compute_signal_metrics.js / Hyperliquid / OKX)
+  // or .t (cached format in data/historical/*/funding.json from Binance archive).
+  // Before 2026-07-21 this function only checked .ts, which silently returned 0
+  // for every backtest using cached funding data — walk_forward_backtest.js,
+  // ortho_integration_test.js, etc. — making gate 6 (fundingZ) effectively dead
+  // in all backtests. The production snapshot was unaffected because live data
+  // uses .ts. See /home/z/my-project/download/ORTHOSYS_INTEGRATION_TEST_FINDINGS.md
+  // for the discovery trail.
+  const ts = (f) => (f.ts != null ? f.ts : f.t);
+  const window = fundingHistory.filter(f => ts(f) <= asOfTs).slice(-lookback);
   if (window.length < 10) return 0;
   const current = window[window.length - 1].rate;
   const rates = window.map(f => f.rate);
