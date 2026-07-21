@@ -1,0 +1,453 @@
+{
+  "generated_at": "2026-07-21T11:39:27.823Z",
+  "config": {
+    "symbols": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "AVAX",
+      "LINK",
+      "DOGE",
+      "ARB",
+      "OP",
+      "INJ",
+      "SUI",
+      "NEAR",
+      "APT",
+      "TIA"
+    ],
+    "periods": {
+      "TRAIN": {
+        "start": "2022-01-01",
+        "end": "2023-06-30"
+      },
+      "VALIDATION": {
+        "start": "2023-07-01",
+        "end": "2024-06-30"
+      },
+      "OOS": {
+        "start": "2024-07-01",
+        "end": "2025-07-31"
+      }
+    },
+    "forward_windows": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "default_forward": 10,
+    "fees_bps_per_side": 10,
+    "thresholds": {
+      "STRONG": 8,
+      "WEAK": 8
+    }
+  },
+  "q1_orthogonality": {
+    "candidates": [
+      "mom5",
+      "takerRatio"
+    ],
+    "gates": [
+      "zScore",
+      "zPctile",
+      "trendTenure",
+      "atrExt",
+      "rsVsBtcValue",
+      "fundingZ",
+      "rsi",
+      "obvSlope",
+      "impulseZ",
+      "ret5d",
+      "ret20d",
+      "macroZ"
+    ],
+    "periods": {
+      "TRAIN": {
+        "zScore": {
+          "mom5": -0.43794458151564314,
+          "takerRatio": -0.5763696512419423
+        },
+        "zPctile": {
+          "mom5": -0.18309620491394862,
+          "takerRatio": -0.2845230782684986
+        },
+        "trendTenure": {
+          "mom5": -0.13366552446112576,
+          "takerRatio": -0.29242299827619256
+        },
+        "atrExt": {
+          "mom5": -0.502569402943403,
+          "takerRatio": -0.6543942147843258
+        },
+        "rsVsBtcValue": {
+          "mom5": -0.04253887817311072,
+          "takerRatio": 0.019756721324471236
+        },
+        "fundingZ": {
+          "mom5": 0,
+          "takerRatio": 0
+        },
+        "rsi": {
+          "mom5": -0.6723814906117512,
+          "takerRatio": -0.7211364406458278
+        },
+        "obvSlope": {
+          "mom5": -0.4539917327100423,
+          "takerRatio": -0.703853632062502
+        },
+        "impulseZ": {
+          "mom5": -0.5577083629726517,
+          "takerRatio": -0.48286405259968895
+        },
+        "ret5d": {
+          "mom5": -0.9999999711902423,
+          "takerRatio": -0.43887186997380095
+        },
+        "ret20d": {
+          "mom5": -0.509991448486873,
+          "takerRatio": -0.6766926896172475
+        },
+        "macroZ": {
+          "mom5": -0.5488646641076879,
+          "takerRatio": -0.6932684299926326
+        },
+        "_mom5_vs_takerRatio": 0.4453431503478362
+      },
+      "VALIDATION": {
+        "zScore": {
+          "mom5": -0.47429652874924955,
+          "takerRatio": -0.5317345344553793
+        },
+        "zPctile": {
+          "mom5": -0.3901016096534551,
+          "takerRatio": -0.5711126257600964
+        },
+        "trendTenure": {
+          "mom5": -0.18252786139979835,
+          "takerRatio": -0.3265041764524575
+        },
+        "atrExt": {
+          "mom5": -0.5409346563719966,
+          "takerRatio": -0.6895185850355414
+        },
+        "rsVsBtcValue": {
+          "mom5": -0.0006132618435211704,
+          "takerRatio": -0.003259966541300011
+        },
+        "fundingZ": {
+          "mom5": 0,
+          "takerRatio": 0
+        },
+        "rsi": {
+          "mom5": -0.6827242057970601,
+          "takerRatio": -0.7429326961211422
+        },
+        "obvSlope": {
+          "mom5": -0.44199625130681114,
+          "takerRatio": -0.7462720451024899
+        },
+        "impulseZ": {
+          "mom5": -0.5974433251006249,
+          "takerRatio": -0.5489981576067516
+        },
+        "ret5d": {
+          "mom5": -0.9999999631303678,
+          "takerRatio": -0.44883858131513255
+        },
+        "ret20d": {
+          "mom5": -0.5659389499690651,
+          "takerRatio": -0.7175565364657183
+        },
+        "macroZ": {
+          "mom5": -0.577337946019146,
+          "takerRatio": -0.7324054831734007
+        },
+        "_mom5_vs_takerRatio": 0.4423558704986913
+      },
+      "OOS": {
+        "zScore": {
+          "mom5": -0.4176286615266191,
+          "takerRatio": -0.5362252072729156
+        },
+        "zPctile": {
+          "mom5": -0.40455550853037997,
+          "takerRatio": -0.5474326789810126
+        },
+        "trendTenure": {
+          "mom5": -0.12371406913251515,
+          "takerRatio": -0.30330803055629213
+        },
+        "atrExt": {
+          "mom5": -0.5129030760938054,
+          "takerRatio": -0.6801703055853459
+        },
+        "rsVsBtcValue": {
+          "mom5": -0.040175699846389,
+          "takerRatio": -0.014675302625156858
+        },
+        "fundingZ": {
+          "mom5": 0,
+          "takerRatio": 0
+        },
+        "rsi": {
+          "mom5": -0.6788149687412042,
+          "takerRatio": -0.7089136172740363
+        },
+        "obvSlope": {
+          "mom5": -0.4043690621894185,
+          "takerRatio": -0.7408530741838426
+        },
+        "impulseZ": {
+          "mom5": -0.5746263242550865,
+          "takerRatio": -0.4983095897656045
+        },
+        "ret5d": {
+          "mom5": -0.9999999703522606,
+          "takerRatio": -0.380296138100403
+        },
+        "ret20d": {
+          "mom5": -0.49118164744093396,
+          "takerRatio": -0.7397344596595955
+        },
+        "macroZ": {
+          "mom5": -0.5859557221623972,
+          "takerRatio": -0.706756403467527
+        },
+        "_mom5_vs_takerRatio": 0.38029760971947907
+      }
+    }
+  },
+  "q2_conditional_hit": {
+    "tests": [
+      {
+        "period": "TRAIN",
+        "verdict": "STRONG",
+        "baseN": 239,
+        "baseRate": 0.3891213389121339,
+        "mom5N": 191,
+        "mom5Rate": 0.3612565445026178,
+        "takerN": 20,
+        "takerRate": 0.35,
+        "bothN": 13,
+        "bothRate": 0.07692307692307693
+      },
+      {
+        "period": "TRAIN",
+        "verdict": "WEAK",
+        "baseN": 142,
+        "baseRate": 0.38028169014084506,
+        "mom5N": 110,
+        "mom5Rate": 0.37272727272727274,
+        "takerN": 3,
+        "takerRate": 0.3333333333333333,
+        "bothN": 3,
+        "bothRate": 0.3333333333333333
+      },
+      {
+        "period": "VALIDATION",
+        "verdict": "STRONG",
+        "baseN": 868,
+        "baseRate": 0.533410138248848,
+        "mom5N": 681,
+        "mom5Rate": 0.5315712187958884,
+        "takerN": 119,
+        "takerRate": 0.5294117647058824,
+        "bothN": 94,
+        "bothRate": 0.5531914893617021
+      },
+      {
+        "period": "VALIDATION",
+        "verdict": "WEAK",
+        "baseN": 138,
+        "baseRate": 0.572463768115942,
+        "mom5N": 115,
+        "mom5Rate": 0.5130434782608696,
+        "takerN": 7,
+        "takerRate": 0,
+        "bothN": 7,
+        "bothRate": 0
+      },
+      {
+        "period": "OOS",
+        "verdict": "STRONG",
+        "baseN": 597,
+        "baseRate": 0.5192629815745393,
+        "mom5N": 484,
+        "mom5Rate": 0.5268595041322314,
+        "takerN": 69,
+        "takerRate": 0.391304347826087,
+        "bothN": 50,
+        "bothRate": 0.4
+      },
+      {
+        "period": "OOS",
+        "verdict": "WEAK",
+        "baseN": 404,
+        "baseRate": 0.37376237623762376,
+        "mom5N": 354,
+        "mom5Rate": 0.3728813559322034,
+        "takerN": 34,
+        "takerRate": 0.47058823529411764,
+        "bothN": 29,
+        "bothRate": 0.4827586206896552
+      }
+    ]
+  },
+  "q3_incremental_gate": {
+    "modes": [
+      {
+        "mode": "boost_mom5",
+        "strongN": 616,
+        "strongRate": 0.5227272727272727,
+        "weakN": 716,
+        "weakRate": 0.4022346368715084,
+        "totalN": 1332,
+        "totalRate": 0.45795795795795796
+      },
+      {
+        "mode": "boost_taker",
+        "strongN": 621,
+        "strongRate": 0.5233494363929146,
+        "weakN": 476,
+        "weakRate": 0.37184873949579833,
+        "totalN": 1097,
+        "totalRate": 0.4576116681859617
+      },
+      {
+        "mode": "boost_both",
+        "strongN": 643,
+        "strongRate": 0.5194401244167963,
+        "weakN": 766,
+        "weakRate": 0.402088772845953,
+        "totalN": 1409,
+        "totalRate": 0.45564229950319374
+      },
+      {
+        "mode": "penalty_mom5",
+        "strongN": 540,
+        "strongRate": 0.5203703703703704,
+        "weakN": 365,
+        "weakRate": 0.37534246575342467,
+        "totalN": 905,
+        "totalRate": 0.46187845303867403
+      },
+      {
+        "mode": "filter_mom5",
+        "strongN": 556,
+        "strongRate": 0.5251798561151079,
+        "weakN": 373,
+        "weakRate": 0.3699731903485255,
+        "totalN": 929,
+        "totalRate": 0.4628632938643703
+      },
+      {
+        "mode": "filter_taker",
+        "strongN": 93,
+        "strongRate": 0.45161290322580644,
+        "weakN": 40,
+        "weakRate": 0.45,
+        "totalN": 133,
+        "totalRate": 0.45112781954887216
+      }
+    ],
+    "baseline": {
+      "strongN": 597,
+      "strongRate": 0.5192629815745393,
+      "weakN": 404,
+      "weakRate": 0.37376237623762376,
+      "totalN": 1001,
+      "totalRate": 0.46053946053946054
+    }
+  },
+  "q4_regime_conditional": {
+    "regimes": {
+      "bull": {
+        "n": 4427,
+        "symbolsAveraged": 13,
+        "crossSectionalDays": 374,
+        "timeSeriesIC": {
+          "mom5": -0.046012121434494326,
+          "takerRatio": -0.09424444577228347
+        },
+        "crossSectionalIC": {
+          "mom5": -0.06327322410210107,
+          "takerRatio": 0.018083209125989857
+        },
+        "directionalHit": {
+          "mom5": 0.5109220510462176,
+          "takerRatio": 0.4511381926879742,
+          "mom5N": 4349,
+          "tkN": 4349
+        }
+      },
+      "bear": {
+        "n": 2158,
+        "symbolsAveraged": 13,
+        "crossSectionalDays": 226,
+        "timeSeriesIC": {
+          "mom5": 0.146120749826697,
+          "takerRatio": 0.21802076730911651
+        },
+        "crossSectionalIC": {
+          "mom5": -0.019100884366371057,
+          "takerRatio": 0.07146835465419536
+        },
+        "directionalHit": {
+          "mom5": 0.5041705282669138,
+          "takerRatio": 0.5125115848007414,
+          "mom5N": 2158,
+          "tkN": 2158
+        }
+      },
+      "chop": {
+        "n": 7356,
+        "symbolsAveraged": 13,
+        "crossSectionalDays": 638,
+        "timeSeriesIC": {
+          "mom5": 0.019225595567045898,
+          "takerRatio": 0.10805776928616198
+        },
+        "crossSectionalIC": {
+          "mom5": 0.007524032915882439,
+          "takerRatio": 0.01367227339014173
+        },
+        "directionalHit": {
+          "mom5": 0.48603504928806135,
+          "takerRatio": 0.5262869660460022,
+          "mom5N": 7304,
+          "tkN": 7304
+        }
+      },
+      "all": {
+        "n": 13941,
+        "symbolsAveraged": 13,
+        "crossSectionalDays": 1238,
+        "timeSeriesIC": {
+          "mom5": -0.03303026846632316,
+          "takerRatio": -0.00962405136713622
+        },
+        "crossSectionalIC": {
+          "mom5": -0.018724275186310754,
+          "takerRatio": 0.02555563714691335
+        },
+        "directionalHit": {
+          "mom5": 0.496705524581855,
+          "takerRatio": 0.5004706393454493,
+          "mom5N": 13811,
+          "tkN": 13811
+        }
+      }
+    }
+  },
+  "notes": [
+    "taker_ratio uses the Pine proxy (up_vol vs dn_vol) from orthogonal.js, NOT real taker_buy_vol from Binance.",
+    "The ortho_daily_backtest.py used real taker_buy_vol and got OOS IC +0.031. The proxy may differ.",
+    "mom5 is contrarian (sign=-1): positive value = bearish (price rose, expect reversion down).",
+    "Q1 correlations are Pearson on raw values per (symbol, day) across all symbols.",
+    "Q2 hit rate uses long for STRONG, short for WEAK, at primary forward window (10d).",
+    "Q3 baseline is the existing 10-gate engine with no modification. STRONG=8, WEAK=8 thresholds.",
+    "Q4 IC is time-series Pearson per symbol, averaged across symbols. Cross-sectional IC would be more rigorous."
+  ]
+}
