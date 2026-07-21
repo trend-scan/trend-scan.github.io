@@ -43,3 +43,7 @@ dist-ssr
 # gh-pages branch (deployed branch) where history is ephemeral.
 # The deploy workflow still copies it from public/ into dist/ if present.
 public/snapshot.tradfi.json
+
+# Ortho backtest data cache (13 symbols × 43 months of Binance daily klines
+# with taker_buy_vol — only used by scripts/signal/ortho_daily_backtest.py)
+data/historical/_ortho_cache/
