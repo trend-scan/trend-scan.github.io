@@ -348,22 +348,36 @@ async function fetchKrakenTradCandles(symbol, limit = 300) {
   } catch { return null; }
 }
 
-async function fetchTradfiCandles(symbol, limit = 300) {
+async function fetchTradfiCandles(symbol, limit = 300, snapCandles = null) {
   // Returns { candles, source } or null. Source is one of:
-  //   'lighter' | 'okx' | 'yahoo' | 'kraken' | 'massive' | 'twelvedata'
+  //   'snapshot' | 'lighter' | 'okx' | 'yahoo' | 'kraken' | 'massive' | 'twelvedata'
   // Used by fetchTradMarketData to label each ticker's source for UI display.
+  //
+  // SNAPSHOT PRIORITY (fixed 2026-07-21):
+  //   The Yahoo Cloudflare Worker proxy is configured WITHOUT a token in
+  //   production (GitHub secrets VITE_YAHOO_PROXY_URL and VITE_YAHOO_PROXY_TOKEN
+  //   are not set). The proxy responds 401 to every request, so
+  //   fetchYahooProxyCandles always returns null. This caused the live refresh
+  //   to fall back to Lighter (a low-liquidity prediction market) for ALL
+  //   public tickers, overwriting correct Yahoo-sourced snapshot data with
+  //   stale prediction-market prices.
+  //
+  //   Fix: if the snapshot already has data for this ticker, return it
+  //   directly. Skip all live sources. The snapshot is fetched server-side
+  //   by build_snapshot.js (4× daily) using real Yahoo Finance, so it's
+  //   always fresher and more accurate than what client-side live fetches
+  //   can provide.
+  //
+  //   Live sources are now only used for tickers NOT in the snapshot:
+  //     - Private/pre-IPO tickers (OPENAI, ANTHROPIC, SPACEX, etc.) — Lighter
+  //     - Any new ticker added to TRAD_UNIVERSE before next snapshot refresh
+  //
   // ── Race all primary sources in parallel ────────────────────────────────
-  // Instead of trying Lighter → OKX → Yahoo sequentially (which wastes time
-  // waiting for each to fail before trying the next), race all three in
-  // parallel and take the first valid result.
-  //
-  // For a ticker on Yahoo but not Lighter/OKX:
-  //   Sequential: Lighter_0.1s_fail + OKX_0.1s_fail + Yahoo_0.3s = 0.5s
-  //   Parallel:   max(Lighter_0.1s, OKX_0.1s, Yahoo_0.3s) = 0.3s
-  //
-  // Saves ~0.2s per ticker × 374 tickers = ~75s total on the long tail.
-  // More importantly, eliminates the cumulative delay when multiple sources
-  // are slow (each adding 1-5s of latency before the next is tried).
+  // (Only reached if snapshot had no data for this ticker.)
+
+  if (snapCandles && snapCandles.length >= 5) {
+    return { candles: snapCandles, source: 'snapshot' };
+  }
 
   const fetchLighter = LIGHTER_MARKET_IDS[symbol.toUpperCase()]
     ? fetchLighterCandles(symbol, limit).catch(() => null)
@@ -1121,6 +1135,22 @@ export async function fetchTradMarketData(onProgress, onPartialResults, existing
   let done = 0;
   const sourceTracker = {};
 
+  // ── Load snapshot OHLCV once at start ────────────────────────────────────
+  // The snapshot is the authoritative source for ALL public tradfi tickers:
+  //   - It's fetched server-side by build_snapshot.js (4× daily) using real
+  //     Yahoo Finance data (no CORS, no rate limits, no auth tokens)
+  //   - It's always fresher than what client-side live fetches can provide
+  //   - The Yahoo Cloudflare Worker proxy is currently broken in production
+  //     (VITE_YAHOO_PROXY_URL and VITE_YAHOO_PROXY_TOKEN secrets are not set),
+  //     so client-side Yahoo fetches return 401 and fall back to Lighter
+  //     (a low-liquidity prediction market with stale prices).
+  //
+  // By passing snapOHLCV to fetchTradfiCandles per ticker, we ensure that
+  // any ticker present in the snapshot uses snapshot data directly — no live
+  // fetch attempted. Live sources are only hit for tickers NOT in the
+  // snapshot (private/pre-IPO tickers like OPENAI, ANTHROPIC, SPACEX).
+  const snapOHLCV = await loadSnapshotTradfi();
+
   // ── Seed rawResults with existing data (snapshot or previous live) ───────
   // Build a map of symbol → {asset, metrics, source} from existingData so we
   // can look up by symbol. This ensures every asset starts with its existing
@@ -1184,12 +1214,23 @@ export async function fetchTradMarketData(onProgress, onPartialResults, existing
 
   const tasks = sortedAssets.map(asset => async () => {
     try {
-      const result = await fetchTradfiCandles(asset.symbol, 300);
+      // Pass snapshot candles (if available) to fetchTradfiCandles.
+      // If snapshot has data for this ticker, it returns immediately with
+      // source='snapshot' — skipping all live fetches. This is the desired
+      // behavior for ALL public tickers since the Yahoo proxy is currently
+      // broken (no token configured) and Lighter is a low-liquidity
+      // prediction market with stale prices.
+      //
+      // Live fetches still happen for tickers NOT in the snapshot:
+      //   - Private/pre-IPO tickers (OPENAI, ANTHROPIC, SPACEX, etc.)
+      //   - Any new ticker added to TRAD_UNIVERSE before next snapshot refresh
+      const snapCandles = snapOHLCV ? candlesFromSnapshot(snapOHLCV[asset.symbol]) : null;
+      const result = await fetchTradfiCandles(asset.symbol, 300, snapCandles);
       const candles = result?.candles;
       const source = result?.source || 'none';
       done++;
       onProgress?.({ done, total: assets.length });
-      if (source !== 'none') sourceTracker[asset.symbol] = source;
+      if (source !== 'none' && source !== 'snapshot') sourceTracker[asset.symbol] = source;
 
       // Update the existing entry in-place rather than pushing a new one.
       // This preserves all other assets' data while replacing this one.
