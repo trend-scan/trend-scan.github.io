@@ -21,6 +21,24 @@
 # The 8h threshold gives one full refresh cycle of buffer (refreshes are
 # every 6h). The 24h threshold means 4+ consecutive refreshes have been
 # missed — strong signal of CI failure or upstream API outage.
+#
+# THRESHOLD DELIBERATE MISMATCH WITH IN-PRODUCT FRESHNESS BANNER:
+#   The in-product FreshnessBanner (src/hooks/useSnapshotFreshness.js) uses
+#   tighter thresholds — FRESH <6h, STALE 6-12h (amber), CRITICAL >12h (red).
+#   This CI health check uses looser thresholds — FRESH <8h, STALE 8-24h,
+#   CRITICAL >24h.
+#
+#   The gap is intentional. The user-facing banner should warn users BEFORE
+#   maintainers get paged, so users can interpret the displayed data with
+#   appropriate caution. The CI check opens a GitHub Issue, which is a
+#   noisier signal — we want to avoid issue spam from minor cron delays
+#   (GitHub Actions routinely delays scheduled runs by 30-90min, and the
+#   concurrency group means a delayed run can push the next one back by
+#   up to 6h). The 8h CI threshold gives one full refresh cycle of true
+#   buffer beyond what users see.
+#
+#   If you change one set of thresholds, review the other to decide
+#   whether the gap should be preserved, narrowed, or eliminated.
 
 name: Snapshot Health Check
 
@@ -94,7 +112,7 @@ jobs:
 
       - name: Open or update issue if stale
         if: steps.check.outputs.status == 'stale' || steps.check.outputs.status == 'critical' || steps.check.outputs.status == 'fetch_failed' || steps.check.outputs.status == 'no_timestamp'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const status = '${{ steps.check.outputs.status }}';
@@ -234,7 +252,7 @@ jobs:
 
       - name: Close stale issues if snapshot recovered
         if: steps.check.outputs.status == 'fresh'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             // If the snapshot is fresh, auto-close any open stale-snapshot issues

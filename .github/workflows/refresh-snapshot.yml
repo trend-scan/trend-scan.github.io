@@ -130,9 +130,26 @@ jobs:
         continue-on-error: true
         run: |
           set -e
-          # Check if snapshot.tradfi.json changed
-          if git diff --quiet public/snapshot.tradfi.json; then
-            echo "No changes in snapshot.tradfi.json."
+          # Check if snapshot.tradfi.json actually changed by comparing the
+          # freshly-built file's sha256 against the version currently on gh-pages.
+          #
+          # NOTE: Do NOT use `git diff --quiet public/snapshot.tradfi.json` here.
+          # The file is gitignored on main (see .gitignore line 45), so git diff
+          # silently treats it as "no changes" and returns 0 — the push would
+          # never fire. This bug left the live site serving stale tradfi data
+          # for ~36h before being caught on 2026-07-21.
+          #
+          # The hash comparison works whether or not the file exists on gh-pages
+          # yet (first deploy), and correctly skips no-op pushes when Yahoo
+          # Finance data hasn't moved (e.g. weekend with no market activity).
+          NEW_HASH=$(sha256sum public/snapshot.tradfi.json | cut -d' ' -f1)
+          OLD_HASH=$(git show origin/gh-pages:snapshot.tradfi.json 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "none")
+          echo "New snapshot.tradfi.json sha256: $NEW_HASH"
+          echo "Old snapshot.tradfi.json sha256: $OLD_HASH"
+          if [ "$NEW_HASH" = "$OLD_HASH" ]; then
+            echo "No changes in snapshot.tradfi.json (hash match). Skipping push."
+            echo "pushed=false" >> $GITHUB_OUTPUT
+            echo "skipped=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -145,7 +162,7 @@ jobs:
           cp public/snapshot.json /tmp/snapshot.json
 
           # Fetch existing gh-pages branch (if it exists)
-          if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+          if [ "$OLD_HASH" != "none" ]; then
             git stash --include-untracked || true
             git fetch origin gh-pages:gh-pages
             git checkout gh-pages
@@ -205,7 +222,7 @@ jobs:
       - name: Trigger deploy
         if: steps.diff.outputs.changed == 'true'
         id: trigger
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             // Dispatch the deploy workflow and record the time so we can
@@ -221,7 +238,7 @@ jobs:
 
       - name: Verify deploy workflow started
         if: steps.diff.outputs.changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             // Poll the deploy workflow runs to confirm our dispatch actually
@@ -299,7 +316,7 @@ jobs:
       actions: read
     steps:
       - name: Find or open issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const label = 'ci-failure';
