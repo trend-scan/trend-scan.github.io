@@ -1,0 +1,1020 @@
+{
+  "generated_at": "2026-07-21T06:00:01.228Z",
+  "config": {
+    "symbols": [
+      "BTC",
+      "ETH",
+      "SOL",
+      "AVAX",
+      "LINK",
+      "DOGE",
+      "ARB",
+      "OP",
+      "INJ",
+      "SUI",
+      "NEAR",
+      "APT",
+      "TIA"
+    ],
+    "periods": {
+      "TRAIN": {
+        "start": "2022-01-01",
+        "end": "2023-06-30",
+        "label": "TRAIN (tune)"
+      },
+      "VALIDATION": {
+        "start": "2023-07-01",
+        "end": "2024-06-30",
+        "label": "VALIDATION (hold)"
+      },
+      "OOS": {
+        "start": "2024-07-01",
+        "end": "2025-07-31",
+        "label": "OOS (untouched)"
+      }
+    },
+    "forward_windows": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "primary_forward_window": 10,
+    "fees_bps_per_side": 10,
+    "best_forward_window_train": 10,
+    "adaptation_note": "Daily bars (Pine script targets 4H — params kept unchanged so signals are ~6x rarer than designed)."
+  },
+  "threshold_sweep_train": [
+    {
+      "tau": 0.2,
+      "long_count": 829,
+      "short_count": 797,
+      "total": 1626,
+      "pre_hit_rate": 0.5276752767527675,
+      "post_hit_rate": 0.5227552275522755,
+      "long_pre_hit": 0.5006031363088058,
+      "short_pre_hit": 0.5558343789209536
+    },
+    {
+      "tau": 0.3,
+      "long_count": 504,
+      "short_count": 550,
+      "total": 1054,
+      "pre_hit_rate": 0.538899430740038,
+      "post_hit_rate": 0.5351043643263758,
+      "long_pre_hit": 0.5277777777777778,
+      "short_pre_hit": 0.5490909090909091
+    },
+    {
+      "tau": 0.4,
+      "long_count": 262,
+      "short_count": 334,
+      "total": 596,
+      "pre_hit_rate": 0.5453020134228188,
+      "post_hit_rate": 0.540268456375839,
+      "long_pre_hit": 0.5610687022900763,
+      "short_pre_hit": 0.5329341317365269
+    },
+    {
+      "tau": 0.5,
+      "long_count": 135,
+      "short_count": 190,
+      "total": 325,
+      "pre_hit_rate": 0.48,
+      "post_hit_rate": 0.47384615384615386,
+      "long_pre_hit": 0.5407407407407407,
+      "short_pre_hit": 0.4368421052631579
+    },
+    {
+      "tau": 0.6,
+      "long_count": 63,
+      "short_count": 90,
+      "total": 153,
+      "pre_hit_rate": 0.42483660130718953,
+      "post_hit_rate": 0.4117647058823529,
+      "long_pre_hit": 0.49206349206349204,
+      "short_pre_hit": 0.37777777777777777
+    },
+    {
+      "tau": 0.7,
+      "long_count": 28,
+      "short_count": 35,
+      "total": 63,
+      "pre_hit_rate": 0.4444444444444444,
+      "post_hit_rate": 0.4444444444444444,
+      "long_pre_hit": 0.5,
+      "short_pre_hit": 0.4
+    },
+    {
+      "tau": 0.8,
+      "long_count": 11,
+      "short_count": 10,
+      "total": 21,
+      "pre_hit_rate": 0.38095238095238093,
+      "post_hit_rate": 0.38095238095238093,
+      "long_pre_hit": 0.36363636363636365,
+      "short_pre_hit": 0.4
+    },
+    {
+      "tau": 1,
+      "long_count": 1,
+      "short_count": 0,
+      "total": 1,
+      "pre_hit_rate": 0,
+      "post_hit_rate": 0,
+      "long_pre_hit": 0,
+      "short_pre_hit": null
+    }
+  ],
+  "period_hit_rates": {
+    "TRAIN": {
+      "long": {
+        "count": 262,
+        "preHits": 147,
+        "postHits": 147,
+        "preHitRate": 0.5610687022900763,
+        "postHitRate": 0.5610687022900763,
+        "avgPreRetPct": 3.1967092981930674,
+        "avgPostRetPct": 2.9967092981930676
+      },
+      "short": {
+        "count": 334,
+        "preHits": 178,
+        "postHits": 175,
+        "preHitRate": 0.5329341317365269,
+        "postHitRate": 0.5239520958083832,
+        "avgPreRetPct": -2.7633344008595673,
+        "avgPostRetPct": -2.963334400859567
+      },
+      "combined": {
+        "count": 596,
+        "preHits": 325,
+        "postHits": 322,
+        "preHitRate": 0.5453020134228188,
+        "postHitRate": 0.540268456375839
+      }
+    },
+    "VALIDATION": {
+      "long": {
+        "count": 290,
+        "preHits": 162,
+        "postHits": 160,
+        "preHitRate": 0.5586206896551724,
+        "postHitRate": 0.5517241379310345,
+        "avgPreRetPct": 2.475864107433602,
+        "avgPostRetPct": 2.275864107433603
+      },
+      "short": {
+        "count": 365,
+        "preHits": 202,
+        "postHits": 201,
+        "preHitRate": 0.5534246575342465,
+        "postHitRate": 0.5506849315068493,
+        "avgPreRetPct": -0.03149239230362285,
+        "avgPostRetPct": -0.23149239230362265
+      },
+      "combined": {
+        "count": 655,
+        "preHits": 364,
+        "postHits": 361,
+        "preHitRate": 0.5557251908396946,
+        "postHitRate": 0.5511450381679389
+      }
+    },
+    "OOS": {
+      "long": {
+        "count": 382,
+        "preHits": 195,
+        "postHits": 188,
+        "preHitRate": 0.5104712041884817,
+        "postHitRate": 0.49214659685863876,
+        "avgPreRetPct": 0.709513743859681,
+        "avgPostRetPct": 0.5095137438596813
+      },
+      "short": {
+        "count": 527,
+        "preHits": 305,
+        "postHits": 304,
+        "preHitRate": 0.5787476280834914,
+        "postHitRate": 0.5768500948766604,
+        "avgPreRetPct": 1.566860632399007,
+        "avgPostRetPct": 1.3668606323990078
+      },
+      "combined": {
+        "count": 909,
+        "preHits": 500,
+        "postHits": 492,
+        "preHitRate": 0.5500550055005501,
+        "postHitRate": 0.5412541254125413
+      }
+    }
+  },
+  "forward_window_sweep_oos": {
+    "1": {
+      "long": {
+        "count": 382,
+        "preHits": 218,
+        "postHits": 213,
+        "preHitRate": 0.5706806282722513,
+        "postHitRate": 0.5575916230366492,
+        "avgPreRetPct": 1.1520451491909716,
+        "avgPostRetPct": 0.9520451491909716
+      },
+      "short": {
+        "count": 528,
+        "preHits": 263,
+        "postHits": 249,
+        "preHitRate": 0.4981060606060606,
+        "postHitRate": 0.4715909090909091,
+        "avgPreRetPct": -0.15439281558404794,
+        "avgPostRetPct": -0.354392815584048
+      },
+      "combined": {
+        "count": 910,
+        "preHits": 481,
+        "postHits": 462,
+        "preHitRate": 0.5285714285714286,
+        "postHitRate": 0.5076923076923077
+      }
+    },
+    "3": {
+      "long": {
+        "count": 382,
+        "preHits": 242,
+        "postHits": 239,
+        "preHitRate": 0.6335078534031413,
+        "postHitRate": 0.6256544502617801,
+        "avgPreRetPct": 2.6903967426829367,
+        "avgPostRetPct": 2.4903967426829365
+      },
+      "short": {
+        "count": 528,
+        "preHits": 257,
+        "postHits": 250,
+        "preHitRate": 0.48674242424242425,
+        "postHitRate": 0.4734848484848485,
+        "avgPreRetPct": -0.049825143283774076,
+        "avgPostRetPct": -0.24982514328377398
+      },
+      "combined": {
+        "count": 910,
+        "preHits": 499,
+        "postHits": 489,
+        "preHitRate": 0.5483516483516484,
+        "postHitRate": 0.5373626373626373
+      }
+    },
+    "5": {
+      "long": {
+        "count": 382,
+        "preHits": 231,
+        "postHits": 225,
+        "preHitRate": 0.6047120418848168,
+        "postHitRate": 0.5890052356020943,
+        "avgPreRetPct": 2.7750196855432536,
+        "avgPostRetPct": 2.5750196855432534
+      },
+      "short": {
+        "count": 528,
+        "preHits": 263,
+        "postHits": 256,
+        "preHitRate": 0.4981060606060606,
+        "postHitRate": 0.48484848484848486,
+        "avgPreRetPct": 0.12792728247545,
+        "avgPostRetPct": -0.07207271752454998
+      },
+      "combined": {
+        "count": 910,
+        "preHits": 494,
+        "postHits": 481,
+        "preHitRate": 0.5428571428571428,
+        "postHitRate": 0.5285714285714286
+      }
+    },
+    "10": {
+      "long": {
+        "count": 382,
+        "preHits": 195,
+        "postHits": 188,
+        "preHitRate": 0.5104712041884817,
+        "postHitRate": 0.49214659685863876,
+        "avgPreRetPct": 0.709513743859681,
+        "avgPostRetPct": 0.5095137438596813
+      },
+      "short": {
+        "count": 527,
+        "preHits": 305,
+        "postHits": 304,
+        "preHitRate": 0.5787476280834914,
+        "postHitRate": 0.5768500948766604,
+        "avgPreRetPct": 1.566860632399007,
+        "avgPostRetPct": 1.3668606323990078
+      },
+      "combined": {
+        "count": 909,
+        "preHits": 500,
+        "postHits": 492,
+        "preHitRate": 0.5500550055005501,
+        "postHitRate": 0.5412541254125413
+      }
+    },
+    "20": {
+      "long": {
+        "count": 382,
+        "preHits": 176,
+        "postHits": 171,
+        "preHitRate": 0.4607329842931937,
+        "postHitRate": 0.4476439790575916,
+        "avgPreRetPct": 1.001562630398327,
+        "avgPostRetPct": 0.8015626303983263
+      },
+      "short": {
+        "count": 461,
+        "preHits": 276,
+        "postHits": 275,
+        "preHitRate": 0.5986984815618221,
+        "postHitRate": 0.596529284164859,
+        "avgPreRetPct": 1.1623323264196865,
+        "avgPostRetPct": 0.9623323264196861
+      },
+      "combined": {
+        "count": 843,
+        "preHits": 452,
+        "postHits": 446,
+        "preHitRate": 0.5361803084223014,
+        "postHitRate": 0.5290628706998813
+      }
+    }
+  },
+  "per_symbol_oos": {
+    "BTC": {
+      "long": {
+        "count": 25,
+        "preHits": 16,
+        "postHits": 15,
+        "preHitRate": 0.64,
+        "postHitRate": 0.6,
+        "avgPreRetPct": 2.0955672648010584,
+        "avgPostRetPct": 1.8955672648010582
+      },
+      "short": {
+        "count": 27,
+        "preHits": 9,
+        "postHits": 9,
+        "preHitRate": 0.3333333333333333,
+        "postHitRate": 0.3333333333333333,
+        "avgPreRetPct": -1.7315251487626764,
+        "avgPostRetPct": -1.9315251487626763
+      },
+      "combined": {
+        "count": 52,
+        "preHits": 25,
+        "postHits": 24,
+        "preHitRate": 0.4807692307692308,
+        "postHitRate": 0.46153846153846156,
+        "avgPreRetPct": 0.10842312698911928,
+        "avgPostRetPct": -0.09157687301088083
+      }
+    },
+    "ETH": {
+      "long": {
+        "count": 30,
+        "preHits": 20,
+        "postHits": 20,
+        "preHitRate": 0.6666666666666666,
+        "postHitRate": 0.6666666666666666,
+        "avgPreRetPct": 1.531723399313457,
+        "avgPostRetPct": 1.3317233993134576
+      },
+      "short": {
+        "count": 38,
+        "preHits": 16,
+        "postHits": 15,
+        "preHitRate": 0.42105263157894735,
+        "postHitRate": 0.39473684210526316,
+        "avgPreRetPct": -2.537612281044306,
+        "avgPostRetPct": -2.7376122810443055
+      },
+      "combined": {
+        "count": 68,
+        "preHits": 36,
+        "postHits": 35,
+        "preHitRate": 0.5294117647058824,
+        "postHitRate": 0.5147058823529411,
+        "avgPreRetPct": -0.7423171279452928,
+        "avgPostRetPct": -0.9423171279452923
+      }
+    },
+    "SOL": {
+      "long": {
+        "count": 25,
+        "preHits": 11,
+        "postHits": 11,
+        "preHitRate": 0.44,
+        "postHitRate": 0.44,
+        "avgPreRetPct": -1.6050381400356961,
+        "avgPostRetPct": -1.805038140035696
+      },
+      "short": {
+        "count": 60,
+        "preHits": 29,
+        "postHits": 29,
+        "preHitRate": 0.48333333333333334,
+        "postHitRate": 0.48333333333333334,
+        "avgPreRetPct": -2.4041761575056473,
+        "avgPostRetPct": -2.604176157505647
+      },
+      "combined": {
+        "count": 85,
+        "preHits": 40,
+        "postHits": 40,
+        "preHitRate": 0.47058823529411764,
+        "postHitRate": 0.47058823529411764,
+        "avgPreRetPct": -2.1691355641321324,
+        "avgPostRetPct": -2.3691355641321317
+      }
+    },
+    "AVAX": {
+      "long": {
+        "count": 28,
+        "preHits": 13,
+        "postHits": 13,
+        "preHitRate": 0.4642857142857143,
+        "postHitRate": 0.4642857142857143,
+        "avgPreRetPct": -1.230285360065557,
+        "avgPostRetPct": -1.430285360065558
+      },
+      "short": {
+        "count": 51,
+        "preHits": 34,
+        "postHits": 34,
+        "preHitRate": 0.6666666666666666,
+        "postHitRate": 0.6666666666666666,
+        "avgPreRetPct": 4.923896374352229,
+        "avgPostRetPct": 4.7238963743522335
+      },
+      "combined": {
+        "count": 79,
+        "preHits": 47,
+        "postHits": 47,
+        "preHitRate": 0.5949367088607594,
+        "postHitRate": 0.5949367088607594,
+        "avgPreRetPct": 2.742667405191495,
+        "avgPostRetPct": 2.5426674051914975
+      }
+    },
+    "LINK": {
+      "long": {
+        "count": 30,
+        "preHits": 13,
+        "postHits": 13,
+        "preHitRate": 0.43333333333333335,
+        "postHitRate": 0.43333333333333335,
+        "avgPreRetPct": -0.9056538526093558,
+        "avgPostRetPct": -1.1056538526093556
+      },
+      "short": {
+        "count": 49,
+        "preHits": 23,
+        "postHits": 23,
+        "preHitRate": 0.46938775510204084,
+        "postHitRate": 0.46938775510204084,
+        "avgPreRetPct": -3.1517222069089734,
+        "avgPostRetPct": -3.351722206908972
+      },
+      "combined": {
+        "count": 79,
+        "preHits": 36,
+        "postHits": 36,
+        "preHitRate": 0.45569620253164556,
+        "postHitRate": 0.45569620253164556,
+        "avgPreRetPct": -2.2987848571749416,
+        "avgPostRetPct": -2.4987848571749405
+      }
+    },
+    "DOGE": {
+      "long": {
+        "count": 35,
+        "preHits": 10,
+        "postHits": 8,
+        "preHitRate": 0.2857142857142857,
+        "postHitRate": 0.22857142857142856,
+        "avgPreRetPct": -3.9754303878737405,
+        "avgPostRetPct": -4.175430387873741
+      },
+      "short": {
+        "count": 47,
+        "preHits": 21,
+        "postHits": 21,
+        "preHitRate": 0.44680851063829785,
+        "postHitRate": 0.44680851063829785,
+        "avgPreRetPct": -6.742735927906628,
+        "avgPostRetPct": -6.942735927906628
+      },
+      "combined": {
+        "count": 82,
+        "preHits": 31,
+        "postHits": 29,
+        "preHitRate": 0.3780487804878049,
+        "postHitRate": 0.35365853658536583,
+        "avgPreRetPct": -5.561568929112102,
+        "avgPostRetPct": -5.761568929112103
+      }
+    },
+    "ARB": {
+      "long": {
+        "count": 42,
+        "preHits": 25,
+        "postHits": 23,
+        "preHitRate": 0.5952380952380952,
+        "postHitRate": 0.5476190476190477,
+        "avgPreRetPct": 3.4856957018590666,
+        "avgPostRetPct": 3.2856957018590656
+      },
+      "short": {
+        "count": 38,
+        "preHits": 29,
+        "postHits": 29,
+        "preHitRate": 0.7631578947368421,
+        "postHitRate": 0.7631578947368421,
+        "avgPreRetPct": 7.099698563804303,
+        "avgPostRetPct": 6.899698563804302
+      },
+      "combined": {
+        "count": 80,
+        "preHits": 54,
+        "postHits": 52,
+        "preHitRate": 0.675,
+        "postHitRate": 0.65,
+        "avgPreRetPct": 5.202347061283054,
+        "avgPostRetPct": 5.002347061283053
+      }
+    },
+    "OP": {
+      "long": {
+        "count": 26,
+        "preHits": 20,
+        "postHits": 20,
+        "preHitRate": 0.7692307692307693,
+        "postHitRate": 0.7692307692307693,
+        "avgPreRetPct": 4.2915847528403575,
+        "avgPostRetPct": 4.091584752840357
+      },
+      "short": {
+        "count": 33,
+        "preHits": 23,
+        "postHits": 23,
+        "preHitRate": 0.696969696969697,
+        "postHitRate": 0.696969696969697,
+        "avgPreRetPct": 6.952695295602379,
+        "avgPostRetPct": 6.752695295602384
+      },
+      "combined": {
+        "count": 59,
+        "preHits": 43,
+        "postHits": 43,
+        "preHitRate": 0.7288135593220338,
+        "postHitRate": 0.7288135593220338,
+        "avgPreRetPct": 5.7800025140462346,
+        "avgPostRetPct": 5.580002514046237
+      }
+    },
+    "INJ": {
+      "long": {
+        "count": 39,
+        "preHits": 23,
+        "postHits": 22,
+        "preHitRate": 0.5897435897435898,
+        "postHitRate": 0.5641025641025641,
+        "avgPreRetPct": 2.0184821306481604,
+        "avgPostRetPct": 1.8184821306481598
+      },
+      "short": {
+        "count": 40,
+        "preHits": 32,
+        "postHits": 32,
+        "preHitRate": 0.8,
+        "postHitRate": 0.8,
+        "avgPreRetPct": 6.4638671005059765,
+        "avgPostRetPct": 6.263867100505978
+      },
+      "combined": {
+        "count": 79,
+        "preHits": 55,
+        "postHits": 54,
+        "preHitRate": 0.6962025316455697,
+        "postHitRate": 0.6835443037974683,
+        "avgPreRetPct": 4.269309963487561,
+        "avgPostRetPct": 4.069309963487561
+      }
+    },
+    "SUI": {
+      "long": {
+        "count": 12,
+        "preHits": 9,
+        "postHits": 9,
+        "preHitRate": 0.75,
+        "postHitRate": 0.75,
+        "avgPreRetPct": 25.716001288626497,
+        "avgPostRetPct": 25.5160012886265
+      },
+      "short": {
+        "count": 24,
+        "preHits": 11,
+        "postHits": 11,
+        "preHitRate": 0.4583333333333333,
+        "postHitRate": 0.4583333333333333,
+        "avgPreRetPct": -1.2682434996560814,
+        "avgPostRetPct": -1.4682434996560814
+      },
+      "combined": {
+        "count": 36,
+        "preHits": 20,
+        "postHits": 20,
+        "preHitRate": 0.5555555555555556,
+        "postHitRate": 0.5555555555555556,
+        "avgPreRetPct": 7.726504763104777,
+        "avgPostRetPct": 7.52650476310478
+      }
+    },
+    "NEAR": {
+      "long": {
+        "count": 25,
+        "preHits": 16,
+        "postHits": 16,
+        "preHitRate": 0.64,
+        "postHitRate": 0.64,
+        "avgPreRetPct": 6.295587600904988,
+        "avgPostRetPct": 6.095587600904992
+      },
+      "short": {
+        "count": 44,
+        "preHits": 26,
+        "postHits": 26,
+        "preHitRate": 0.5909090909090909,
+        "postHitRate": 0.5909090909090909,
+        "avgPreRetPct": 3.6078775960563663,
+        "avgPostRetPct": 3.407877596056368
+      },
+      "combined": {
+        "count": 69,
+        "preHits": 42,
+        "postHits": 42,
+        "preHitRate": 0.6086956521739131,
+        "postHitRate": 0.6086956521739131,
+        "avgPreRetPct": 4.581685568827606,
+        "avgPostRetPct": 4.381685568827608
+      }
+    },
+    "APT": {
+      "long": {
+        "count": 33,
+        "preHits": 17,
+        "postHits": 16,
+        "preHitRate": 0.5151515151515151,
+        "postHitRate": 0.48484848484848486,
+        "avgPreRetPct": 0.5561581299127605,
+        "avgPostRetPct": 0.3561581299127608
+      },
+      "short": {
+        "count": 32,
+        "preHits": 22,
+        "postHits": 22,
+        "preHitRate": 0.6875,
+        "postHitRate": 0.6875,
+        "avgPreRetPct": 4.405946956893372,
+        "avgPostRetPct": 4.205946956893372
+      },
+      "combined": {
+        "count": 65,
+        "preHits": 39,
+        "postHits": 38,
+        "preHitRate": 0.6,
+        "postHitRate": 0.5846153846153846,
+        "avgPreRetPct": 2.4514387831955227,
+        "avgPostRetPct": 2.2514387831955234
+      }
+    },
+    "TIA": {
+      "long": {
+        "count": 32,
+        "preHits": 2,
+        "postHits": 2,
+        "preHitRate": 0.0625,
+        "postHitRate": 0.0625,
+        "avgPreRetPct": -12.73309876965358,
+        "avgPostRetPct": -12.933098769653576
+      },
+      "short": {
+        "count": 44,
+        "preHits": 30,
+        "postHits": 30,
+        "preHitRate": 0.6818181818181818,
+        "postHitRate": 0.6818181818181818,
+        "avgPreRetPct": 6.96158143236536,
+        "avgPostRetPct": 6.761581432365358
+      },
+      "combined": {
+        "count": 76,
+        "preHits": 32,
+        "postHits": 32,
+        "preHitRate": 0.42105263157894735,
+        "postHitRate": 0.42105263157894735,
+        "avgPreRetPct": -1.3309154948005095,
+        "avgPostRetPct": -1.5309154948005086
+      }
+    }
+  },
+  "ablation": {
+    "baseline": {
+      "TRAIN": {
+        "longCount": 262,
+        "longPre": 147,
+        "longPost": 147,
+        "shortCount": 334,
+        "shortPre": 178,
+        "shortPost": 175,
+        "total": 596,
+        "preHits": 325,
+        "postHits": 322
+      },
+      "VALIDATION": {
+        "longCount": 290,
+        "longPre": 162,
+        "longPost": 160,
+        "shortCount": 365,
+        "shortPre": 202,
+        "shortPost": 201,
+        "total": 655,
+        "preHits": 364,
+        "postHits": 361
+      },
+      "OOS": {
+        "longCount": 382,
+        "longPre": 195,
+        "longPost": 188,
+        "shortCount": 527,
+        "shortPre": 305,
+        "shortPost": 304,
+        "total": 909,
+        "preHits": 500,
+        "postHits": 492
+      }
+    },
+    "ablations": {
+      "vol_ratio": {
+        "TRAIN": {
+          "count": 618,
+          "preHit": 0.5420711974110033,
+          "postHit": 0.5372168284789643,
+          "delta_preHit": -0.3230816011815518,
+          "delta_postHit": -0.30516278968746313
+        },
+        "OOS": {
+          "count": 888,
+          "preHit": 0.5563063063063063,
+          "postHit": 0.5461711711711712,
+          "delta_preHit": 0.6251300805756199,
+          "delta_postHit": 0.49170457586299454
+        }
+      },
+      "bb_width": {
+        "TRAIN": {
+          "count": 628,
+          "preHit": 0.5159235668789809,
+          "postHit": 0.5127388535031847,
+          "delta_preHit": -2.937844654383792,
+          "delta_postHit": -2.752960287265427
+        },
+        "OOS": {
+          "count": 1136,
+          "preHit": 0.5070422535211268,
+          "postHit": 0.5017605633802817,
+          "delta_preHit": -4.301275197942333,
+          "delta_postHit": -3.949356203225951
+        }
+      },
+      "rsi_signal": {
+        "TRAIN": {
+          "count": 1252,
+          "preHit": 0.547923322683706,
+          "postHit": 0.5447284345047924,
+          "delta_preHit": 0.2621309260887217,
+          "delta_postHit": 0.4459978128953379
+        },
+        "OOS": {
+          "count": 1989,
+          "preHit": 0.5284062342885872,
+          "postHit": 0.5178481649069885,
+          "delta_preHit": -2.1648771211962847,
+          "delta_postHit": -2.340596050555277
+        }
+      },
+      "zscore_20": {
+        "TRAIN": {
+          "count": 376,
+          "preHit": 0.5132978723404256,
+          "postHit": 0.5053191489361702,
+          "delta_preHit": -3.2004141082393245,
+          "delta_postHit": -3.494930743966873
+        },
+        "OOS": {
+          "count": 503,
+          "preHit": 0.5447316103379721,
+          "postHit": 0.536779324055666,
+          "delta_preHit": -0.532339516257796,
+          "delta_postHit": -0.447480135687528
+        }
+      },
+      "mom_6": {
+        "TRAIN": {
+          "count": 397,
+          "preHit": 0.5491183879093199,
+          "postHit": 0.5440806045340051,
+          "delta_preHit": 0.3816374486501073,
+          "delta_postHit": 0.38121481581661065
+        },
+        "OOS": {
+          "count": 608,
+          "preHit": 0.5657894736842105,
+          "postHit": 0.5592105263157895,
+          "delta_preHit": 1.5734468183660422,
+          "delta_postHit": 1.7956400903248237
+        }
+      },
+      "mom_18": {
+        "TRAIN": {
+          "count": 458,
+          "preHit": 0.5218340611353712,
+          "postHit": 0.517467248908297,
+          "delta_preHit": -2.346795228744758,
+          "delta_postHit": -2.2801207467541995
+        },
+        "OOS": {
+          "count": 692,
+          "preHit": 0.5158959537572254,
+          "postHit": 0.5115606936416185,
+          "delta_preHit": -3.4159051743324675,
+          "delta_postHit": -2.9693431770922762
+        }
+      },
+      "ema_cross": {
+        "TRAIN": {
+          "count": 1127,
+          "preHit": 0.551907719609583,
+          "postHit": 0.546583850931677,
+          "delta_preHit": 0.6605706186764149,
+          "delta_postHit": 0.6315394555838072
+        },
+        "OOS": {
+          "count": 1779,
+          "preHit": 0.5368184373243395,
+          "postHit": 0.5272625070264193,
+          "delta_preHit": -1.323656817621055,
+          "delta_postHit": -1.3991618386121951
+        }
+      },
+      "hl_mom": {
+        "TRAIN": {
+          "count": 696,
+          "preHit": 0.5402298850574713,
+          "postHit": 0.5359195402298851,
+          "delta_preHit": -0.5072128365347539,
+          "delta_postHit": -0.4348916145953896
+        },
+        "OOS": {
+          "count": 975,
+          "preHit": 0.5384615384615384,
+          "postHit": 0.5282051282051282,
+          "delta_preHit": -1.1593467039011651,
+          "delta_postHit": -1.3048997207413038
+        }
+      },
+      "taker_ratio": {
+        "TRAIN": {
+          "count": 460,
+          "preHit": 0.508695652173913,
+          "postHit": 0.5021739130434782,
+          "delta_preHit": -3.6606361248905817,
+          "delta_postHit": -3.809454333236073
+        },
+        "OOS": {
+          "count": 628,
+          "preHit": 0.5668789808917197,
+          "postHit": 0.5636942675159236,
+          "delta_preHit": 1.6823975391169643,
+          "delta_postHit": 2.24401421033823
+        }
+      }
+    }
+  },
+  "sensitivity": {
+    "lb": [
+      {
+        "lb": 1,
+        "trainHit": 0.5324947589098532,
+        "oosHit": 0.5366311834690044,
+        "trainCount": 954,
+        "oosCount": 1597
+      },
+      {
+        "lb": 3,
+        "trainHit": 0.5453277545327755,
+        "oosHit": 0.5597826086956522,
+        "trainCount": 717,
+        "oosCount": 1104
+      },
+      {
+        "lb": 5,
+        "trainHit": 0.5453020134228188,
+        "oosHit": 0.5500550055005501,
+        "trainCount": 596,
+        "oosCount": 909
+      },
+      {
+        "lb": 8,
+        "trainHit": 0.5114345114345115,
+        "oosHit": 0.5312977099236641,
+        "trainCount": 481,
+        "oosCount": 655
+      },
+      {
+        "lb": 10,
+        "trainHit": 0.4836272040302267,
+        "oosHit": 0.5366795366795367,
+        "trainCount": 397,
+        "oosCount": 518
+      },
+      {
+        "lb": 15,
+        "trainHit": 0.41350210970464135,
+        "oosHit": 0.4897959183673469,
+        "trainCount": 237,
+        "oosCount": 245
+      }
+    ],
+    "zsc_len": [
+      {
+        "zsc": 40,
+        "trainHit": 0.5326704545454546,
+        "oosHit": 0.5367717287488061,
+        "trainCount": 704,
+        "oosCount": 1047
+      },
+      {
+        "zsc": 60,
+        "trainHit": 0.4727838258164852,
+        "oosHit": 0.5444555444555444,
+        "trainCount": 643,
+        "oosCount": 1001
+      },
+      {
+        "zsc": 80,
+        "trainHit": 0.5453020134228188,
+        "oosHit": 0.5500550055005501,
+        "trainCount": 596,
+        "oosCount": 909
+      },
+      {
+        "zsc": 100,
+        "trainHit": 0.5217391304347826,
+        "oosHit": 0.5688172043010753,
+        "trainCount": 529,
+        "oosCount": 930
+      },
+      {
+        "zsc": 120,
+        "trainHit": 0.5219206680584552,
+        "oosHit": 0.5701357466063348,
+        "trainCount": 479,
+        "oosCount": 884
+      },
+      {
+        "zsc": 150,
+        "trainHit": 0.51010101010101,
+        "oosHit": 0.5473684210526316,
+        "trainCount": 396,
+        "oosCount": 855
+      }
+    ]
+  },
+  "summary": {
+    "best_tau": 0.4,
+    "train_combined_pre_hit": 0.5453020134228188,
+    "val_combined_pre_hit": 0.5557251908396946,
+    "oos_combined_pre_hit": 0.5500550055005501,
+    "overfit_flagged": false,
+    "notes": [
+      "Threshold τ tuned ONLY on TRAIN. Applied unchanged to VAL/OOS.",
+      "Costs: 20bps round-trip fees. No funding cost modeled (daily holds).",
+      "preHit  = directional return > 0 (price moved in predicted direction).",
+      "postHit = net return > 0 (after fees).",
+      "Best τ selected by combined (long+short) pre-cost hit rate on TRAIN.",
+      "OOS flagged overfit if combined pre-hit diverges from VAL by > 20pp.",
+      "DAILY BARS CAVEAT: Pine script targets 4H. We use existing daily klines.",
+      "  Parameters (lb=5, zsc_len=80, mom_6/18, ema 12/26) are unchanged.",
+      "  Signals are ~6x rarer than on 4H data. Composite stdev ~0.2 on daily."
+    ]
+  }
+}
