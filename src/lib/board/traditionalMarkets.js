@@ -162,6 +162,29 @@ async function fetchYahooProxyCandles(symbol, limit = 300) {
 const LIGHTER_API = 'https://mainnet.zklighter.elliot.ai/api/v1';
 const LIGHTER_EXPLORER = 'https://explorer.elliot.ai/api';
 
+// Private/pre-IPO tickers that have NO public exchange data.
+// These exist only on prediction markets (Lighter) — Yahoo/OKX would 404.
+// Must mirror the PRIVATE_TICKERS set in scripts/build_snapshot.js.
+//
+// SOURCE PREFERENCE for tradfi tickers (fixed 2026-07-21):
+//   Public tickers  → Yahoo proxy first (real market prices + volume),
+//                     then OKX perps, then Lighter (last resort only —
+//                     Lighter is a low-liquidity prediction market whose
+//                     prices for SPY/QQQ/NVDA/etc. trail real market prices
+//                     by 0.5-2% and whose volume is 4-5 orders of magnitude
+//                     smaller than real exchanges).
+//   Private tickers → Lighter only (Yahoo has no data, OKX has no data).
+//
+// Before this fix, the precedence was Lighter → OKX → Yahoo, which meant
+// the live refresh would OVERWRITE the (correct, Yahoo-sourced) snapshot
+// data with stale Lighter prediction-market prices. The user saw prices
+// flip from $207.29 (snapshot) to $202.92 (Lighter) for NVDA, with
+// volume dropping from 106M to 4,260 — clearly wrong.
+const PRIVATE_TICKERS = new Set([
+  'OPENAI', 'ANTHROPIC', 'SPACEX', 'MINIMAX', 'ZHIPU',
+  'WLFI', 'YZY',
+]);
+
 // Known market IDs — used directly without API lookup
 const LIGHTER_MARKET_IDS = {
   SPY:128, QQQ:129, DIA:152, IWM:153, US500:180, US100:181,
@@ -326,6 +349,9 @@ async function fetchKrakenTradCandles(symbol, limit = 300) {
 }
 
 async function fetchTradfiCandles(symbol, limit = 300) {
+  // Returns { candles, source } or null. Source is one of:
+  //   'lighter' | 'okx' | 'yahoo' | 'kraken' | 'massive' | 'twelvedata'
+  // Used by fetchTradMarketData to label each ticker's source for UI display.
   // ── Race all primary sources in parallel ────────────────────────────────
   // Instead of trying Lighter → OKX → Yahoo sequentially (which wastes time
   // waiting for each to fail before trying the next), race all three in
@@ -356,9 +382,27 @@ async function fetchTradfiCandles(symbol, limit = 300) {
   ]);
 
   // Prefer Lighter (fastest, most reliable for tickers it supports)
-  if (lighterCandles && lighterCandles.length >= 5) return lighterCandles;
-  if (okxCandles && okxCandles.length >= 5) return okxCandles;
-  if (yahooCandles && yahooCandles.length >= 5) return yahooCandles;
+  // — but ONLY for private/pre-IPO tickers that have no public exchange data.
+  //
+  // For public tickers (stocks, ETFs, indices, metals, forex), Yahoo proxy
+  // returns real market prices + volume. Lighter is a low-liquidity prediction
+  // market whose prices trail real market prices and whose volume is 4-5
+  // orders of magnitude smaller than real exchanges. Using Lighter first for
+  // public tickers caused the live refresh to overwrite correct snapshot
+  // (Yahoo-sourced) data with stale prediction-market prices.
+  //
+  // See PRIVATE_TICKERS comment above for full context.
+  const isPrivate = PRIVATE_TICKERS.has(symbol.toUpperCase());
+
+  if (isPrivate) {
+    if (lighterCandles && lighterCandles.length >= 5) return { candles: lighterCandles, source: 'lighter' };
+    if (okxCandles && okxCandles.length >= 5) return { candles: okxCandles, source: 'okx' };
+    if (yahooCandles && yahooCandles.length >= 5) return { candles: yahooCandles, source: 'yahoo' };
+  } else {
+    if (yahooCandles && yahooCandles.length >= 5) return { candles: yahooCandles, source: 'yahoo' };
+    if (okxCandles && okxCandles.length >= 5) return { candles: okxCandles, source: 'okx' };
+    if (lighterCandles && lighterCandles.length >= 5) return { candles: lighterCandles, source: 'lighter' };
+  }
 
   // ── Sequential fallback for rate-limited sources ────────────────────────
   // Only reached if all three primary sources failed — rare, but handles
@@ -366,18 +410,18 @@ async function fetchTradfiCandles(symbol, limit = 300) {
 
   // Kraken (no rate limit, 11 tickers — rarely useful but free)
   let krakenCandles = await fetchKrakenTradCandles(symbol, limit);
-  if (krakenCandles && krakenCandles.length >= 5) return krakenCandles;
+  if (krakenCandles && krakenCandles.length >= 5) return { candles: krakenCandles, source: 'kraken' };
 
   // Massive/Polygon (rate limited ~5 req/min on free tier — has cooldown)
   if (Date.now() >= _massiveRateLimitedUntil) {
     let massiveCandles = await fetchMassiveTradCandles(symbol, limit);
-    if (massiveCandles && massiveCandles.length >= 5) return massiveCandles;
+    if (massiveCandles && massiveCandles.length >= 5) return { candles: massiveCandles, source: 'massive' };
   }
 
   // Twelve Data (rate limited 8 req/min, 800/day — absolute last resort)
   if (_tdCreditsUsed < _tdCreditsLimit) {
     let tdCandles = await fetchTwelveDataCandles(symbol, limit);
-    if (tdCandles && tdCandles.length >= 5) return tdCandles;
+    if (tdCandles && tdCandles.length >= 5) return { candles: tdCandles, source: 'twelvedata' };
   }
 
   return null;
@@ -1140,11 +1184,9 @@ export async function fetchTradMarketData(onProgress, onPartialResults, existing
 
   const tasks = sortedAssets.map(asset => async () => {
     try {
-      const candles = await fetchTradfiCandles(asset.symbol, 300);
-      let source = 'none';
-      if (candles && candles.length >= 5) {
-        source = LIGHTER_MARKET_IDS[asset.symbol.toUpperCase()] ? 'lighter' : 'yahoo';
-      }
+      const result = await fetchTradfiCandles(asset.symbol, 300);
+      const candles = result?.candles;
+      const source = result?.source || 'none';
       done++;
       onProgress?.({ done, total: assets.length });
       if (source !== 'none') sourceTracker[asset.symbol] = source;
