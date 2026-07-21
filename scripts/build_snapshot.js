@@ -755,9 +755,23 @@ async function computeRegimeHistory(fred, coingecko, fearGreed, cgHistorical, _p
       }
     }
 
-    // 3. Remove today's entry if it exists (in case of re-runs), then add fresh
+    // 3. Remove today's entry if it exists (in case of re-runs), then add fresh.
+    // Also DEDUPLICATE by date — observed July 2026: when the workflow runs
+    // multiple times in a day (e.g. 3 scheduled runs + manual dispatch), the
+    // previous snapshot may already contain a duplicate entry for an earlier
+    // date if a prior run failed mid-merge. Dedup keeps the LAST entry per
+    // date (most recent computation wins).
     const filtered = baseHistory.filter(h => h.date !== today);
-    const merged = [...filtered, todayEntry].slice(-90);
+    const deduped = [];
+    const seenDates = new Set();
+    // Walk in reverse so the LAST entry for each date wins
+    for (let i = filtered.length - 1; i >= 0; i--) {
+      if (!seenDates.has(filtered[i].date)) {
+        deduped.unshift(filtered[i]);
+        seenDates.add(filtered[i].date);
+      }
+    }
+    const merged = [...deduped, todayEntry].slice(-90);
 
     // 4. Delete backfill file after successful merge (it's been consumed)
     try {

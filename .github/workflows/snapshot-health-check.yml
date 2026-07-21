@@ -1,0 +1,280 @@
+# TrendScan — Snapshot Health Check
+#
+# Runs every 2 hours and verifies the snapshot was refreshed within the last
+# 8 hours. If the snapshot is stale (no successful refresh in 8h+), opens a
+# GitHub Issue so the team can investigate.
+#
+# Why this exists:
+#   GitHub Actions cron is unreliable — scheduled runs can be delayed 30min
+#   to 6h+, or dropped entirely during peak load. The refresh-snapshot.yml
+#   workflow runs 4× daily (every 6h), but we've observed days where only
+#   1 of 4 scheduled runs actually fired. Without this health check, a
+#   missed refresh could leave the site serving stale data for 24h+ before
+#   anyone notices.
+#
+# What this does:
+#   1. Fetches public/snapshot.json from the live site
+#   2. Parses generated_at timestamp
+#   3. If age > 8h, opens (or comments on) a GitHub Issue with 'stale-snapshot' label
+#   4. If age > 24h, escalates by adding 'critical' label
+#
+# The 8h threshold gives one full refresh cycle of buffer (refreshes are
+# every 6h). The 24h threshold means 4+ consecutive refreshes have been
+# missed — strong signal of CI failure or upstream API outage.
+
+name: Snapshot Health Check
+
+on:
+  schedule:
+    # Every 2 hours, 24/7
+    # (also subject to GitHub Actions cron delays — see refresh-snapshot.yml
+    # for the caveat. Worst case: this runs every 3-4h, which still catches
+    # staleness within ~12h — much better than no monitoring.)
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  actions: read
+
+jobs:
+  check:
+    name: Check snapshot freshness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch live snapshot.json and check age
+        id: check
+        run: |
+          set -e
+          RESPONSE=$(curl -s -w "\n%{http_code}" https://trend-scan.github.io/snapshot.json)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "status=fetch_failed" >> $GITHUB_OUTPUT
+            echo "http_code=$HTTP_CODE" >> $GITHUB_OUTPUT
+            echo "⚠️ Live snapshot.json returned HTTP $HTTP_CODE (expected 200)"
+            exit 0
+          fi
+
+          GENERATED_AT=$(echo "$BODY" | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          print(d.get('generated_at', ''))
+          ")
+
+          if [ -z "$GENERATED_AT" ]; then
+            echo "status=no_timestamp" >> $GITHUB_OUTPUT
+            echo "⚠️ snapshot.json missing generated_at field"
+            exit 0
+          fi
+
+          AGE_HOURS=$(python3 -c "
+          from datetime import datetime, timezone
+          gen = datetime.fromisoformat('$GENERATED_AT'.replace('Z', '+00:00'))
+          now = datetime.now(timezone.utc)
+          print(f'{(now - gen).total_seconds() / 3600:.2f}')
+          ")
+
+          echo "generated_at=$GENERATED_AT" >> $GITHUB_OUTPUT
+          echo "age_hours=$AGE_HOURS" >> $GITHUB_OUTPUT
+
+          # Determine status: fresh (<8h), stale (8-24h), critical (>24h)
+          STATUS="fresh"
+          if (( $(echo "$AGE_HOURS > 24" | bc -l) )); then
+            STATUS="critical"
+          elif (( $(echo "$AGE_HOURS > 8" | bc -l) )); then
+            STATUS="stale"
+          fi
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+          echo "Snapshot generated_at: $GENERATED_AT"
+          echo "Age: $AGE_HOURS hours"
+          echo "Status: $STATUS"
+
+      - name: Open or update issue if stale
+        if: steps.check.outputs.status == 'stale' || steps.check.outputs.status == 'critical' || steps.check.outputs.status == 'fetch_failed' || steps.check.outputs.status == 'no_timestamp'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.check.outputs.status }}';
+            const ageHours = '${{ steps.check.outputs.age_hours }}';
+            const generatedAt = '${{ steps.check.outputs.generated_at }}';
+            const httpCode = '${{ steps.check.outputs.http_code }}';
+            const timestamp = new Date().toISOString();
+
+            const isCritical = status === 'critical' || status === 'fetch_failed';
+            const label = isCritical ? 'stale-snapshot-critical' : 'stale-snapshot';
+
+            // Ensure both labels exist
+            for (const [name, color, desc] of [
+              ['stale-snapshot', 'f5c842', 'Snapshot is stale (8-24h old) — investigate refresh-snapshot failures'],
+              ['stale-snapshot-critical', 'ff4444', 'Snapshot is critically stale (>24h) or unreachable — data is outdated'],
+            ]) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner, repo: context.repo.repo, name,
+                });
+              } catch (e) {
+                if (e.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner, repo: context.repo.repo,
+                    name, color, description: desc,
+                  });
+                } else { throw e; }
+              }
+            }
+
+            // Look for existing OPEN stale-snapshot issue (any severity)
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'stale-snapshot,stale-snapshot-critical',
+              state: 'open', per_page: 10,
+            });
+
+            let title, body, labels;
+            if (status === 'fetch_failed') {
+              title = `Snapshot health check: live site returned HTTP ${httpCode}`;
+              body = [
+                `**Status:** CRITICAL — live snapshot.json unreachable`,
+                ``,
+                `**Detected at:** ${timestamp}`,
+                `**HTTP code:** ${httpCode} (expected 200)`,
+                ``,
+                `The health check could not fetch https://trend-scan.github.io/snapshot.json.`,
+                `This could indicate:`,
+                `- GitHub Pages is down or deploying`,
+                `- The snapshot.json file is missing from the gh-pages branch`,
+                `- Network issue from the runner`,
+                ``,
+                `**To resolve:**`,
+                `1. Manually verify https://trend-scan.github.io/snapshot.json loads in a browser`,
+                `2. Check the latest deploy.yml run for failures`,
+                `3. If the file is genuinely missing, manually trigger refresh-snapshot.yml`,
+              ].join('\n');
+              labels = ['stale-snapshot-critical'];
+            } else if (status === 'no_timestamp') {
+              title = `Snapshot health check: generated_at field missing`;
+              body = [
+                `**Status:** CRITICAL — snapshot.json is malformed`,
+                ``,
+                `**Detected at:** ${timestamp}`,
+                ``,
+                `The live snapshot.json was fetched successfully but is missing the 'generated_at' field.`,
+                `This indicates a build_snapshot.js bug or a corrupted snapshot.`,
+              ].join('\n');
+              labels = ['stale-snapshot-critical'];
+            } else {
+              const severity = status === 'critical' ? 'CRITICAL' : 'STALE';
+              title = `Snapshot ${severity.toLowerCase()}: ${parseFloat(ageHours).toFixed(1)}h old`;
+              body = [
+                `**Status:** ${severity}`,
+                ``,
+                `**Detected at:** ${timestamp}`,
+                `**Last successful refresh:** ${generatedAt}`,
+                `**Age:** ${ageHours} hours`,
+                ``,
+                status === 'critical'
+                  ? `The snapshot has not been refreshed in over 24 hours. This means 4+ scheduled refresh runs have failed or been dropped by GitHub Actions.`
+                  : `The snapshot has not been refreshed in 8-24 hours. This means 1-3 scheduled refresh runs have failed or been dropped by GitHub Actions.`,
+                ``,
+                `**Impact:**`,
+                `- Signal page verdicts are based on stale data`,
+                `- Macro regime quadrant may be outdated`,
+                `- Board header BTC Signal + Cash % are stale`,
+                `- FreshnessBanner component should be visible to users`,
+                ``,
+                `**To resolve:**`,
+                `1. Check https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/refresh-snapshot.yml for failed runs`,
+                `2. Look for the 'ci-failure' label on Issues — refresh-snapshot's own alert-on-failure job may have already opened one`,
+                `3. Manually trigger refresh-snapshot.yml via workflow_dispatch`,
+                `4. Verify the live snapshot.json updates after the manual run completes`,
+                ``,
+                `**Reference:** Expected refresh cadence is every 6h (04:00, 10:00, 16:00, 22:00 UTC).`,
+                `GitHub Actions cron is known to delay scheduled runs by 30min-6h+.`,
+              ].join('\n');
+              labels = [label];
+            }
+
+            if (existing.data.length > 0) {
+              // Comment on the most recent existing issue
+              const issue = existing.data[0];
+              const comment = [
+                `### Update — ${timestamp}`,
+                ``,
+                `Status: **${status.toUpperCase()}**`,
+                ...(status === 'fetch_failed' ? [`HTTP code: ${httpCode}`] : []),
+                ...(status === 'stale' || status === 'critical'
+                  ? [`Age: ${parseFloat(ageHours).toFixed(1)}h`, `Last refresh: ${generatedAt}`]
+                  : []),
+                ``,
+                status === 'fresh'
+                  ? `✅ Snapshot has recovered — this issue can be closed.`
+                  : `Issue persists. See original report above for resolution steps.`,
+              ].join('\n');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, body: comment,
+              });
+              // Update labels if severity escalated
+              if (isCritical && !issue.labels.some(l => l.name === 'stale-snapshot-critical')) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: issue.number, labels: ['stale-snapshot-critical'],
+                });
+              }
+              console.log(`Commented on existing issue #${issue.number}`);
+            } else {
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels,
+              });
+              console.log(`Opened new issue #${newIssue.data.number}: ${newIssue.data.html_url}`);
+            }
+
+      - name: Close stale issues if snapshot recovered
+        if: steps.check.outputs.status == 'fresh'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // If the snapshot is fresh, auto-close any open stale-snapshot issues
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'stale-snapshot,stale-snapshot-critical',
+              state: 'open', per_page: 20,
+            });
+            for (const issue of existing.data) {
+              const comment = [
+                `### ✅ Resolved — ${new Date().toISOString()}`,
+                ``,
+                `Snapshot has recovered. Last refresh: ${'${{ steps.check.outputs.generated_at }}'} (age: ${{ steps.check.outputs.age_hours }}h).`,
+                `Closing this issue automatically. If staleness recurs, a new issue will be opened.`,
+              ].join('\n');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, body: comment,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, state: 'closed',
+              });
+              console.log(`Closed issue #${issue.number}`);
+            }
+
+      - name: Summary
+        run: |
+          STATUS="${{ steps.check.outputs.status }}"
+          AGE="${{ steps.check.outputs.age_hours }}"
+          echo "### Snapshot Health Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$STATUS" = "fresh" ]; then
+            echo "✅ Snapshot is fresh (${AGE}h old — under 8h threshold)" >> $GITHUB_STEP_SUMMARY
+          elif [ "$STATUS" = "stale" ]; then
+            echo "⚠️ Snapshot is STALE (${AGE}h old — between 8h and 24h)" >> $GITHUB_STEP_SUMMARY
+            echo "Opened or commented on a stale-snapshot issue." >> $GITHUB_STEP_SUMMARY
+          elif [ "$STATUS" = "critical" ]; then
+            echo "🚨 Snapshot is CRITICAL (${AGE}h old — over 24h)" >> $GITHUB_STEP_SUMMARY
+            echo "Opened or commented on a stale-snapshot-critical issue." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Health check failed: $STATUS" >> $GITHUB_STEP_SUMMARY
+          fi

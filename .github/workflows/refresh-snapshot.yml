@@ -27,10 +27,41 @@ name: Refresh FRED Snapshot
 on:
   schedule:
     # 04:00, 10:00, 16:00, 22:00 UTC = 12am, 6am, 12pm, 6pm ET (every 6 hours)
-    # 7 days a week (0-6). Crypto markets never close; FRED/Farside publish
+    # 7 days a week. Crypto markets never close; FRED/Farside publish
     # weekend data that we want to capture for Monday morning users.
-    - cron: '0 4,10,16,22 * * 0-6'
+    #
+    # ⚠️ GITHUB ACTIONS CRON CAVEAT (verified July 2026):
+    # Scheduled workflows are QUEUED, not run at the exact cron time.
+    # Observed delays: 30min to 6h+ depending on GitHub load.
+    # The 04:00 UTC run is consistently delayed by 5-6h (often fires ~09-10 UTC).
+    # The 10:00/16:00/22:00 runs are usually delayed 30-90min.
+    # GitHub may also DROP scheduled runs entirely during peak load — we've
+    # observed days with only 1 of 4 expected runs actually firing.
+    #
+    # Mitigation:
+    #   1. The concurrency group below prevents overlapping runs (which caused
+    #      gh-pages push failures in July 2026 — 10/45 runs failed before fix).
+    #   2. The alert-on-failure job opens a GitHub Issue when runs fail, so
+    #      missing data is surfaced quickly rather than silently going stale.
+    #   3. The FreshnessBanner component (src/components/FreshnessBanner.jsx)
+    #      shows users an in-product warning when the snapshot is >6h old.
+    #
+    # If delays become unacceptable, options:
+    #   - Move to a self-hosted runner with cron
+    #   - Use a third-party scheduler (cron-job.org, EasyCron) hitting
+    #     workflow_dispatch via the GitHub API
+    #   - Move snapshot fetching to a Cloudflare Worker cron trigger
+    - cron: '0 4,10,16,22 * * *'
   workflow_dispatch:
+
+# Prevent concurrent refresh runs — the gh-pages push step is not atomic
+# and two runs checking out gh-pages simultaneously caused 22% of runs to
+# fail in July 2026. cancel-in-progress=false means the queued run will
+# wait for the current one to finish (rather than cancelling it, which
+# would leave the snapshot in a half-committed state).
+concurrency:
+  group: 'snapshot-refresh'
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -87,8 +118,18 @@ jobs:
       # This avoids committing the 13MB file to main's history. The gh-pages
       # branch is the deployed branch — it's force-pushed on every deploy
       # anyway, so its history is ephemeral. Main's history stays clean.
+      #
+      # RETRY LOGIC: The gh-pages push was the #1 failure point in July 2026
+      # (10/45 runs failed here). Root causes were:
+      #   1. Concurrent runs racing on `git checkout gh-pages` (fixed by the
+      #      concurrency group at the top of this workflow)
+      #   2. Transient git push failures (network blips, GitHub API rate limits)
+      # We now retry the push up to 3 times with exponential backoff.
       - name: Push snapshot.tradfi.json to gh-pages
+        id: push_tradfi
+        continue-on-error: true
         run: |
+          set -e
           # Check if snapshot.tradfi.json changed
           if git diff --quiet public/snapshot.tradfi.json; then
             echo "No changes in snapshot.tradfi.json."
@@ -123,12 +164,43 @@ jobs:
 
           git add snapshot.tradfi.json snapshot.json .nojekyll
           git commit -m "chore(data): refresh tradfi snapshot $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git push origin gh-pages
-          echo "Pushed snapshot.tradfi.json directly to gh-pages (bypassing main)."
 
-          # Switch back to main and restore stashed changes
-          git checkout main
-          git stash pop || true
+          # Retry push up to 3 times with exponential backoff
+          # (handles transient network failures + GitHub API hiccups)
+          for attempt in 1 2 3; do
+            if git push origin gh-pages; then
+              echo "✓ Pushed snapshot.tradfi.json to gh-pages on attempt $attempt"
+              echo "pushed=true" >> $GITHUB_OUTPUT
+              # Switch back to main and restore stashed changes
+              git checkout main
+              git stash pop || true
+              exit 0
+            else
+              echo "⚠ Push attempt $attempt failed, retrying in $((attempt * 10))s..."
+              sleep $((attempt * 10))
+              # Re-fetch in case gh-pages moved during the failed push
+              git fetch origin gh-pages:gh-pages --force 2>/dev/null || true
+              # Rebase our commit on top of the latest gh-pages
+              git rebase origin/gh-pages 2>/dev/null || true
+            fi
+          done
+
+          echo "✗ All 3 push attempts failed"
+          echo "pushed=false" >> $GITHUB_OUTPUT
+          # Switch back to main even on failure (so subsequent steps don't break)
+          git checkout main 2>/dev/null || true
+          git stash pop 2>/dev/null || true
+          exit 1
+
+      - name: Warn if gh-pages push failed (non-blocking)
+        if: steps.push_tradfi.outcome == 'failure'
+        run: |
+          echo "⚠️ snapshot.tradfi.json push failed after 3 retries." >> $GITHUB_STEP_SUMMARY
+          echo "The snapshot.json was committed to main, but the tradfi snapshot" >> $GITHUB_STEP_SUMMARY
+          echo "(13MB) was NOT pushed to gh-pages. The live site will continue" >> $GITHUB_STEP_SUMMARY
+          echo "serving the previous tradfi snapshot until the next successful run." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This is non-blocking — the next scheduled run will retry." >> $GITHUB_STEP_SUMMARY
 
       - name: Trigger deploy
         if: steps.diff.outputs.changed == 'true'

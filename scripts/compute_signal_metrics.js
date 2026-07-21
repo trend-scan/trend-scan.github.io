@@ -248,9 +248,26 @@ export async function computeSignalMetrics({
   };
 
   // ── Signal history ───────────────────────────────────────────────────────
+  // Deduplicate by date — observed July 2026: when the workflow runs multiple
+  // times in a day, the previous snapshot could already contain a stale
+  // entry for today's date. The .filter(h => h.date !== today) handles the
+  // today case, but we also walk the history in reverse to dedup any other
+  // duplicate dates (keeping the LAST/most-recent entry per date).
   const today = asOf.slice(0, 10);
   let signalHistory = prevSnapshot?.signal_history || [];
   signalHistory = signalHistory.filter(h => h.date !== today);
+
+  // Dedup: walk in reverse, keep first occurrence (most recent) per date
+  const deduped = [];
+  const seenDates = new Set();
+  for (let i = signalHistory.length - 1; i >= 0; i--) {
+    if (!seenDates.has(signalHistory[i].date)) {
+      deduped.unshift(signalHistory[i]);
+      seenDates.add(signalHistory[i].date);
+    }
+  }
+  signalHistory = deduped;
+
   signalHistory.push({
     date: today,
     btc_verdict: btcSignal.verdict,
