@@ -256,7 +256,7 @@ export function computeUltra6(data, growthNowcast, liqMeZ, quadrant, liquidity) 
   const signals = {
     U1_macroFavorable: ['GOLDILOCKS', 'OVERHEAT'].includes(quadrant),
     U2_liqLoose: liqMeZ > 0,
-    U3_btcAbove50MA: btcClose > btcSMA50,
+    U3_btcAbove50ma: btcClose > btcSMA50,
     U4_ethBtcPositive: ethBtcROC > -1,
     U5_growthPositive: growthNowcast > 50,
     U6_btcDomDecline: btcDomROC < 0,
