@@ -387,12 +387,19 @@ function ThemeSectorRotation({ themeSectorRotation }) {
 
 function ETFFlowTable() {
   const [flows, setFlows] = useState(null);
+  const [snapshotGeneratedAt, setSnapshotGeneratedAt] = useState(null);
 
   useEffect(() => {
     fetch('/snapshot.json')
       .then(r => r.ok ? r.json() : null)
-      .then(d => setFlows(d?.etf_flows || null))
-      .catch(() => setFlows(null));
+      .then(d => {
+        setFlows(d?.etf_flows || null);
+        setSnapshotGeneratedAt(d?.generated_at || null);
+      })
+      .catch(() => {
+        setFlows(null);
+        setSnapshotGeneratedAt(null);
+      });
   }, []);
 
   if (!flows || Object.keys(flows).length === 0) return null;
@@ -408,6 +415,55 @@ function ETFFlowTable() {
   const totals = {};
   for (const asset of assets) {
     totals[asset] = flows[asset].reduce((sum, d) => sum + d.total, 0);
+  }
+
+  // Latest data date = the most recent date across all assets' latest entries.
+  // Used to show "last published by Farside" hint so users can tell whether
+  // the displayed data is current or stale (e.g. before US market close on
+  // a weekday, Farside won't have today's flows yet — that's expected, not a bug).
+  const latestDataDate = assets
+    .map(a => flows[a][flows[a].length - 1]?.date)
+    .filter(Boolean)
+    .sort()
+    .pop();
+
+  // Compute freshness hint
+  let freshnessHint = '';
+  let freshnessColor = 'var(--scanner-text3)';
+  if (latestDataDate) {
+    const latestMs = Date.parse(latestDataDate + 'T00:00:00Z');
+    const nowMs = Date.now();
+    const ageHours = (nowMs - latestMs) / 3600000;
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const yesterdayUtc = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+    if (latestDataDate >= todayUtc) {
+      freshnessHint = `latest: today`;
+      freshnessColor = 'var(--scanner-green)';
+    } else if (latestDataDate >= yesterdayUtc) {
+      freshnessHint = `latest: yesterday`;
+      freshnessColor = 'var(--scanner-text2)';
+    } else if (ageHours < 72) {
+      freshnessHint = `latest: ${Math.floor(ageHours / 24)}d ago`;
+      freshnessColor = 'var(--scanner-warning, #f5c842)';
+    } else {
+      freshnessHint = `latest: ${Math.floor(ageHours / 24)}d ago ⚠`;
+      freshnessColor = 'var(--scanner-red, #ff4444)';
+    }
+  }
+
+  // Snapshot build timestamp (when build_snapshot.js ran)
+  let snapshotBuildHint = '';
+  if (snapshotGeneratedAt) {
+    const buildMs = Date.parse(snapshotGeneratedAt);
+    const ageMin = Math.floor((Date.now() - buildMs) / 60000);
+    if (ageMin < 60) {
+      snapshotBuildHint = `snapshot built ${ageMin}m ago`;
+    } else if (ageMin < 1440) {
+      snapshotBuildHint = `snapshot built ${Math.floor(ageMin / 60)}h ago`;
+    } else {
+      snapshotBuildHint = `snapshot built ${Math.floor(ageMin / 1440)}d ago`;
+    }
   }
 
   function fmtFlow(v) {
@@ -465,8 +521,16 @@ function ETFFlowTable() {
           </tbody>
         </table>
       </div>
-      <div className="text-[8px] mt-1.5" style={{ color: 'var(--scanner-text3)' }}>
-        Source: Farside Investors · US$ millions · Total net flow across all ETFs · '-' = market closed
+      <div className="text-[8px] mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: 'var(--scanner-text3)' }}>
+        <span>Source: Farside Investors · US$ millions · Total net flow across all ETFs · '-' = market closed</span>
+        {freshnessHint && (
+          <span style={{ color: freshnessColor, fontWeight: 600 }}>
+            · {freshnessHint}
+          </span>
+        )}
+        {snapshotBuildHint && (
+          <span>· {snapshotBuildHint}</span>
+        )}
       </div>
     </section>
   );
