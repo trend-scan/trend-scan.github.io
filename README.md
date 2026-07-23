@@ -9,10 +9,13 @@ Multi-source crypto + tradfi market scanner with macro regime monitoring. Deploy
   ├─ Loads index.html (with inlined Vite bundle)
   ├─ Reads /snapshot.json (small ~450 KB: FRED macro + CoinGecko top + Fear & Greed + ETF flows + signal metrics)
   ├─ Lazy-loads /snapshot.tradfi.json (only on Board/Macro pages — ~13 MB of OHLCV)
-  ├─ Live fetches crypto OHLC via sourceResolver:
-  │     OKX → Bybit → Kraken → Hyperliquid → Yahoo → Binance → CoinGecko (auto fallback)
-  ├─ Live fetches tradfi OHLC via sourceResolver:
-  │     Lighter → OKX SWAP perps → Yahoo proxy → Binance xStocks (auto fallback)
+  ├─ Live fetches crypto OHLC via sourceResolver (auto fallback):
+  │     OKX Perps → Bybit → Kraken → Hyperliquid → Yahoo Crypto →
+  │     Binance Spot/Perps → CoinGecko → (opt-in: Massive/Polygon)
+  ├─ Live fetches tradfi OHLC — SNAPSHOT-FIRST for public tickers (Yahoo
+  │     server-side data refreshed 4× daily), live sources only for private/
+  │     pre-IPO tickers not in snapshot. Live fallback chain when snapshot
+  │     has no data: Lighter → OKX SWAP perps → Yahoo proxy → Binance xStocks
   └─ Computes regime signals, factor scores, breadth — all client-side
 
 [GitHub Actions]
@@ -77,7 +80,7 @@ The `deploy.yml` workflow will:
 3. Build the Vite bundle
 4. Push to `gh-pages` branch
 
-Your site at `https://<username>.github.io/` will be live within ~2 minutes.
+Your site at `https://trend-scan.github.io/` will be live within ~2 minutes.
 
 ### 5. (Optional) Add a paid Polygon/MASSIVE key
 
@@ -121,21 +124,42 @@ This engine runs on the crypto factor data the Factor Monitor already computes �
 
 ### Crypto OHLC
 
-| Tier | Source       | Timeframes supported        | Auth required |
-|------|--------------|-----------------------------|---------------|
-| 1    | CoinGecko    | 1D, 1w (daily best)         | No            |
-| 1    | Hyperliquid  | 15m–1w (intraday best)      | No            |
-| 2    | Bybit        | All                          | No            |
-| 3    | Gate         | All                          | No            |
-| 3    | Kucoin       | All                          | No            |
+| Tier | Source           | Timeframes supported        | Auth required |
+|------|------------------|-----------------------------|---------------|
+| 1    | OKX Perps        | All                         | No            |
+| 1    | Bybit            | All                         | No            |
+| 2    | Kraken           | All                         | No            |
+| 2    | Hyperliquid      | 15m–1w (intraday best)      | No            |
+| 3    | Yahoo Finance    | 1D, 1w (daily best)         | No (proxy)    |
+| 4    | Binance Spot/Perps| All                        | No            |
+| 5    | CoinGecko        | 1D, 1w (daily best)         | No            |
+| 6    | Massive/Polygon  | All                         | Yes (opt-in)  |
+
+The resolver tries sources in tier order; if a source is geo-blocked, returns
+errors, or doesn't list the symbol, it falls through to the next tier.
 
 ### Tradfi OHLC
 
+**Snapshot-first policy (since 2026-07-22):** For all public tickers in
+TRAD_UNIVERSE, the Board/Macro pages read directly from `/snapshot.tradfi.json`
+(Yahoo Finance data fetched server-side 4× daily). Live sources are only
+invoked for tickers NOT in the snapshot — pre-IPO names (OPENAI, ANTHROPIC,
+SPACEX, etc.) and any new ticker added before the next snapshot refresh.
+
+Live fallback chain (only used when snapshot has no data for a ticker):
+
 | Tier | Source           | Tickers                                                     | Auth required |
 |------|------------------|-------------------------------------------------------------|---------------|
-| 1    | OKX SWAP perps   | SPY, QQQ, NVDA, TSLA, AAPL, XAU (gold), XAG (silver)        | No            |
 | 1    | Lighter          | 214 markets (stocks, ETFs, indices, commodities, FX)        | No            |
+| 1    | OKX SWAP perps   | SPY, QQQ, NVDA, TSLA, AAPL, XAU, XAG, etc. (16 tickers)    | No            |
+| 1    | Yahoo proxy      | All public US/intl tickers (via Cloudflare Worker)          | No (proxy)    |
 | 2    | Binance xStocks  | NVDA, TSLA                                                  | No            |
+| 3    | Massive/Polygon  | All US stocks/ETFs                                          | Yes (opt-in)  |
+
+For private/pre-IPO tickers, Lighter is the only source (Yahoo has no data).
+For public tickers, Lighter is a low-liquidity prediction market and is the
+LAST resort — its prices trail real market prices by 0.5–2% and its volume
+is 4–5 orders of magnitude smaller than real exchanges.
 
 ### Macro data (FRED replacements)
 
@@ -293,4 +317,4 @@ Set the worker token via `wrangler secret put WORKER_TOKEN` and the client token
 
 ## License
 
-Private project.
+MIT — see [LICENSE](LICENSE).
