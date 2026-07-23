@@ -12,15 +12,12 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  Area,
-  AreaChart,
 } from 'recharts';
 
 const CHART_COLORS = {
   growth: 'var(--scanner-green)',
   inflation: 'var(--scanner-red)',
   liquidity: 'var(--scanner-blue)',
-  btc: 'var(--scanner-accent)',
   grid: 'var(--scanner-border)',
   text: 'var(--scanner-text3)',
   bg: 'var(--scanner-bg2)',
@@ -133,15 +130,7 @@ export default function MacroCharts({ regime }) {
     );
   }
 
-  const { btcPrice = [], quadrant = 'FLUX' } = regime;
-
-  // BTC chart data (last 180 days)
-  const btcChartData = btcPrice.length > 0
-    ? btcPrice.slice(-180).map((price, i) => ({
-        date: new Date(Date.now() - (180 - i) * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        price: price,
-      }))
-    : [];
+  const { quadrant = 'FLUX' } = regime;
 
   return (
     <div className="space-y-4">
@@ -242,53 +231,6 @@ export default function MacroCharts({ regime }) {
           </div>
         )}
       </div>
-
-      {/* BTC Price Chart */}
-      {btcChartData.length > 0 && (
-        <div
-          className="rounded-lg p-4"
-          style={{ background: 'var(--scanner-bg2)', border: '1px solid var(--scanner-border2)' }}
-        >
-          <div className="text-[9px] font-bold tracking-[0.15em] uppercase mb-4" style={{ color: 'var(--scanner-text3)' }}>
-            BTC PRICE · {btcChartData.length}D
-          </div>
-          <ResponsiveContainer width="100%" height={150}>
-            <AreaChart data={btcChartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-              <defs>
-                <linearGradient id="btcGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART_COLORS.btc} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_COLORS.btc} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="2 2" stroke={CHART_COLORS.grid} />
-              <XAxis
-                dataKey="date"
-                tick={{ fill: CHART_COLORS.text, fontSize: 8 }}
-                tickLine={{ stroke: CHART_COLORS.grid }}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fill: CHART_COLORS.text, fontSize: 8 }}
-                tickLine={{ stroke: CHART_COLORS.grid }}
-                width={60}
-                tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-              />
-              <Tooltip
-                content={<CustomTooltip />}
-                formatter={(value) => [`$${value.toLocaleString('en-US')}`, 'BTC']}
-              />
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke={CHART_COLORS.btc}
-                strokeWidth={1.5}
-                fill="url(#btcGradient)"
-                name="BTC"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
 
       {/* Current Regime Badge */}
       <div
