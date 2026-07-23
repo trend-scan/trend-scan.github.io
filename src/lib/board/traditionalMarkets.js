@@ -577,6 +577,9 @@ export const TRAD_UNIVERSE = [
   { symbol: 'QCOM',     name: 'Qualcomm',                               category: 'Semiconductors',               subtheme: 'Mobile/Modem',             tier: 'Core',         type: 'Stock' },
   { symbol: 'SOXL',     name: 'Direxion Semis 3x Bull',                 category: 'Semiconductors',               subtheme: 'Leveraged ETF',            tier: 'Active',       type: 'ETF' },
   { symbol: 'SOXX',     name: 'iShares Semiconductor ETF',              category: 'Semiconductors',               subtheme: 'ETF',                      tier: 'Active',       type: 'ETF' },
+  { symbol: 'AEHR',     name: 'Aehr Test Systems',                      category: 'Semiconductors',               subtheme: 'Test Equipment',           tier: 'Active',       type: 'Stock' },
+  { symbol: 'ICHR',     name: 'Ichor Holdings',                         category: 'Semiconductors',               subtheme: 'Fluid/Gas Delivery',       tier: 'Active',       type: 'Stock' },
+  { symbol: 'UCTT',     name: 'Ultra Clean Holdings',                   category: 'Semiconductors',               subtheme: 'Equipment Parts',          tier: 'Active',       type: 'Stock' },
   // Memory
   { symbol: 'MU',       name: 'Micron Technology',                      category: 'Memory',                       subtheme: 'DRAM/HBM',                 tier: 'Core',         type: 'Stock' },
   { symbol: 'SNDK',     name: 'SanDisk',                                category: 'Memory',                       subtheme: 'Flash/NAND',               tier: 'Active',       type: 'Stock' },
@@ -584,6 +587,11 @@ export const TRAD_UNIVERSE = [
   // Optics
   { symbol: 'LITE',     name: 'Lumentum',                               category: 'Optics',                       subtheme: 'Optical Components',       tier: 'Core',         type: 'Stock' },
   { symbol: 'AAOI',     name: 'Applied Optoelectronics',                category: 'Optics',                       subtheme: 'Optical Modules',          tier: 'Active',       type: 'Stock' },
+  { symbol: 'GLW',      name: 'Corning',                                category: 'Optics',                       subtheme: 'Glass/Fiber Optics',       tier: 'Core',         type: 'Stock' },
+  { symbol: 'LPTH',     name: 'Latham Technologies',                    category: 'Optics',                       subtheme: 'Photonics',                tier: 'Active',       type: 'Stock' },
+  { symbol: 'POET',     name: 'POET Technologies',                      category: 'Optics',                       subtheme: 'Silicon Photonics',        tier: 'Active',       type: 'Stock' },
+  // Cybersecurity
+  { symbol: 'BB',       name: 'BlackBerry',                             category: 'Cybersecurity',                subtheme: 'Security/QNX',             tier: 'Active',       type: 'Stock' },
   // Software Infrastructure
   { symbol: 'S',        name: 'SentinelOne',                            category: 'Software Infrastructure',      subtheme: 'Security',                 tier: 'Active',       type: 'Stock' },
   { symbol: 'NOW',      name: 'ServiceNow',                             category: 'Software Infrastructure',      subtheme: 'Enterprise SaaS',          tier: 'Core',         type: 'Stock' },
@@ -599,10 +607,15 @@ export const TRAD_UNIVERSE = [
   { symbol: 'RKLB',     name: 'Rocket Lab',                             category: 'Defense',                      subtheme: 'Space',                    tier: 'Core',         type: 'Stock' },
   // Nuclear
   { symbol: 'URA',      name: 'Global X Uranium ETF',                   category: 'Nuclear',                      subtheme: 'Uranium ETF',              tier: 'Active',       type: 'ETF' },
+  { symbol: 'XE',       name: 'X-Energy',                               category: 'Nuclear',                      subtheme: 'SMR',                      tier: 'Active',       type: 'Stock' },
+  { symbol: 'BW',       name: 'Babcock & Wilcox',                       category: 'Nuclear',                      subtheme: 'Nuclear/SMR',              tier: 'Active',       type: 'Stock' },
+  { symbol: 'NXE',      name: 'NexGen Energy',                          category: 'Nuclear',                      subtheme: 'Uranium Mining',           tier: 'Core',         type: 'Stock' },
+  { symbol: 'NLR',      name: 'VanEck Uranium+Nuclear ETF',             category: 'Nuclear',                      subtheme: 'Nuclear Sector ETF',       tier: 'Core',         type: 'ETF' },
   // Energy
   { symbol: 'WTI',      name: 'Crude Oil WTI',                          category: 'Energy',                       subtheme: 'Oil',                      tier: 'Core',         type: 'Spot' },
   { symbol: 'BRENTOIL', name: 'Brent Crude Oil',                        category: 'Energy',                       subtheme: 'Oil',                      tier: 'Core',         type: 'Spot' },
   { symbol: 'NATGAS',   name: 'Natural Gas',                            category: 'Energy',                       subtheme: 'Natural Gas',              tier: 'Active',       type: 'Spot' },
+  { symbol: 'ET',       name: 'Energy Transfer',                        category: 'Energy',                       subtheme: 'Midstream/MLP',            tier: 'Core',         type: 'Stock' },
   // Metals
   { symbol: 'XAU',      name: 'Gold (Spot)',                            category: 'Metals',                       subtheme: 'Gold',                     tier: 'Core',         type: 'Spot' },
   { symbol: 'XAG',      name: 'Silver (Spot)',                          category: 'Metals',                       subtheme: 'Silver',                   tier: 'Core',         type: 'Spot' },
@@ -637,6 +650,10 @@ export const TRAD_UNIVERSE = [
   { symbol: 'IP',       name: 'International Paper',                    category: 'Consumer',                     subtheme: 'Packaging',                tier: 'Active',       type: 'Stock' },
   // Telecom
   { symbol: 'NOK',      name: 'Nokia',                                  category: 'Telecom',                      subtheme: '5G/Network',               tier: 'Active',       type: 'Stock' },
+  // Financials (additional)
+  { symbol: 'CBOE',     name: 'Cboe Global Markets',                    category: 'Financials',                   subtheme: 'Exchange',                 tier: 'Core',         type: 'Stock' },
+  { symbol: 'CME',      name: 'CME Group',                              category: 'Financials',                   subtheme: 'Exchange',                 tier: 'Core',         type: 'Stock' },
+  { symbol: 'SOFI',     name: 'SoFi Technologies',                      category: 'Financials',                   subtheme: 'Fintech',                  tier: 'Active',       type: 'Stock' },
   // Agriculture
   { symbol: 'WHEAT',    name: 'Wheat',                                  category: 'Agriculture',                  subtheme: 'Wheat',                    tier: 'Active',       type: 'Spot' },
   { symbol: 'MAGS',     name: 'VanEck Agribusiness ETF',                category: 'Agriculture',                  subtheme: 'Agri ETF',                 tier: 'Active',       type: 'ETF' },
