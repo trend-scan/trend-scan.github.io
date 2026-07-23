@@ -243,7 +243,6 @@ export const CRYPTO_UNIVERSE = [
   { symbol: 'CHZ', name: 'Chiliz', theme: 'Layer 1', tier: 'Active', subtheme: 'Smart Contract L1' },
   { symbol: 'DASH', name: 'Dash', theme: 'Layer 1', tier: 'Active', subtheme: 'Payments' },
   { symbol: 'DCR', name: 'Decred', theme: 'Layer 1', tier: 'Active', subtheme: 'Bitcoin Fork' },
-  { symbol: 'DEL', name: 'Decimal', theme: 'Layer 1', tier: 'Active', subtheme: 'Smart Contract L1' },
   { symbol: 'FOGO', name: 'Fogo', theme: 'Layer 1', tier: 'Active', subtheme: 'SVM L1' },
   { symbol: 'G', name: 'Gravity', theme: 'Layer 1', tier: 'Active', subtheme: 'App Chain' },
   { symbol: 'GNO', name: 'Gnosis', theme: 'Layer 1', tier: 'Active', subtheme: 'Smart Contract L1' },
