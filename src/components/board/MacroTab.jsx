@@ -364,7 +364,7 @@ export default function MacroTab({ tradData, isLoading, snapshotLoading, onRefre
           <table className="w-full border-collapse min-w-[1100px]">
             <thead>
               <tr style={{ background: 'var(--scanner-bg2)', borderBottom: '1px solid var(--scanner-border2)' }}>
-                {['Ticker', 'Name', 'Price', '7D', '1D', '5D', '20D', '60D', 'vs20MA', 'vs50MA', 'ATR', 'RSI', '52W%', 'RS/QQQ', 'Src', 'Cat'].map(h => (
+                {['Ticker', 'Name', 'Price', '14D', '1D', '5D', '20D', '60D', 'vs20MA', 'vs50MA', 'ATR', 'RSI', '52W%', 'RS/QQQ', 'Src', 'Cat'].map(h => (
                   <th key={h} className="text-[8.5px] font-semibold tracking-[0.1em] uppercase py-2.5 px-2.5 text-left" style={{ color: 'var(--scanner-text3)' }}>{h}</th>
                 ))}
               </tr>
@@ -385,7 +385,7 @@ export default function MacroTab({ tradData, isLoading, snapshotLoading, onRefre
                     {fmtPrice(item.price)}
                   </td>
                   <td className="py-2 px-2.5">
-                    <MiniSparkline data={item.sparkline?.slice(-7)} />
+                    <MiniSparkline data={item.sparkline?.slice(-14)} />
                   </td>
                   <td className="py-2 px-2.5"><span className="tabular-nums text-[10px] font-semibold" style={{ color: pctColor(item.ret1d) }}>{fmtPct(item.ret1d)}</span></td>
                   <td className="py-2 px-2.5"><span className="tabular-nums text-[10px] font-semibold" style={{ color: pctColor(item.ret5d) }}>{fmtPct(item.ret5d)}</span></td>
