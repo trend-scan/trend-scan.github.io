@@ -9,9 +9,11 @@
  *   API to trigger the refresh-snapshot.yml workflow.
  *
  * Schedule:
- *   Every 6h, aligned with the GitHub Actions cron schedule:
- *     0 4,10,16,22 * * *  (04:00, 10:00, 16:00, 22:00 UTC)
+ *   Every 4 hours, 24/7 (6 fires per day). Cron expression:
+ *     0 0/4 * * *    (00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC)
  *   Cloudflare cron uses standard 5-field Unix cron syntax.
+ *   More frequent than the GitHub Actions cron (0 4,10,16,22 * * *) it backs
+ *   up — keeps the snapshot from ever going more than 4h stale.
  *
  * Required secrets (set via Cloudflare dashboard or wrangler):
  *   GH_TOKEN         — GitHub PAT with `repo` + `workflow` scopes, OR a
@@ -28,7 +30,7 @@
  *        GH_TOKEN = <your GitHub PAT>
  *   5. Click "Deploy"
  *   6. Go to the Triggers tab → Cron Triggers → Add cron trigger:
- *        Cron expression: 0 4,10,16,22 * * *
+ *        Cron expression: 0 0/4 * * *
  *   7. (Optional) Set NOTIFY_WEBHOOK for failure alerts
  *
  * Why this is needed:
@@ -40,7 +42,7 @@
  *   GitHub Actions cron — so when GitHub's scheduler is degraded, the
  *   alerting fails too. This Worker breaks that dependency.
  *
- * Free tier: 100,000 requests/day. We fire 4× daily = ~120/month. Well
+ * Free tier: 100,000 requests/day. We fire 6× daily (every 4h) = ~180/month. Well
  * within free tier.
  *
  * Verification:

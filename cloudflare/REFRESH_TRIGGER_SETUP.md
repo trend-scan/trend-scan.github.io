@@ -15,7 +15,7 @@ Cloudflare Workers cron triggers are far more reliable (1-2min precision, no dro
 
 ## Cost
 
-**Free tier:** 100,000 requests/day. We fire 4× daily = ~120/month. Well within free tier.
+**Free tier:** 100,000 requests/day. We fire 6× daily (every 4h) = ~180/month. Well within free tier.
 
 ## Setup steps
 
@@ -94,8 +94,10 @@ If you want a Slack/Discord notification when the cron fires but the GitHub disp
 
 1. In your Worker's dashboard, go to **Settings** → **Triggers** → **Cron Triggers**
 2. Click **Add Cron Trigger**
-3. **Cron expression:** `0 4,10,16,22 * * *`
-   (Same schedule as the GitHub Actions cron — 04:00, 10:00, 16:00, 22:00 UTC)
+3. **Cron expression:** `0 */4 * * *`
+   (Every 4 hours, 24/7 — 6 fires per day at 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC.
+   More frequent than the GitHub Actions cron `0 4,10,16,22 * * *` it backs up — keeps the
+   snapshot from ever going more than 4h stale.)
 4. Click **Save**
 
 ### Step 7: Verify the deployment
