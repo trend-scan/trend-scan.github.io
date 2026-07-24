@@ -256,6 +256,7 @@ export default function Board() {
         signalMetrics={snapshotData?.signal_metrics}
         macroQuadrant={snapshotData?.regime_history?.[snapshotData.regime_history.length - 1]?.quadrant}
         tradRegime={tradData?.tradRegime}
+        globalMetrics={snapshotData?.global_metrics}
       />
 
       {/* Snapshot freshness banner — alerts when Board header's signal/quadrant

@@ -178,12 +178,13 @@ function TradFiBreadthSpectrum({ tradRegime }) {
 /**
  * Compact signal overview showing all three perspectives.
  */
-function SignalOverview({ regime, signalMetrics, macroQuadrant }) {
+function SignalOverview({ regime, signalMetrics, macroQuadrant, globalMetrics }) {
   const btcVerdict = signalMetrics?.btc_stance?.verdict;
   const btcConfidence = signalMetrics?.btc_stance?.confidence;
   const cashVerdict = signalMetrics?.cash_weight?.verdict;
   const cashPct = signalMetrics?.cash_weight?.suggested_pct;
   const quadrant = macroQuadrant || signalMetrics?.macro_quadrant;
+  const btcDominance = globalMetrics?.btcDominance;
 
   const macroColor = quadrant ? (REGIME_COLORS[quadrant] || 'var(--scanner-text3)') : 'var(--scanner-text3)';
 
@@ -236,6 +237,24 @@ function SignalOverview({ regime, signalMetrics, macroQuadrant }) {
 
       <div className="w-px h-8 flex-shrink-0" style={{ background: 'var(--scanner-border2)' }} />
 
+      {/* BTC Dominance — from CMC global metrics (snapshot) */}
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[8px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+          BTC Dom
+        </span>
+        <span
+          className="text-[11px] font-bold tabular-nums cursor-help"
+          style={{ color: btcDominance != null ? 'var(--scanner-accent)' : 'var(--scanner-text3)' }}
+          title={btcDominance != null
+            ? `BTC dominance: ${btcDominance.toFixed(1)}% of total crypto market cap (CMC). High dominance = BTC leading altcoins; low dominance = altcoin season.`
+            : 'BTC dominance unavailable — CMC global metrics not in snapshot'}
+        >
+          {btcDominance != null ? `${btcDominance.toFixed(1)}%` : '—'}
+        </span>
+      </div>
+
+      <div className="w-px h-8 flex-shrink-0" style={{ background: 'var(--scanner-border2)' }} />
+
       {/* Cash */}
       <div className="flex flex-col gap-0.5">
         <span className="text-[8px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
@@ -258,7 +277,7 @@ function SignalOverview({ regime, signalMetrics, macroQuadrant }) {
   );
 }
 
-export default function BoardHeader({ regime, regimeLabel, updatedAt, exchange, isLoading, onRefresh, signalMetrics, macroQuadrant, tradRegime }) {
+export default function BoardHeader({ regime, regimeLabel, updatedAt, exchange, isLoading, onRefresh, signalMetrics, macroQuadrant, tradRegime, globalMetrics }) {
   const pct20  = regime?.pctAbove20  ?? '—';
   const pct50  = regime?.pctAbove50  ?? '—';
   const pct200 = regime?.pctAbove200 ?? '—';
@@ -288,6 +307,7 @@ export default function BoardHeader({ regime, regimeLabel, updatedAt, exchange, 
             regime={regime}
             signalMetrics={signalMetrics}
             macroQuadrant={macroQuadrant}
+            globalMetrics={globalMetrics}
           />
 
           {/* Exchange + asset count */}
