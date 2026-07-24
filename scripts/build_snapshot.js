@@ -259,6 +259,7 @@ async function fetchCryptoUniverseCMC() {
       const q = c.quote?.USD || {};
       out[sym] = {
         symbol: sym,
+        id: c.id,  // CMC numeric ID — used for /info endpoint (more reliable than symbol)
         name: c.name,
         slug: c.slug,
         marketCapRank: c.cmc_rank || 999,
@@ -299,27 +300,32 @@ async function fetchCryptoUniverseCMC() {
 // description + URLs. We use tags for sector filtering (DeFi, AI, Memes, etc.)
 // and platform for chain filtering (Ethereum, Solana, BNB, etc.).
 //
-// Credit cost: 1 credit per call, max 100 symbols per call.
+// Uses CMC numeric `id` instead of `symbol` — more reliable (some symbols like
+// "SUSD1+" or "USDC.E" cause HTTP 400 on the /info endpoint when passed as
+// symbol parameter, but IDs are always clean integers).
+//
+// Credit cost: 1 credit per call, max 100 IDs per call.
 // For 500-coin universe: 5 calls = 5 credits per refresh × 4 daily = 20 credits/day.
 // At 4× daily refresh = 600 credits/month (4% of 15,000 free budget).
-async function fetchCryptoMetadata(symbols) {
-  if (!CMC_API_KEY || !symbols || symbols.length === 0) return {};
-  console.log(`── CMC metadata (tags + platform, ${symbols.length} coins) ──`);
+async function fetchCryptoMetadata(ids) {
+  if (!CMC_API_KEY || !ids || ids.length === 0) return {};
+  console.log(`── CMC metadata (tags + platform, ${ids.length} coins by ID) ──`);
   const out = {};
   const BATCH_SIZE = 100;
   let creditsUsed = 0;
-  for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
-    const batch = symbols.slice(i, i + BATCH_SIZE);
-    const symbolParam = batch.join(',');
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const batch = ids.slice(i, i + BATCH_SIZE);
+    const idParam = batch.join(',');
     try {
-      const url = `https://pro-api.coinmarketcap.com/v1/cryptocurrency/info?symbol=${encodeURIComponent(symbolParam)}&aux=platform,tags,urls,logo,description`;
+      const url = `https://pro-api.coinmarketcap.com/v1/cryptocurrency/info?id=${idParam}&aux=platform,tags,urls,logo,description`;
       const res = await fetchJson(url, { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } });
       creditsUsed++;
       if (!res?.data) throw new Error('Unexpected CMC info response');
-      for (const sym of Object.keys(res.data)) {
-        const c = res.data[sym];
-        const symUpper = sym.toUpperCase();
-        out[symUpper] = {
+      // /info returns data keyed by ID — need to look up symbol from the universe
+      for (const [id, c] of Object.entries(res.data)) {
+        const sym = (c.symbol || '').toUpperCase();
+        if (!sym) continue;
+        out[sym] = {
           tags: Array.isArray(c.tags) ? c.tags : [],
           platform: c.platform ? c.platform.name : null,
           platformTokenAddress: c.platform ? c.platform.token_address : null,
@@ -331,10 +337,10 @@ async function fetchCryptoMetadata(symbols) {
         };
       }
     } catch (e) {
-      console.warn(`  ✗ CMC info batch ${i / BATCH_SIZE + 1} failed: ${e.message}`);
+      console.warn(`  ✗ CMC info batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${e.message}`);
     }
     // Small delay between batches (50 req/min limit, but be polite)
-    if (i + BATCH_SIZE < symbols.length) await new Promise(r => setTimeout(r, 300));
+    if (i + BATCH_SIZE < ids.length) await new Promise(r => setTimeout(r, 300));
   }
   console.log(`  ✓ CMC metadata for ${Object.keys(out).length} coins (used ${creditsUsed} credits)`);
   return out;
@@ -1089,13 +1095,14 @@ async function main() {
 
   // ── Enrich crypto_universe with CMC tags + platform detail (Phase 2) ──────
   // Only runs if we have a CMC-sourced universe (skips CoinGecko-fallback universes
-  // since CMC /info endpoint needs CMC symbols and would be wasteful on CoinGecko data).
+  // since CMC /info endpoint needs CMC IDs and would be wasteful on CoinGecko data).
+  // Uses CMC numeric IDs (more reliable than symbols — some symbols cause HTTP 400).
   if (cryptoUniverse && CMC_API_KEY) {
-    const cmcSourcedSymbols = Object.values(cryptoUniverse)
-      .filter(c => c.source === 'cmc' && c.symbol)
-      .map(c => c.symbol);
-    if (cmcSourcedSymbols.length >= 400) {
-      const metadata = await fetchCryptoMetadata(cmcSourcedSymbols);
+    const cmcSourcedEntries = Object.values(cryptoUniverse)
+      .filter(c => c.source === 'cmc' && c.id != null);
+    if (cmcSourcedEntries.length >= 400) {
+      const cmcIds = cmcSourcedEntries.map(c => c.id);
+      const metadata = await fetchCryptoMetadata(cmcIds);
       let enrichedCount = 0;
       for (const [sym, meta] of Object.entries(metadata)) {
         if (cryptoUniverse[sym]) {
