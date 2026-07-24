@@ -181,8 +181,6 @@ function TradFiBreadthSpectrum({ tradRegime }) {
 function SignalOverview({ regime, signalMetrics, macroQuadrant, globalMetrics }) {
   const btcVerdict = signalMetrics?.btc_stance?.verdict;
   const btcConfidence = signalMetrics?.btc_stance?.confidence;
-  const cashVerdict = signalMetrics?.cash_weight?.verdict;
-  const cashPct = signalMetrics?.cash_weight?.suggested_pct;
   const quadrant = macroQuadrant || signalMetrics?.macro_quadrant;
   const btcDominance = globalMetrics?.btcDominance;
 
@@ -251,27 +249,6 @@ function SignalOverview({ regime, signalMetrics, macroQuadrant, globalMetrics })
         >
           {btcDominance != null ? `${btcDominance.toFixed(1)}%` : '—'}
         </span>
-      </div>
-
-      <div className="w-px h-8 flex-shrink-0" style={{ background: 'var(--scanner-border2)' }} />
-
-      {/* Cash */}
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[8px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
-          Cash
-        </span>
-        <div className="flex items-center gap-1.5">
-          {cashVerdict && (
-            <>
-              <span className="text-[11px] font-bold" style={{ color: 'var(--scanner-accent)' }}>
-                ◈ {cashPct}%
-              </span>
-            </>
-          )}
-          {!cashVerdict && (
-            <span className="text-[11px]" style={{ color: 'var(--scanner-text3)' }}>—</span>
-          )}
-        </div>
       </div>
     </div>
   );
