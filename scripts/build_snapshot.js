@@ -347,42 +347,118 @@ async function fetchCryptoMetadata(ids) {
 }
 
 // ─── CMC Trending / Gainers / Losers (Phase 3a — data only, NO UI yet) ───────
-// 3 endpoints, 1 credit each = 3 credits per refresh × 4 daily = 12 credits/day.
+// Trending endpoints from CMC. Endpoint URLs verified against OpenCMC official
+// skills repo (https://github.com/OpenCMC/skills-for-ai-agents-by-CoinMarketCap).
+//
+// Credit cost: 1 credit per call. We make 4 calls per refresh:
+//   - trending/latest (top trending by social/search activity)
+//   - trending/gainers-losers?sort_dir=desc (top gainers)
+//   - trending/gainers-losers?sort_dir=asc (top losers)
+//   - trending/most-visited (most visited CMC pages)
+//   - community/trending/token (community mentions + sentiment) — bonus
+// Total: 5 credits per refresh × 4 daily = 20 credits/day.
 // Stored in snapshot as `cmc_trending` for future Board section. NOT surfaced in
 // UI yet per user instruction (2026-07-24).
 async function fetchCMCTrending() {
   if (!CMC_API_KEY) return null;
-  console.log('── CMC trending / gainers / losers ──');
-  const out = { trending: [], gainers: [], losers: [], mostViewed: [] };
-  const endpoints = [
-    { key: 'trending', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/latest' },
-    { key: 'gainers', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/gainers' },
-    { key: 'losers', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/losers' },
-    { key: 'mostViewed', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/most-viewed' },
-  ];
+  console.log('── CMC trending / gainers / losers / community ──');
+  const out = { trending: [], gainers: [], losers: [], mostVisited: [], community: [] };
   let creditsUsed = 0;
-  for (const ep of endpoints) {
-    try {
-      const res = await fetchJson(ep.url, { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } });
-      creditsUsed++;
-      if (Array.isArray(res?.data)) {
-        out[ep.key] = res.data.map(c => ({
-          symbol: (c.symbol || '').toUpperCase(),
-          name: c.name,
-          slug: c.slug,
-          cmcRank: c.cmc_rank,
-          price: c.quote?.USD?.price,
-          percentChange24h: c.quote?.USD?.percent_change_24h,
-          volume24h: c.quote?.USD?.volume_24h,
-          marketCap: c.quote?.USD?.market_cap,
-        }));
-      }
-    } catch (e) {
-      console.warn(`  ✗ CMC trending/${ep.key} failed: ${e.message}`);
+
+  // 1. Trending latest (social/search activity)
+  try {
+    const res = await fetchJson(
+      'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/latest?limit=20&time_period=24h',
+      { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } }
+    );
+    creditsUsed++;
+    if (Array.isArray(res?.data)) {
+      out.trending = res.data.map(c => mapCMCTrendingCoin(c));
     }
-  }
-  console.log(`  ✓ CMC trending: ${out.trending.length} trending, ${out.gainers.length} gainers, ${out.losers.length} losers, ${out.mostViewed.length} most-viewed (used ${creditsUsed} credits)`);
+  } catch (e) { console.warn(`  ✗ CMC trending/latest failed: ${e.message}`); }
+
+  // 2. Gainers (sort_dir=desc = highest % gain first)
+  try {
+    const res = await fetchJson(
+      'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/gainers-losers?limit=20&time_period=24h&sort_dir=desc',
+      { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } }
+    );
+    creditsUsed++;
+    if (Array.isArray(res?.data)) {
+      out.gainers = res.data.map(c => mapCMCTrendingCoin(c));
+    }
+  } catch (e) { console.warn(`  ✗ CMC gainers failed: ${e.message}`); }
+
+  // 3. Losers (sort_dir=asc = lowest % change first)
+  try {
+    const res = await fetchJson(
+      'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/gainers-losers?limit=20&time_period=24h&sort_dir=asc',
+      { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } }
+    );
+    creditsUsed++;
+    if (Array.isArray(res?.data)) {
+      out.losers = res.data.map(c => mapCMCTrendingCoin(c));
+    }
+  } catch (e) { console.warn(`  ✗ CMC losers failed: ${e.message}`); }
+
+  // 4. Most visited (user attention, not price-based)
+  try {
+    const res = await fetchJson(
+      'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/most-visited?limit=20&time_period=24h',
+      { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } }
+    );
+    creditsUsed++;
+    if (Array.isArray(res?.data)) {
+      out.mostVisited = res.data.map(c => mapCMCTrendingCoin(c));
+    }
+  } catch (e) { console.warn(`  ✗ CMC most-visited failed: ${e.message}`); }
+
+  // 5. Community trending (mentions + sentiment — bonus data)
+  try {
+    const res = await fetchJson(
+      'https://pro-api.coinmarketcap.com/v1/community/trending/token?limit=20&time_period=24h',
+      { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } }
+    );
+    creditsUsed++;
+    if (Array.isArray(res?.data)) {
+      out.community = res.data.map(c => ({
+        symbol: (c.symbol || '').toUpperCase(),
+        name: c.name,
+        slug: c.slug,
+        cmcRank: c.rank || c.cmc_rank,
+        trendingRank: c.trending_rank,
+        trendingScore: c.trending_score,
+        mentionCount: c.mention_count,
+        postCount: c.post_count,
+        engagementScore: c.engagement_score,
+        sentiment: c.sentiment,
+        sentimentScore: c.sentiment_score,
+        price: c.quote?.USD?.price,
+        percentChange24h: c.quote?.USD?.percent_change_24h,
+      }));
+    }
+  } catch (e) { console.warn(`  ✗ CMC community/trending/token failed: ${e.message}`); }
+
+  console.log(`  ✓ CMC trending: ${out.trending.length} trending, ${out.gainers.length} gainers, ${out.losers.length} losers, ${out.mostVisited.length} most-visited, ${out.community.length} community (used ${creditsUsed} credits)`);
   return out;
+}
+
+// Helper: map a CMC trending coin response to our compact format
+function mapCMCTrendingCoin(c) {
+  return {
+    symbol: (c.symbol || '').toUpperCase(),
+    name: c.name,
+    slug: c.slug,
+    cmcRank: c.cmc_rank,
+    price: c.quote?.USD?.price,
+    percentChange24h: c.quote?.USD?.percent_change_24h,
+    percentChange1h: c.quote?.USD?.percent_change_1h,
+    percentChange7d: c.quote?.USD?.percent_change_7d,
+    volume24h: c.quote?.USD?.volume_24h,
+    marketCap: c.quote?.USD?.market_cap,
+    tags: Array.isArray(c.tags) ? c.tags.slice(0, 5) : [],
+    platform: c.platform ? c.platform.name : null,
+  };
 }
 
 // ─── CMC global metrics (Phase 3b — data only, NO UI yet) ────────────────────
@@ -1282,7 +1358,7 @@ async function main() {
   console.log(`  FRED series populated:  ${fredCount}/${Object.keys(FRED_SERIES).length}`);
   console.log(`  CoinGecko coins:        ${Object.keys(coingecko).length}`);
   console.log(`  Crypto universe:        ${Object.keys(cryptoUniverse).length} coins (for Scanner top-500)`);
-  console.log(`  CMC trending:           ${cmcTrending ? `${(cmcTrending.trending || []).length} trending + ${(cmcTrending.gainers || []).length} gainers + ${(cmcTrending.losers || []).length} losers` : 'null'}`);
+  console.log(`  CMC trending:           ${cmcTrending ? `${(cmcTrending.trending || []).length} trending + ${(cmcTrending.gainers || []).length} gainers + ${(cmcTrending.losers || []).length} losers + ${(cmcTrending.mostVisited || []).length} most-visited + ${(cmcTrending.community || []).length} community` : 'null'}`);
   console.log(`  CMC global metrics:     ${globalMetrics ? `BTC dom ${globalMetrics.btcDominance?.toFixed(1)}%` : 'null'}`);
   console.log(`  Fear & Greed days:      ${fearGreed.length}`);
   console.log(`  CBOE P/C series:        ${Object.keys(cboe).length}`);
