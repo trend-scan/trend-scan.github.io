@@ -246,7 +246,7 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
 
       {/* Info */}
       <div className="ml-auto text-[9px] tracking-wider whitespace-nowrap hidden lg:block" style={{ color: 'var(--scanner-text3)' }}>
-        UNIVERSE <span style={{ color: 'var(--scanner-text2)' }}>TOP 300</span>
+        UNIVERSE <span style={{ color: 'var(--scanner-text2)' }}>TOP 500</span>
       </div>
     </div>
   );

@@ -47,7 +47,7 @@ export default function ScannerHeader({ settings, scanMeta }) {
 
           {/* Short description */}
           <p className="mt-2 text-[10px] leading-relaxed max-w-lg" style={{ color: 'var(--scanner-text3)' }}>
-            Identify high-momentum assets across the top 300 market cap pairs.
+            Identify high-momentum assets across the top 500 market cap pairs.
           </p>
           <p className="mt-1 text-[10px] leading-relaxed max-w-lg" style={{ color: 'var(--scanner-text3)' }}>
             Returns assets satisfying: <span style={{ color: 'var(--scanner-text2)' }}>Price &gt; Base Trend</span> AND <span style={{ color: 'var(--scanner-text2)' }}>Fast MA &gt; Slow MA</span>.
@@ -82,7 +82,7 @@ export default function ScannerHeader({ settings, scanMeta }) {
             <div className="flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'var(--scanner-text3)' }} />
               <span>Universe</span>
-              <CondBadge color="var(--scanner-text2)">Top 300</CondBadge>
+              <CondBadge color="var(--scanner-text2)">Top 500</CondBadge>
             </div>
             {settings.minVolume > 0 && (
               <div className="flex items-center gap-1.5">

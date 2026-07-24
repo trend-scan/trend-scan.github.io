@@ -91,6 +91,7 @@ jobs:
       - name: Build fresh snapshot
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
         run: node scripts/build_snapshot.js
 
       - name: Check for changes (snapshot.json on main)

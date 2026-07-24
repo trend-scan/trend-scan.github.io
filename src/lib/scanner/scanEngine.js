@@ -1,5 +1,5 @@
 import { calcEMA, calcVWAP, calcRSI } from './calculations';
-import { fetchCandles, fetch24hChange, preloadExchange, fetchTop300, CANDLES_PER_DAY } from './exchanges';
+import { fetchCandles, fetch24hChange, preloadExchange, fetchTop500, CANDLES_PER_DAY } from './exchanges';
 import { fetchAllTickers as fetchHyperliquidTickers } from './sources/hyperliquid';
 
 // ── CoinGecko Market Data Cache ─────────────────────────────────────────────────
@@ -12,6 +12,32 @@ async function fetchCGMarketData(cgKey) {
   if (_cgMarketCache && (now - _cgMarketCacheTime) < CG_CACHE_TTL) {
     return _cgMarketCache;
   }
+
+  // ── Snapshot-first: crypto_universe already has marketCap + volume24h for 500 coins ──
+  // Avoids an extra CoinGecko call per scan (the universe fetch already got this data).
+  try {
+    const res = await fetch('/snapshot.json');
+    if (res.ok) {
+      const snap = await res.json();
+      const universe = snap?.crypto_universe;
+      if (universe && Object.keys(universe).length >= 400) {
+        _cgMarketCache = {};
+        for (const c of Object.values(universe)) {
+          _cgMarketCache[c.symbol] = {
+            marketCap: c.marketCap || 0,
+            volume24h: c.volume24h || 0,
+            marketCapRank: c.marketCapRank || 999999,
+          };
+        }
+        _cgMarketCacheTime = now;
+        return _cgMarketCache;
+      }
+    }
+  } catch (e) {
+    console.warn('Snapshot market data fetch failed, falling back to CoinGecko:', e.message);
+  }
+
+  // ── Live fallback: CoinGecko top 250 by volume (only covers top 250, not full 500) ──
   try {
     const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=250&page=1&sparkline=false`;
     const headers = cgKey ? { 'x-cg-demo-api-key': cgKey } : {};
@@ -203,12 +229,13 @@ export async function runScan(settings, onProgress) {
   let scannedCount = 0;
   let matchedCount = 0;
 
-  onProgress({ phase: 'fetching_universe', message: 'Fetching Top 300 (CoinGecko → CoinCap → Binance)…' });
+  onProgress({ phase: 'fetching_universe', message: 'Fetching Top 500 (snapshot → CMC → CoinGecko → CoinCap → Binance)…' });
 
-  const assets = await fetchTop300(settings.cgKey);
+  const assets = await fetchTop500(settings.cgKey);
   const totalAssets = assets.length;
 
-  // Fetch market data (volume and market cap) from CoinGecko
+  // Fetch market data (volume and market cap) — snapshot-first (reuses crypto_universe),
+  // falls back to CoinGecko top-250-by-volume if snapshot is missing.
   onProgress({ phase: 'fetching_market_data', message: 'Fetching market data (volume, market cap)…' });
   const cgMarketData = await fetchCGMarketData(settings.cgKey);
 

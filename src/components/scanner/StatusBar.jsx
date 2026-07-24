@@ -24,7 +24,7 @@ export default function StatusBar({ settings }) {
     }}>
       <div className="flex gap-5 flex-wrap">
         <span>{EXCHANGE_NAMES[settings.exchange] || settings.exchange.toUpperCase()}</span>
-        <span>Top 300 · {settings.timeframe || '4H'}</span>
+        <span>Top 500 · {settings.timeframe || '4H'}</span>
         <span className="hidden sm:inline">
           Price &gt; {slowLabel} · Fast {fastLabel} &gt; Slow {midLabel}
         </span>

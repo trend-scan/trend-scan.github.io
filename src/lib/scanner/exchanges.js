@@ -599,47 +599,135 @@ export async function preloadExchange(exchange) {
   if (exchange === 'kraken') await loadKrakenPairs();
 }
 
-// ── TOP 300 ──────────────────────────────
+// ── TOP 500 ──────────────────────────────────────────────────────────────────
+// Snapshot-first: reads `crypto_universe` from /snapshot.json (built server-side
+// by build_snapshot.js using CMC_API_KEY, refreshed 4× daily via Cloudflare
+// Worker cron). Live fallbacks (CMC → CoinGecko → CoinCap → Binance) only fire
+// when snapshot is missing or stale. This avoids CoinGecko 429s on every scan.
 import { STABLECOINS, WRAPPED } from './constants';
 
-export async function fetchTop300(cgKey) {
-  let assets = [];
+/**
+ * Heuristic filter for USD-pegged tokens not in the hardcoded STABLECOINS set.
+ * Catches new stablecoins (RLUSD, USDG, USAT, etc.) by checking symbol pattern
+ * + name keywords. Extracted to a named function so it's reusable across
+ * snapshot + live fetch paths.
+ */
+function isUsdPeggedHeuristic(symbol, name) {
+  const sym = symbol.toUpperCase();
+  if (/^USD[A-Z]?$/.test(sym) || /^[A-Z]USD$/.test(sym) || sym.includes('USD')) {
+    const nameLower = (name || '').toLowerCase();
+    if (nameLower.includes('dollar') || nameLower.includes('stable') ||
+        nameLower.includes('usd') || nameLower.includes('peg')) {
+      return true;
+    }
+  }
+  return false;
+}
 
-  // 1. Try CoinGecko
+/**
+ * Apply the standard universe filters: stablecoins, wrapped tokens, USD-pegged
+ * heuristic. Returns the filtered array (caller decides on .slice cap).
+ */
+function filterUniverse(assets) {
+  return assets.filter(a => {
+    if (STABLECOINS.has(a.symbol) || WRAPPED.has(a.symbol)) return false;
+    if (isUsdPeggedHeuristic(a.symbol, a.name)) return false;
+    return true;
+  });
+}
+
+export async function fetchTop500(cgKey) {
+  // ── 1. Snapshot-first (instant, no rate limit) ──────────────────────────
+  // The snapshot's crypto_universe is built server-side by build_snapshot.js
+  // using CMC (preferred) or CoinGecko, refreshed 4× daily. Reading from
+  // snapshot avoids hammering CoinGecko from every browser session.
   try {
-    for (let page = 1; page <= 2; page++) {
-      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false`;
-      const headers = cgKey ? { 'x-cg-demo-api-key': cgKey } : {};
-      const res = await fetchWithTimeout(url, { headers });
-      if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
-      const data = await res.json();
-      if (!Array.isArray(data)) throw new Error('Unexpected response');
-      data.forEach(coin => assets.push({
-        symbol: coin.symbol.toUpperCase(),
-        name: coin.name,
-        rank: assets.length + 1
-      }));
-      if (page < 2) await sleep(1300);
+    const res = await fetchWithTimeout('/snapshot.json');
+    if (res.ok) {
+      const snap = await res.json();
+      const universe = snap?.crypto_universe;
+      if (universe && typeof universe === 'object') {
+        const assets = Object.values(universe)
+          .filter(c => c && c.symbol)
+          .sort((a, b) => (a.marketCapRank || 999) - (b.marketCapRank || 999))
+          .map(c => ({ symbol: c.symbol, name: c.name, rank: c.marketCapRank || 999 }));
+        const filtered = filterUniverse(assets).slice(0, 500);
+        if (filtered.length >= 400) {
+          console.info(`Snapshot supplied ${filtered.length} assets (crypto_universe)`);
+          return filtered;
+        }
+        console.warn(`Snapshot universe too small (${filtered.length} < 400), falling back to live`);
+      }
     }
   } catch (e) {
-    console.warn('CoinGecko failed, trying CoinCap...', e.message);
-    assets = [];
+    console.warn('Snapshot universe fetch failed, falling back to live:', e.message);
   }
 
-  // 2. CoinCap backup
-  if (assets.length < 50) {
+  let assets = [];
+
+  // ── 2. CoinMarketCap (if user has CMC_API_KEY in localStorage) ──────────
+  // Best live option — 1 credit for 500 coins, industry-standard rankings.
+  const cmcKey = typeof window !== 'undefined' && localStorage.getItem('CMC_API_KEY');
+  if (cmcKey) {
     try {
-      const res = await fetchWithTimeout('https://api.coincap.io/v2/assets?limit=300');
+      const res = await fetchWithTimeout(
+        'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=500&sort=market_cap_strict&sort_dir=desc&cryptocurrency_type=all',
+        { headers: { 'X-CMC_PRO_API_KEY': cmcKey } }
+      );
       if (res.ok) {
         const json = await res.json();
         if (Array.isArray(json.data)) {
-          json.data.forEach((coin, i) => {
+          json.data.forEach(c => {
             assets.push({
-              symbol: coin.symbol.toUpperCase(),
-              name: coin.name,
-              rank: i + 1
+              symbol: c.symbol.toUpperCase(),
+              name: c.name,
+              rank: c.cmc_rank || assets.length + 1,
             });
           });
+          console.info(`CMC supplied ${assets.length} assets`);
+        }
+      }
+    } catch (e) {
+      console.warn('CMC failed, trying CoinGecko...', e.message);
+    }
+  }
+
+  // ── 3. CoinGecko (free, 2 pages × 250 = 500 raw) ────────────────────────
+  if (assets.length < 400) {
+    try {
+      const fresh = [];
+      for (let page = 1; page <= 2; page++) {
+        const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false`;
+        const headers = cgKey ? { 'x-cg-demo-api-key': cgKey } : {};
+        const res = await fetchWithTimeout(url, { headers });
+        if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error('Unexpected response');
+        data.forEach(coin => fresh.push({
+          symbol: coin.symbol.toUpperCase(),
+          name: coin.name,
+          rank: fresh.length + 1,
+        }));
+        if (page < 2) await sleep(1300);
+      }
+      if (fresh.length > assets.length) assets = fresh;
+    } catch (e) {
+      console.warn('CoinGecko failed, trying CoinCap...', e.message);
+    }
+  }
+
+  // ── 4. CoinCap backup (limit=500, free, no key) ─────────────────────────
+  if (assets.length < 400) {
+    try {
+      const res = await fetchWithTimeout('https://api.coincap.io/v2/assets?limit=500');
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.data)) {
+          assets = json.data.map((coin, i) => ({
+            symbol: coin.symbol.toUpperCase(),
+            name: coin.name,
+            rank: i + 1,
+          }));
           console.info(`CoinCap supplied ${assets.length} assets`);
         }
       }
@@ -648,8 +736,8 @@ export async function fetchTop300(cgKey) {
     }
   }
 
-  // 3. Binance volume fallback
-  if (assets.length < 50) {
+  // ── 5. Binance volume fallback (last resort) ────────────────────────────
+  if (assets.length < 400) {
     try {
       const res = await fetchWithTimeout('https://api.binance.com/api/v3/ticker/24hr');
       if (res.ok) {
@@ -657,7 +745,7 @@ export async function fetchTop300(cgKey) {
         const tickers = data
           .filter(t => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 1000000)
           .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-          .slice(0, 350);
+          .slice(0, 500);
 
         tickers.forEach((t) => {
           const sym = t.symbol.replace('USDT', '');
@@ -671,22 +759,9 @@ export async function fetchTop300(cgKey) {
     }
   }
 
-  return assets
-    .slice(0, 300)
-    .filter(a => {
-      // Filter out known stablecoins and wrapped tokens
-      if (STABLECOINS.has(a.symbol) || WRAPPED.has(a.symbol)) return false;
-      // Heuristic: also filter USD-pegged tokens not in the hardcoded list
-      // (catches new stablecoins like RLUSD, USDG, USAT, etc.)
-      const sym = a.symbol.toUpperCase();
-      if (/^USD[A-Z]?$/.test(sym) || /^[A-Z]USD$/.test(sym) || sym.includes('USD')) {
-        // If the name contains 'dollar', 'stable', or it's priced near $1.00, filter it
-        const nameLower = (a.name || '').toLowerCase();
-        if (nameLower.includes('dollar') || nameLower.includes('stable') ||
-            nameLower.includes('usd') || nameLower.includes('peg')) {
-          return false;
-        }
-      }
-      return true;
-    });
+  return filterUniverse(assets).slice(0, 500);
 }
+
+// Backward-compat alias — any code that still calls fetchTop300 gets the new
+// top-500 function (returns up to 500, callers that .slice(0, 300) still work).
+export const fetchTop300 = fetchTop500;

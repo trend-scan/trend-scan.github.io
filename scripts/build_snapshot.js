@@ -198,6 +198,102 @@ async function fetchCoinGeckoTop() {
   }
 }
 
+// ─── Crypto Universe (top 500 by market cap) — for the Scanner ───────────────
+// Used by the Scanner page to determine which 500 coins to scan. Baked into
+// snapshot.json as `crypto_universe` so the client doesn't have to hit
+// CoinGecko/CMC on every SCAN press (avoids rate limits).
+//
+// Source priority:
+//   1. CoinMarketCap (if CMC_API_KEY env var is set) — 1 credit/call, returns
+//      up to 5000 coins. Free tier: 10k credits/month. CMC rankings are the
+//      industry standard and more reliable for long-tail coins.
+//   2. CoinGecko (free, no key) — 2 pages × 250 = 500 coins. Used as fallback
+//      when CMC key is not set or CMC fails.
+//
+// Returns: { SYMBOL: { symbol, name, marketCapRank, marketCap, volume24h, slug? } }
+// The Scanner's fetchTop500() reads this from snapshot.json and applies its own
+// stablecoin/wrapped/USD-pegged filters client-side.
+
+const CMC_API_KEY = process.env.CMC_API_KEY;
+
+async function fetchCryptoUniverseCMC() {
+  if (!CMC_API_KEY) return null;
+  console.log('── Crypto universe (CMC, top 500) ──');
+  try {
+    // 1 credit per call. limit=500 returns top 500 by market cap.
+    // sort=market_cap_strict ensures CMC rank order (not volume or other).
+    const url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest' +
+      '?limit=500&sort=market_cap_strict&sort_dir=desc&cryptocurrency_type=all';
+    const res = await fetchJson(url, { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } });
+    if (!res || !Array.isArray(res.data)) throw new Error('Unexpected CMC response');
+    const out = {};
+    for (const c of res.data) {
+      const sym = c.symbol.toUpperCase();
+      // Skip duplicates (keep highest rank)
+      if (out[sym] && out[sym].marketCapRank <= c.cmc_rank) continue;
+      out[sym] = {
+        symbol: sym,
+        name: c.name,
+        marketCapRank: c.cmc_rank || 999,
+        marketCap: c.quote?.USD?.market_cap || 0,
+        volume24h: c.quote?.USD?.volume_24h || 0,
+        slug: c.slug,
+        source: 'cmc',
+      };
+    }
+    console.log(`  ✓ CMC supplied ${Object.keys(out).length} coins (used 1 credit)`);
+    return out;
+  } catch (e) {
+    console.warn(`  ✗ CMC failed: ${e.message}`);
+    return null;
+  }
+}
+
+async function fetchCryptoUniverseCoinGecko() {
+  console.log('── Crypto universe (CoinGecko, top 500) ──');
+  const out = {};
+  try {
+    for (let page = 1; page <= 2; page++) {
+      const url = 'https://api.coingecko.com/api/v3/coins/markets' +
+        `?vs_currency=usd&order=market_cap_desc&per_page=250&page=${page}&sparkline=false`;
+      const data = await fetchJson(url);
+      if (!Array.isArray(data)) throw new Error('Unexpected CoinGecko response');
+      for (const c of data) {
+        const sym = c.symbol.toUpperCase();
+        if (out[sym] && out[sym].marketCapRank <= (c.market_cap_rank || 999)) continue;
+        out[sym] = {
+          symbol: sym,
+          name: c.name,
+          marketCapRank: c.market_cap_rank || 999,
+          marketCap: c.market_cap || 0,
+          volume24h: c.total_volume || 0,
+          source: 'coingecko',
+        };
+      }
+      if (page < 2) await new Promise(r => setTimeout(r, 1300));  // respect CoinGecko rate limit
+    }
+    console.log(`  ✓ CoinGecko supplied ${Object.keys(out).length} coins`);
+  } catch (e) {
+    console.warn(`  ✗ CoinGecko universe failed: ${e.message}`);
+  }
+  return out;
+}
+
+async function fetchCryptoUniverse() {
+  // 1. CMC (preferred — better rankings, 1 credit)
+  let universe = await fetchCryptoUniverseCMC();
+  if (universe && Object.keys(universe).length >= 400) return universe;
+
+  // 2. CoinGecko fallback (free, 2 pages)
+  console.log('  Falling back to CoinGecko for universe...');
+  universe = await fetchCryptoUniverseCoinGecko();
+  if (Object.keys(universe).length >= 400) return universe;
+
+  // 3. Empty — caller will fall back to previous snapshot or live client-side fetch
+  console.warn('  ⚠ Both CMC and CoinGecko failed for universe — snapshot will have no crypto_universe');
+  return {};
+}
+
 // ─── CoinGecko historical market charts (for Ultra6+OB1 allocation) ──────────
 // Fetches BTC + ETH daily price + volume history, plus global market cap chart
 // for dominance series. These are needed to compute the allocation signal
@@ -794,9 +890,10 @@ async function main() {
   console.log('━━━ Building TrendScan snapshot ━━━');
   console.log(`Time: ${new Date().toISOString()}`);
   console.log(`FRED_API_KEY: ${FRED_API_KEY ? '✓ set' : '✗ not set'}`);
+  console.log(`CMC_API_KEY:  ${CMC_API_KEY ? '✓ set' : '✗ not set (will use CoinGecko for universe)'}`);
   console.log('');
 
-  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch, cryptoFactors, cgHistorical] = await Promise.all([
+  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch, cryptoFactors, cgHistorical, cryptoUniverse] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
@@ -807,7 +904,14 @@ async function main() {
     fetchFactorWatch(),
     computeCryptoFactors(_prevSnapshot),
     fetchCoinGeckoHistorical(),
+    fetchCryptoUniverse(),
   ]);
+
+  // If crypto_universe is empty (CMC + CoinGecko both failed), reuse previous snapshot's
+  if ((!cryptoUniverse || Object.keys(cryptoUniverse).length < 400) && _prevSnapshot?.crypto_universe) {
+    console.log('  ⚠ crypto_universe empty — using previous snapshot (stale)');
+    cryptoUniverse = _prevSnapshot.crypto_universe;
+  }
 
   // If FRED data is empty (API failure), use previous snapshot's FRED data
   const fredPopulated = Object.values(fred).filter(v => Array.isArray(v) && v.length > 0).length;
@@ -929,6 +1033,7 @@ async function main() {
     generated_at: generatedAt,
     fred,
     coingecko_top: coingecko,
+    crypto_universe: cryptoUniverse,
     fear_greed: fearGreed,
     ken_french: kenFrench,
     cboe_put_call: cboe,
@@ -959,6 +1064,7 @@ async function main() {
   console.log('━━━ Snapshot summary ━━━');
   console.log(`  FRED series populated:  ${fredCount}/${Object.keys(FRED_SERIES).length}`);
   console.log(`  CoinGecko coins:        ${Object.keys(coingecko).length}`);
+  console.log(`  Crypto universe:        ${Object.keys(cryptoUniverse).length} coins (for Scanner top-500)`);
   console.log(`  Fear & Greed days:      ${fearGreed.length}`);
   console.log(`  CBOE P/C series:        ${Object.keys(cboe).length}`);
   console.log(`  Ken French months:      ${kenFrench.length}`);

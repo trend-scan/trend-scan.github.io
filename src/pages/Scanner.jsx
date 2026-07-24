@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS = {
   vwapDays: 30,
   exchange: 'hyperliquid',
   timeframe: '4H',
-  concurrency: 7,
+  concurrency: 10,
   // Filters
   minVolume: 0,        // 0 = no filter, otherwise USD value (e.g. 1000000 = $1M min)
   minMarketCap: 0,      // 0 = no filter, otherwise USD value (e.g. 10000000 = $10M min)
