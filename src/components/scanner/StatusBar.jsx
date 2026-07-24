@@ -28,6 +28,15 @@ export default function StatusBar({ settings }) {
         <span className="hidden sm:inline">
           Price &gt; {slowLabel} · Fast {fastLabel} &gt; Slow {midLabel}
         </span>
+        {settings.chainFilter && settings.chainFilter !== 'All' && (
+          <span style={{ color: 'var(--scanner-accent)' }}>Chain: {settings.chainFilter}</span>
+        )}
+        {settings.sectorFilter && settings.sectorFilter !== 'All' && (
+          <span style={{ color: 'var(--scanner-accent)' }}>Sector: {settings.sectorFilter}</span>
+        )}
+        {settings.maxSupplyFilter > 0 && (
+          <span style={{ color: 'var(--scanner-accent)' }}>Max Supply &gt;= {settings.maxSupplyFilter.toLocaleString()}</span>
+        )}
       </div>
       <span style={{ color: 'var(--scanner-text3)' }}>Trend Strength Screener v1.5</span>
     </div>

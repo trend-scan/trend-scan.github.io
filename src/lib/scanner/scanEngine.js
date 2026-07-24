@@ -15,6 +15,7 @@ async function fetchCGMarketData(cgKey) {
 
   // ── Snapshot-first: crypto_universe already has marketCap + volume24h for 500 coins ──
   // Avoids an extra CoinGecko call per scan (the universe fetch already got this data).
+  // Also surfaces the Phase 1a rich fields: 1h/60d/90d changes, supply metrics, tags, platform.
   try {
     const res = await fetch('/snapshot.json');
     if (res.ok) {
@@ -27,6 +28,21 @@ async function fetchCGMarketData(cgKey) {
             marketCap: c.marketCap || 0,
             volume24h: c.volume24h || 0,
             marketCapRank: c.marketCapRank || 999999,
+            // Phase 1a: multi-timeframe changes (1h/60d/90d)
+            change1h: c.change1h,
+            change60d: c.change60d,
+            change90d: c.change90d,
+            // Phase 1a: supply metrics
+            circulatingSupply: c.circulatingSupply,
+            totalSupply: c.totalSupply,
+            maxSupply: c.maxSupply,
+            fullyDilutedMarketCap: c.fullyDilutedMarketCap,
+            numMarketPairs: c.numMarketPairs,
+            dateAdded: c.dateAdded,
+            // Phase 2: tags + platform for chain/sector filtering
+            tags: c.tags || [],
+            platform: c.platform || null,
+            category: c.category || null,
           };
         }
         _cgMarketCacheTime = now;
@@ -79,7 +95,39 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
     exchange, timeframe, minVolume, minMarketCap,
     priceAboveSlowEnabled, fastAboveMidEnabled, minVolumeEnabled, minMarketCapEnabled,
     rsiEnabled, rsiPeriod, rsiTimeframe, rsiMin, rsiMax,
+    // Phase 2: chain + sector filters (null/empty = no filter)
+    chainFilter, sectorFilter,
+    // Phase 1c: max supply filter (0 = no filter, otherwise USD value)
+    maxSupplyFilter,
   } = settings;
+
+  // ── Phase 2: Chain filter (platform) ──────────────────────────────────────
+  // chainFilter values: null/'All' = no filter, 'Native' = coins with no platform
+  // (BTC, ETH, SOL native L1s), or specific chain name ('Ethereum', 'Solana', etc.)
+  if (chainFilter && chainFilter !== 'All' && cgMarketData) {
+    const marketInfo = cgMarketData[asset.symbol];
+    if (marketInfo) {
+      const coinPlatform = marketInfo.platform || null;
+      if (chainFilter === 'Native') {
+        if (coinPlatform !== null) return null;  // skip tokens on a platform
+      } else if (coinPlatform !== chainFilter) {
+        return null;
+      }
+    }
+  }
+
+  // ── Phase 2: Sector filter (CMC tags) ─────────────────────────────────────
+  // sectorFilter values: null/'All' = no filter, or a tag slug ('defi', 'ai-agents', etc.)
+  // CMC tags come as objects with slug + name; we match on slug.
+  if (sectorFilter && sectorFilter !== 'All' && cgMarketData) {
+    const marketInfo = cgMarketData[asset.symbol];
+    if (marketInfo) {
+      const tags = Array.isArray(marketInfo.tags) ? marketInfo.tags : [];
+      // CMC tag objects have shape { slug, name, ... } OR may be string slugs (depends on endpoint)
+      const tagSlugs = tags.map(t => (typeof t === 'string' ? t : t?.slug)).filter(Boolean);
+      if (!tagSlugs.includes(sectorFilter)) return null;
+    }
+  }
 
   // Apply volume filter if specified
   if (minVolumeEnabled && minVolume > 0 && cgMarketData) {
@@ -94,6 +142,17 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
     const marketInfo = cgMarketData[asset.symbol];
     if (!marketInfo || marketInfo.marketCap < minMarketCap) {
       return null;
+    }
+  }
+
+  // ── Phase 1c: Max supply filter ───────────────────────────────────────────
+  // Filters out coins whose max supply is null (inflationary, e.g. ETH, DOGE) or
+  // below the specified threshold. 0 = no filter.
+  if (maxSupplyFilter && maxSupplyFilter > 0 && cgMarketData) {
+    const marketInfo = cgMarketData[asset.symbol];
+    if (marketInfo) {
+      const maxSupply = marketInfo.maxSupply;
+      if (maxSupply == null || maxSupply < maxSupplyFilter) return null;
     }
   }
 
@@ -199,6 +258,21 @@ async function analyzeAsset(asset, settings, cgMarketData, hlTickers) {
       volume24h: marketInfo.volume24h || 0,
       marketCap: marketInfo.marketCap || 0,
       marketCapRank: marketInfo.marketCapRank || 999999,
+      // Phase 1a: multi-timeframe changes (1h/60d/90d) from CMC
+      change1h: marketInfo.change1h ?? null,
+      change60d: marketInfo.change60d ?? null,
+      change90d: marketInfo.change90d ?? null,
+      // Phase 1a: supply metrics from CMC
+      circulatingSupply: marketInfo.circulatingSupply ?? null,
+      totalSupply: marketInfo.totalSupply ?? null,
+      maxSupply: marketInfo.maxSupply ?? null,
+      fullyDilutedMarketCap: marketInfo.fullyDilutedMarketCap ?? null,
+      numMarketPairs: marketInfo.numMarketPairs ?? null,
+      dateAdded: marketInfo.dateAdded ?? null,
+      // Phase 2: tags + platform for chain/sector display
+      tags: marketInfo.tags || [],
+      platform: marketInfo.platform || null,
+      category: marketInfo.category || null,
       // Hyperliquid-specific (null if not on Hyperliquid)
       fundingRate: hlData?.fundingRate ?? null,
       openInterest: hlData?.openInterestUsd ?? null,  // USD value (base OI × mark price)

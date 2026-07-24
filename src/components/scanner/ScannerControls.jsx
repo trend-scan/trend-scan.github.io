@@ -225,6 +225,95 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
             </div>
           </div>
         </div>
+
+        {/* Phase 2 — Chain Filter (CMC platform) */}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[8px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+            Chain
+          </span>
+          <select
+            className="font-mono text-[9px] px-1.5 py-1 outline-none cursor-pointer"
+            style={{
+              background: 'var(--scanner-bg2)',
+              border: '1px solid var(--scanner-border2)',
+              color: settings.chainFilter !== 'All' ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
+            }}
+            value={settings.chainFilter || 'All'}
+            onChange={e => update('chainFilter', e.target.value)}
+            title="Filter by blockchain platform (from CMC /info)"
+          >
+            <option value="All" style={{ background: 'var(--scanner-bg2)' }}>All Chains</option>
+            <option value="Native" style={{ background: 'var(--scanner-bg2)' }}>Native L1 (BTC, ETH, SOL…)</option>
+            <option value="Ethereum" style={{ background: 'var(--scanner-bg2)' }}>Ethereum</option>
+            <option value="Solana" style={{ background: 'var(--scanner-bg2)' }}>Solana</option>
+            <option value="BNB Smart Chain" style={{ background: 'var(--scanner-bg2)' }}>BNB</option>
+            <option value="Base" style={{ background: 'var(--scanner-bg2)' }}>Base</option>
+            <option value="Tron" style={{ background: 'var(--scanner-bg2)' }}>Tron</option>
+            <option value="Cardano" style={{ background: 'var(--scanner-bg2)' }}>Cardano</option>
+            <option value="Avalanche" style={{ background: 'var(--scanner-bg2)' }}>Avalanche</option>
+            <option value="Polygon" style={{ background: 'var(--scanner-bg2)' }}>Polygon</option>
+            <option value="Arbitrum" style={{ background: 'var(--scanner-bg2)' }}>Arbitrum</option>
+            <option value="Sui" style={{ background: 'var(--scanner-bg2)' }}>Sui</option>
+            <option value="Hyperliquid" style={{ background: 'var(--scanner-bg2)' }}>Hyperliquid</option>
+          </select>
+        </div>
+
+        {/* Phase 2 — Sector Filter (CMC tags) */}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[8px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+            Sector
+          </span>
+          <select
+            className="font-mono text-[9px] px-1.5 py-1 outline-none cursor-pointer"
+            style={{
+              background: 'var(--scanner-bg2)',
+              border: '1px solid var(--scanner-border2)',
+              color: settings.sectorFilter !== 'All' ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
+            }}
+            value={settings.sectorFilter || 'All'}
+            onChange={e => update('sectorFilter', e.target.value)}
+            title="Filter by CMC category tag"
+          >
+            <option value="All" style={{ background: 'var(--scanner-bg2)' }}>All Sectors</option>
+            <option value="defi" style={{ background: 'var(--scanner-bg2)' }}>DeFi</option>
+            <option value="ai-agents" style={{ background: 'var(--scanner-bg2)' }}>AI Agents</option>
+            <option value="artificial-intelligence" style={{ background: 'var(--scanner-bg2)' }}>AI</option>
+            <option value="memes" style={{ background: 'var(--scanner-bg2)' }}>Memes</option>
+            <option value="gaming" style={{ background: 'var(--scanner-bg2)' }}>Gaming</option>
+            <option value="layer-1" style={{ background: 'var(--scanner-bg2)' }}>Layer 1</option>
+            <option value="layer-2" style={{ background: 'var(--scanner-bg2)' }}>Layer 2</option>
+            <option value="governance" style={{ background: 'var(--scanner-bg2)' }}>Governance</option>
+            <option value="stablecoin" style={{ background: 'var(--scanner-bg2)' }}>Stablecoin</option>
+            <option value="oracle" style={{ background: 'var(--scanner-bg2)' }}>Oracle</option>
+            <option value="liquid-staking" style={{ background: 'var(--scanner-bg2)' }}>Liquid Staking</option>
+            <option value="privacy" style={{ background: 'var(--scanner-bg2)' }}>Privacy</option>
+            <option value="storage" style={{ background: 'var(--scanner-bg2)' }}>Storage</option>
+            <option value="payments" style={{ background: 'var(--scanner-bg2)' }}>Payments</option>
+            <option value="metaverse" style={{ background: 'var(--scanner-bg2)' }}>Metaverse</option>
+            <option value="exchange" style={{ background: 'var(--scanner-bg2)' }}>Exchange</option>
+            <option value="collectibles-nfts" style={{ background: 'var(--scanner-bg2)' }}>NFTs</option>
+          </select>
+        </div>
+
+        {/* Phase 1c — Max Supply Filter */}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[8px] font-semibold tracking-[0.1em] uppercase" style={{ color: 'var(--scanner-text3)' }}>
+            Min Max Supply
+          </span>
+          <input
+            type="number"
+            className="font-mono text-[9px] px-1.5 py-1 outline-none w-[80px]"
+            style={{
+              background: 'var(--scanner-bg2)',
+              border: '1px solid var(--scanner-border2)',
+              color: settings.maxSupplyFilter > 0 ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
+            }}
+            value={settings.maxSupplyFilter || 0}
+            min={0}
+            onChange={e => update('maxSupplyFilter', Math.max(0, Number(e.target.value)))}
+            title="Minimum max supply (filters out inflationary coins with null maxSupply). 0 = no filter."
+          />
+        </div>
       </div>
 
       <Separator />

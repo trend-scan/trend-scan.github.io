@@ -216,14 +216,39 @@ async function fetchCoinGeckoTop() {
 
 const CMC_API_KEY = process.env.CMC_API_KEY;
 
+// ─── CMC credit usage monitoring (FREE — 0 credits) ──────────────────────────
+// /v1/key/info is the one endpoint that doesn't cost credits. Logs our current
+// month's usage so we can see credit burn rate and avoid exhausting the budget.
+async function logCMCCreditUsage() {
+  if (!CMC_API_KEY) return;
+  try {
+    const res = await fetchJson('https://pro-api.coinmarketcap.com/v1/key/info', {
+      headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY },
+    });
+    const plan = res?.data?.plan;
+    if (plan) {
+      const used = plan.current_credits_used || 0;
+      const limit = plan.monthly_credit_limit || 15000;
+      const remaining = plan.current_credits_remaining ?? (limit - used);
+      const pct = limit > 0 ? ((used / limit) * 100).toFixed(1) : '?';
+      console.log(`── CMC credit usage ──`);
+      console.log(`  Plan: ${plan.name || 'Basic'} | ${used.toLocaleString()} / ${limit.toLocaleString()} credits used (${pct}%) | ${remaining.toLocaleString()} remaining`);
+    }
+  } catch (e) {
+    console.warn(`  ⚠ CMC key/info failed: ${e.message}`);
+  }
+}
+
 async function fetchCryptoUniverseCMC() {
   if (!CMC_API_KEY) return null;
   console.log('── Crypto universe (CMC, top 500) ──');
   try {
     // 1 credit per call. limit=500 returns top 500 by market cap.
     // sort=market_cap_strict ensures CMC rank order (not volume or other).
+    // aux=tags,platform,date_added,cmc_rank — includes extra fields in response.
     const url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest' +
-      '?limit=500&sort=market_cap_strict&sort_dir=desc&cryptocurrency_type=all';
+      '?limit=500&sort=market_cap_strict&sort_dir=desc&cryptocurrency_type=all' +
+      '&aux=num_market_pairs,cmc_rank,date_added,tags,platform,max_supply,circulating_supply,total_supply';
     const res = await fetchJson(url, { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } });
     if (!res || !Array.isArray(res.data)) throw new Error('Unexpected CMC response');
     const out = {};
@@ -231,13 +256,33 @@ async function fetchCryptoUniverseCMC() {
       const sym = c.symbol.toUpperCase();
       // Skip duplicates (keep highest rank)
       if (out[sym] && out[sym].marketCapRank <= c.cmc_rank) continue;
+      const q = c.quote?.USD || {};
       out[sym] = {
         symbol: sym,
         name: c.name,
-        marketCapRank: c.cmc_rank || 999,
-        marketCap: c.quote?.USD?.market_cap || 0,
-        volume24h: c.quote?.USD?.volume_24h || 0,
         slug: c.slug,
+        marketCapRank: c.cmc_rank || 999,
+        marketCap: q.market_cap || 0,
+        fullyDilutedMarketCap: q.fully_diluted_market_cap || 0,
+        volume24h: q.volume_24h || 0,
+        volumeChange24h: q.volume_change_24h || 0,
+        // Multi-timeframe price changes (1h/24h/7d/30d/60d/90d)
+        change1h: q.percent_change_1h,
+        change24h: q.percent_change_24h,
+        change7d: q.percent_change_7d,
+        change30d: q.percent_change_30d,
+        change60d: q.percent_change_60d,
+        change90d: q.percent_change_90d,
+        // Supply metrics
+        circulatingSupply: c.circulating_supply,
+        totalSupply: c.total_supply,
+        maxSupply: c.max_supply,
+        numMarketPairs: c.num_market_pairs,
+        dateAdded: c.date_added,
+        // Platform (chain) — null for native L1 coins (BTC, ETH, SOL, etc.)
+        platform: c.platform ? c.platform.name : null,
+        // Tags array (e.g. ["defi", "dao", "governance"]) — populated by /info endpoint below
+        tags: [],
         source: 'cmc',
       };
     }
@@ -248,6 +293,130 @@ async function fetchCryptoUniverseCMC() {
     return null;
   }
 }
+
+// ─── CMC metadata: tags + platform detail (Phase 2) ──────────────────────────
+// /v1/cryptocurrency/info returns tags array + platform token_address + logo +
+// description + URLs. We use tags for sector filtering (DeFi, AI, Memes, etc.)
+// and platform for chain filtering (Ethereum, Solana, BNB, etc.).
+//
+// Credit cost: 1 credit per call, max 100 symbols per call.
+// For 500-coin universe: 5 calls = 5 credits per refresh × 4 daily = 20 credits/day.
+// At 4× daily refresh = 600 credits/month (4% of 15,000 free budget).
+async function fetchCryptoMetadata(symbols) {
+  if (!CMC_API_KEY || !symbols || symbols.length === 0) return {};
+  console.log(`── CMC metadata (tags + platform, ${symbols.length} coins) ──`);
+  const out = {};
+  const BATCH_SIZE = 100;
+  let creditsUsed = 0;
+  for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+    const batch = symbols.slice(i, i + BATCH_SIZE);
+    const symbolParam = batch.join(',');
+    try {
+      const url = `https://pro-api.coinmarketcap.com/v1/cryptocurrency/info?symbol=${encodeURIComponent(symbolParam)}&aux=platform,tags,urls,logo,description`;
+      const res = await fetchJson(url, { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } });
+      creditsUsed++;
+      if (!res?.data) throw new Error('Unexpected CMC info response');
+      for (const sym of Object.keys(res.data)) {
+        const c = res.data[sym];
+        const symUpper = sym.toUpperCase();
+        out[symUpper] = {
+          tags: Array.isArray(c.tags) ? c.tags : [],
+          platform: c.platform ? c.platform.name : null,
+          platformTokenAddress: c.platform ? c.platform.token_address : null,
+          category: c.category || null,
+          logo: c.logo || null,
+          description: c.description || null,
+          urls: c.urls || {},
+          dateLaunched: c.date_launched || null,
+        };
+      }
+    } catch (e) {
+      console.warn(`  ✗ CMC info batch ${i / BATCH_SIZE + 1} failed: ${e.message}`);
+    }
+    // Small delay between batches (50 req/min limit, but be polite)
+    if (i + BATCH_SIZE < symbols.length) await new Promise(r => setTimeout(r, 300));
+  }
+  console.log(`  ✓ CMC metadata for ${Object.keys(out).length} coins (used ${creditsUsed} credits)`);
+  return out;
+}
+
+// ─── CMC Trending / Gainers / Losers (Phase 3a — data only, NO UI yet) ───────
+// 3 endpoints, 1 credit each = 3 credits per refresh × 4 daily = 12 credits/day.
+// Stored in snapshot as `cmc_trending` for future Board section. NOT surfaced in
+// UI yet per user instruction (2026-07-24).
+async function fetchCMCTrending() {
+  if (!CMC_API_KEY) return null;
+  console.log('── CMC trending / gainers / losers ──');
+  const out = { trending: [], gainers: [], losers: [], mostViewed: [] };
+  const endpoints = [
+    { key: 'trending', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/latest' },
+    { key: 'gainers', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/gainers' },
+    { key: 'losers', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/losers' },
+    { key: 'mostViewed', url: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/trending/most-viewed' },
+  ];
+  let creditsUsed = 0;
+  for (const ep of endpoints) {
+    try {
+      const res = await fetchJson(ep.url, { headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY } });
+      creditsUsed++;
+      if (Array.isArray(res?.data)) {
+        out[ep.key] = res.data.map(c => ({
+          symbol: (c.symbol || '').toUpperCase(),
+          name: c.name,
+          slug: c.slug,
+          cmcRank: c.cmc_rank,
+          price: c.quote?.USD?.price,
+          percentChange24h: c.quote?.USD?.percent_change_24h,
+          volume24h: c.quote?.USD?.volume_24h,
+          marketCap: c.quote?.USD?.market_cap,
+        }));
+      }
+    } catch (e) {
+      console.warn(`  ✗ CMC trending/${ep.key} failed: ${e.message}`);
+    }
+  }
+  console.log(`  ✓ CMC trending: ${out.trending.length} trending, ${out.gainers.length} gainers, ${out.losers.length} losers, ${out.mostViewed.length} most-viewed (used ${creditsUsed} credits)`);
+  return out;
+}
+
+// ─── CMC global metrics (Phase 3b — data only, NO UI yet) ────────────────────
+// 1 credit per call. Returns BTC/ETH dominance, total mcap, total volume, active
+// cryptos/markets/exchanges counts. Stored as `global_metrics` for future Macro
+// page enhancement. NOT surfaced in UI yet per user instruction (2026-07-24).
+// Note: we already compute BTC dominance historically from CoinGecko; this is
+// the "official" CMC current value.
+async function fetchGlobalMetrics() {
+  if (!CMC_API_KEY) return null;
+  console.log('── CMC global metrics ──');
+  try {
+    const res = await fetchJson('https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest', {
+      headers: { 'X-CMC_PRO_API_KEY': CMC_API_KEY },
+    });
+    if (!res?.data) throw new Error('Unexpected CMC global response');
+    const d = res.data;
+    const q = d.quote?.USD || {};
+    const out = {
+      btcDominance: d.btc_dominance,
+      ethDominance: d.eth_dominance,
+      activeCryptocurrencies: d.active_cryptocurrencies,
+      activeMarkets: d.active_markets,
+      activeExchanges: d.active_exchanges,
+      totalMarketCap: q.total_market_cap,
+      totalVolume24h: q.total_volume_24h,
+      totalVolume24hReported: q.total_volume_24h_reported,
+      altcoinMarketCap: q.altcoin_market_cap,
+      altcoinVolume24h: q.altcoin_volume_24h,
+      lastUpdated: q.last_updated,
+      source: 'cmc',
+    };
+    console.log(`  ✓ CMC global: BTC dom ${(out.btcDominance || 0).toFixed(1)}%, total mcap $${((out.totalMarketCap || 0) / 1e12).toFixed(2)}T, ${out.activeCryptocurrencies} active coins (used 1 credit)`);
+    return out;
+  } catch (e) {
+    console.warn(`  ✗ CMC global metrics failed: ${e.message}`);
+    return null;
+  }
+}
+
 
 async function fetchCryptoUniverseCoinGecko() {
   console.log('── Crypto universe (CoinGecko, top 500) ──');
@@ -893,7 +1062,10 @@ async function main() {
   console.log(`CMC_API_KEY:  ${CMC_API_KEY ? '✓ set' : '✗ not set (will use CoinGecko for universe)'}`);
   console.log('');
 
-  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch, cryptoFactors, cgHistorical, cryptoUniverse] = await Promise.all([
+  // Log CMC credit usage at start (FREE — 0 credits) so we see budget before/after
+  await logCMCCreditUsage();
+
+  let [fred, coingecko, fearGreed, kenFrench, cboe, tradfiOHLCV, etfFlows, factorWatch, cryptoFactors, cgHistorical, cryptoUniverse, cmcTrending, globalMetrics] = await Promise.all([
     fetchAllFred(),
     fetchCoinGeckoTop(),
     fetchFearGreed(),
@@ -905,12 +1077,48 @@ async function main() {
     computeCryptoFactors(_prevSnapshot),
     fetchCoinGeckoHistorical(),
     fetchCryptoUniverse(),
+    fetchCMCTrending(),
+    fetchGlobalMetrics(),
   ]);
 
   // If crypto_universe is empty (CMC + CoinGecko both failed), reuse previous snapshot's
   if ((!cryptoUniverse || Object.keys(cryptoUniverse).length < 400) && _prevSnapshot?.crypto_universe) {
     console.log('  ⚠ crypto_universe empty — using previous snapshot (stale)');
     cryptoUniverse = _prevSnapshot.crypto_universe;
+  }
+
+  // ── Enrich crypto_universe with CMC tags + platform detail (Phase 2) ──────
+  // Only runs if we have a CMC-sourced universe (skips CoinGecko-fallback universes
+  // since CMC /info endpoint needs CMC symbols and would be wasteful on CoinGecko data).
+  if (cryptoUniverse && CMC_API_KEY) {
+    const cmcSourcedSymbols = Object.values(cryptoUniverse)
+      .filter(c => c.source === 'cmc' && c.symbol)
+      .map(c => c.symbol);
+    if (cmcSourcedSymbols.length >= 400) {
+      const metadata = await fetchCryptoMetadata(cmcSourcedSymbols);
+      let enrichedCount = 0;
+      for (const [sym, meta] of Object.entries(metadata)) {
+        if (cryptoUniverse[sym]) {
+          // Merge metadata fields into existing universe entry (don't overwrite core fields)
+          cryptoUniverse[sym].tags = meta.tags || [];
+          cryptoUniverse[sym].platform = meta.platform || cryptoUniverse[sym].platform || null;
+          cryptoUniverse[sym].platformTokenAddress = meta.platformTokenAddress || null;
+          cryptoUniverse[sym].category = meta.category || null;
+          cryptoUniverse[sym].logo = meta.logo || null;
+          cryptoUniverse[sym].dateLaunched = meta.dateLaunched || null;
+          enrichedCount++;
+        }
+      }
+      console.log(`  ✓ Enriched ${enrichedCount} coins with tags + platform from CMC /info`);
+    }
+  }
+
+  // Stale-data fallback for trending + global metrics
+  if ((!cmcTrending || (cmcTrending.trending.length === 0)) && _prevSnapshot?.cmc_trending) {
+    cmcTrending = _prevSnapshot.cmc_trending;
+  }
+  if (!globalMetrics && _prevSnapshot?.global_metrics) {
+    globalMetrics = _prevSnapshot.global_metrics;
   }
 
   // If FRED data is empty (API failure), use previous snapshot's FRED data
@@ -1034,6 +1242,8 @@ async function main() {
     fred,
     coingecko_top: coingecko,
     crypto_universe: cryptoUniverse,
+    cmc_trending: cmcTrending,
+    global_metrics: globalMetrics,
     fear_greed: fearGreed,
     ken_french: kenFrench,
     cboe_put_call: cboe,
@@ -1065,6 +1275,8 @@ async function main() {
   console.log(`  FRED series populated:  ${fredCount}/${Object.keys(FRED_SERIES).length}`);
   console.log(`  CoinGecko coins:        ${Object.keys(coingecko).length}`);
   console.log(`  Crypto universe:        ${Object.keys(cryptoUniverse).length} coins (for Scanner top-500)`);
+  console.log(`  CMC trending:           ${cmcTrending ? `${(cmcTrending.trending || []).length} trending + ${(cmcTrending.gainers || []).length} gainers + ${(cmcTrending.losers || []).length} losers` : 'null'}`);
+  console.log(`  CMC global metrics:     ${globalMetrics ? `BTC dom ${globalMetrics.btcDominance?.toFixed(1)}%` : 'null'}`);
   console.log(`  Fear & Greed days:      ${fearGreed.length}`);
   console.log(`  CBOE P/C series:        ${Object.keys(cboe).length}`);
   console.log(`  Ken French months:      ${kenFrench.length}`);

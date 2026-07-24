@@ -40,6 +40,13 @@ const DEFAULT_SETTINGS = {
   rsiTimeframe: '1D',            // separate timeframe for RSI (default daily — most common RSI usage)
   rsiMin: 0,
   rsiMax: 100,
+
+  // Phase 2 — chain + sector filters (default: no filter)
+  chainFilter: 'All',            // 'All' | 'Native' | 'Ethereum' | 'Solana' | 'BNB' | etc.
+  sectorFilter: 'All',           // 'All' | 'defi' | 'ai-agents' | 'memes' | etc. (CMC tag slugs)
+
+  // Phase 1c — max supply filter (0 = no filter)
+  maxSupplyFilter: 0,            // minimum max supply (filters out inflationary coins with null maxSupply)
 };
 
 export default function Scanner() {

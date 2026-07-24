@@ -232,7 +232,7 @@ export default function ResultsTable({ results, settings, isScanning, onSelectRo
         <EmptyState isScanning={isScanning} hasScanned={hasScanned} />
       ) : (
         <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--scanner-border2)' }}>
-          <table className="w-full min-w-[1100px] border-collapse">
+          <table className="w-full min-w-[1200px] border-collapse">
             <thead>
               <tr style={{ background: 'var(--scanner-bg2)', borderBottom: '1px solid var(--scanner-border2)' }}>
                 {[
@@ -240,6 +240,7 @@ export default function ResultsTable({ results, settings, isScanning, onSelectRo
                   { key: null, label: 'Asset' },
                   { key: null, label: 'Price', right: true },
                   { key: null, label: '7D', right: true },
+                  { key: 'change1h', label: '1h Δ', right: true },
                   { key: 'change24h', label: '24h Δ', right: true },
                   { key: 'volume24h', label: 'VOL', right: true },
                   { key: 'rVol', label: 'rVOL', right: true },
@@ -365,6 +366,11 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct, onSelectRow }) {
       <td className="py-2 px-2.5">
         <div className="text-[11px] font-bold leading-tight" style={{ color: 'var(--scanner-text)' }}>{row.symbol}</div>
         <div className="text-[9px] leading-tight max-w-[80px] overflow-hidden text-ellipsis whitespace-nowrap" style={{ color: 'var(--scanner-text3)' }}>{row.name}</div>
+        {row.platform && (
+          <div className="text-[7px] leading-tight mt-0.5" style={{ color: 'var(--scanner-text3)', opacity: 0.7 }}>
+            {row.platform}
+          </div>
+        )}
       </td>
 
       {/* Price */}
@@ -375,6 +381,16 @@ function ResultRow({ row, index, maxPricePct, maxEmaPct, onSelectRow }) {
       {/* 7D Sparkline */}
       <td className="py-2 px-2.5 text-right">
         <MiniSparkline data={row.sparkline} positive={isPositive} />
+      </td>
+
+      {/* Phase 1c — 1h Change (from CMC) */}
+      <td className="py-2 px-2.5 text-right">
+        <span className="text-[11px] font-semibold tabular-nums min-w-[42px] text-right" style={{
+          color: row.change1h == null ? 'var(--scanner-text3)' :
+                 row.change1h >= 0 ? 'var(--scanner-green)' : 'var(--scanner-red)'
+        }}>
+          {fmtChange(row.change1h)}
+        </span>
       </td>
 
       {/* 24h Change */}
