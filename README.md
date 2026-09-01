@@ -134,11 +134,12 @@ To enable:
 To disable: set the secret to `false` or delete it. All components check the flag and render nothing when it's not `'true'`. The FactorWatch-gated components are lazy-loaded (`React.lazy`) so they're tree-shaken from the bundle when the flag is off.
 
 **Factor Signal Engine** (always active, not gated): The crypto Factor Monitor also includes a shared factor signal engine (`src/lib/factors/`) that provides:
-- Rotation detection (3-session confirm / 10-session fresh, generalized from the regime engine)
+- Rotation detection (3-session confirm / 10-session fresh, run-based semantics)
 - Composite stance scoring (CONSTRUCTIVE / SELECTIVE / DEFENSIVE / WAIT + 0-10 confidence)
 - Crowding matrix (pairwise correlation of 90-day spread returns)
 - Narrative generation (plain-English signal sentences)
 - Factor quilt (monthly returns heatmap)
+- Tradable-universe filter (`universeFilter.js` — strips stablecoins, tokenized gold, wrapped/staked derivatives, and exchange revenue tokens from the factor universe on both server and client paths)
 
 This engine runs on the crypto factor data the Factor Monitor already computes — no FactorWatch integration needed.
 
@@ -242,12 +243,12 @@ npm run build            # Production build → dist/
 npm run build:snapshot   # Manually build snapshot.json (requires FRED_API_KEY + CMC_API_KEY env)
 npm run lint             # ESLint
 npm run typecheck        # TypeScript check (jsconfig.json)
-npm test                 # 112-test suite (signal compute + orthogonal engine)
+npm test                 # 149-test suite (signal compute + orthogonal + factor engine)
 ```
 
 ## Snapshot keys
 
-`snapshot.json` (~1.1 MB) contains 21 top-level keys built by `scripts/build_snapshot.js`:
+`snapshot.json` (~1.1 MB) contains 28 top-level keys built by `scripts/build_snapshot.js`:
 
 | Key | Description | Source |
 |-----|-------------|--------|
@@ -272,6 +273,13 @@ npm test                 # 112-test suite (signal compute + orthogonal engine)
 | `tradfi_breadth_history` | 90-day TradFi advancers/decliners (Zweig thrust) | `scripts/build_snapshot.js` |
 | `signal_metrics` | STRONG/WEAK/NEUTRAL verdicts for BTC/Majors/Cash | `scripts/compute_signal_metrics.js` |
 | `signal_history` | Signal verdict history | `scripts/compute_signal_metrics.js` |
+| `signal_verification` | Walk-forward hit rates for the signal engine | `scripts/compute_signal_metrics.js` |
+| `crypto_grid` | Crypto grid-heatmap data (Screener) | `scripts/build_snapshot.js` |
+| `dominance_history` | BTC dominance history series | `scripts/build_snapshot.js` |
+| `environment` | Market environment panel (temperature + posture) | `scripts/build_snapshot.js` |
+| `factor_universe` | Factor baskets for thematic mapping (4 categories, 21 baskets) | `scripts/build_snapshot.js` |
+| `levered_appetite` | Levered ETF risk-appetite read | `scripts/build_snapshot.js` |
+| `cboe_pc` | CBOE equity put/call ratio — dormant (`null`; scraper retained for documentation, see audit F-14-a-1) | — |
 
 `snapshot.tradfi.json` (~22 MB) contains `generated_at` + `tradfi_ohlcv` (compact OHLCV for ~470 tradfi tickers, ~250 days each).
 
@@ -337,6 +345,7 @@ npm test                 # 112-test suite (signal compute + orthogonal engine)
     │   └── useFactorSignals.js       # Factor signal hook
     └── lib/
         ├── scanner/
+        │   ├── factorEngine.js       # Crypto factor quintile portfolios + spread monitor + quilt
         │   ├── sourceResolver.js     # Multi-source auto-fallback dispatcher
         │   ├── sourceHealth.js       # Global geo-block tracking (HTTP 451)
         │   ├── exchanges.js          # Top-500 universe fetcher + filterUniverse
@@ -353,13 +362,12 @@ npm test                 # 112-test suite (signal compute + orthogonal engine)
         │       ├── okxTradfi.js      # SPY/QQQ/NVDA/TSLA/AAPL/XAU/XAG perps (7 tickers)
         │       ├── lighter.js        # Lighter ~94 tradfi markets (incl. pre-IPO)
         │       ├── massive.js        # Polygon.io (opt-in, localStorage key)
-        │       ├── twelvedata.js     # Twelve Data (opt-in, localStorage key)
         │       └── binanceXStocks.js # Binance xStocks (NVDA, TSLA)
+        │       # (Twelve Data is fetched inline in traditionalMarkets.js — no separate source module)
         ├── board/
         │   ├── boardEngine.js        # Crypto board analysis (metrics + themes + breadth)
         │   ├── traditionalMarkets.js # TradFi universe (~470 tickers) + snapshot-first loader
         │   ├── tradfiScoring.js      # TradFi theme scoring + extension lists
-        │   ├── cryptoScoring.js      # Crypto theme scoring
         │   ├── cryptoUniverse.js     # Crypto board universe (382 curated assets)
         │   ├── leveredETFs.js        # Levered ETF metadata (93 ETFs)
         │   ├── tableUtils.js         # Sort + heat-color utilities
@@ -369,9 +377,10 @@ npm test                 # 112-test suite (signal compute + orthogonal engine)
         │   └── orthogonal.js         # OrthoSys v6.1 (9-signal Gram-Schmidt decorrelated)
         ├── factors/                   # Factor signal engine (composite, rotation, crowding)
         │   ├── compositeEngine.js    # Unified stance computation (CONSTRUCTIVE/SELECTIVE/DEFENSIVE/WAIT)
-        │   ├── rotationDetector.js   # 3-session confirm rotation detection
+        │   ├── rotationDetector.js   # 3-session confirm rotation detection (run-based semantics)
         │   ├── crowdingMatrix.js     # Cross-asset crowding heatmap
-        │   └── narrativeGenerator.js # Auto-generated factor narrative text
+        │   ├── narrativeGenerator.js # Auto-generated factor narrative text
+        │   └── universeFilter.js     # Pegged-asset filter (stablecoins/gold/wrapped/exchange tokens)
         ├── regime/
         │   ├── macroResolver.js      # Multi-source macro fallback chain
         │   ├── regimeEngine.js       # Ultra6 + OB1 + Core9 regime computation

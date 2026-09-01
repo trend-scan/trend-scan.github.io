@@ -87,6 +87,7 @@ replay backtester (`scripts/signal/backtest.js`).
 10. [Factors engine — factor stance verdicts](#10-factors-engine)
 11. [Rotation detector (shared)](#11-rotation-detector-shared)
 12. [Crowding matrix](#12-crowding-matrix)
+12b. [Tradable-universe filter — pegged assets](#12b-tradable-universe-filter-pegged-assets)
 13. [Narrative generator](#13-narrative-generator)
 14. [Scanner factor engine — quintile portfolios + spread monitor](#14-scanner-factor-engine)
 15. [Scanner calculations — EMA / VWAP / RSI](#15-scanner-calculations)
@@ -98,7 +99,7 @@ replay backtester (`scripts/signal/backtest.js`).
 
 ## 1. Board engine
 
-**File**: `src/lib/board/boardEngine.js` (977 lines)
+**File**: `src/lib/board/boardEngine.js` (1304 lines)
 **Used by**: `src/pages/Board.jsx` → `DailyBoard`, `ThemesTab`, `MomentumTab`,
 `BreadthTab`, `ExtensionTab`, `QuickViewBar`, `MomentumScanTab`,
 `FactorQuilt`, `RiskPulse` (no separate component, returned in `riskPulse`).
@@ -271,7 +272,7 @@ TradFi tab. Not currently fed into any verdict engine.
 
 ## 2. Regime signals
 
-**File**: `src/lib/regime/regimeSignals.js` (368 lines)
+**File**: `src/lib/regime/regimeSignals.js` (407 lines)
 **Used by**: `src/pages/MacroRegime.jsx` → `RegimeCard`, `CompositeGauge`,
 `AllocationPanel`, `MacroNarrativeBanner`, `IndicatorList`, `MacroCharts`.
 
@@ -399,7 +400,7 @@ STRONG/WEAK/NEUTRAL).
 
 ## 3. Regime calculations
 
-**File**: `src/lib/regime/regimeCalculations.js` (292 lines)
+**File**: `src/lib/regime/regimeCalculations.js` (291 lines)
 **Used by**: every regime + factors + scanner/factorEngine file. These are
 the **statistical primitives** the whole site is built on.
 
@@ -507,7 +508,7 @@ Display constants. Map quadrant → season (SPRING/SUMMER/FALL/WINTER/FLUX).
 
 ## 4. Regime percentile
 
-**File**: `src/lib/regime/regimePercentile.js` (126 lines)
+**File**: `src/lib/regime/regimePercentile.js` (219 lines)
 **Used by**: `factorEngine.computeSpreadMonitor`, all factor spread z+%
 calculations. Borrowed from factorwatch.ai methodology.
 
@@ -542,7 +543,7 @@ z=2 in calm regimes.
 
 ## 5. Regime rotation
 
-**File**: `src/lib/regime/regimeRotation.js` (146 lines)
+**File**: `src/lib/regime/regimeRotation.js` (153 lines)
 **Used by**: `MacroRegime` (regime card flip banner).
 
 ### 5.1 `detectRegimeRotation(history)` — quadrant flip detector
@@ -568,7 +569,7 @@ labels. Returns `{growth, inflation, liquidity}` rotation states.
 
 ## 6. Regime engine
 
-**File**: `src/lib/regime/regimeEngine.js` (122 lines)
+**File**: `src/lib/regime/regimeEngine.js` (121 lines)
 **Used by**: `regimeData.getRegimeData`, indirectly by `DailyBoard`.
 
 ### 6.1 `computeRegime(signals)` — RISK-ON / RISK-OFF / MIXED
@@ -598,7 +599,7 @@ Maps board `benchmarks` + `regime` into the 7 signals above. BTC/ETH trend =
 
 ## 7. Factor signals (FactorWatch cross-asset)
 
-**File**: `src/lib/regime/factorSignals.js` (146 lines)
+**File**: `src/lib/regime/factorSignals.js` (152 lines)
 **Used by**: `useFactorSignals` hook → `MacroNarrativeBanner`,
 `CrossAssetDivergenceChart`, `RevisionArbitrageTable`,
 `TradFiThematicProxy`.
@@ -639,7 +640,7 @@ Maps 15 FactorWatch equity baskets to crypto themes (e.g. 'Magnificent Seven' �
 
 ## 8. Seasonality
 
-**File**: `src/lib/regime/seasonality.js` (125 lines)
+**File**: `src/lib/regime/seasonality.js` (124 lines)
 **Used by**: `MacroRegime` (seasonality panel).
 
 ### 8.1 `computeSeasonality(kenFrench)` — calendar-month baselines
@@ -661,7 +662,7 @@ crypto but useful for context.
 
 ## 9. Change log
 
-**File**: `src/lib/regime/changeLog.js` (191 lines)
+**File**: `src/lib/regime/changeLog.js` (259 lines)
 **Used by**: `MacroRegime` → `ChangeBanner`.
 
 ### 9.1 `saveSnapshot(regime)`, `loadLastSnapshot()`, `getLastSnapshotTime()`, `timeAgo(ts)`, `clearSnapshot()`
@@ -686,7 +687,7 @@ Computes changes vs stored previous, then saves current.
 
 ## 10. Factors engine
 
-**File**: `src/lib/factors/compositeEngine.js` (203 lines)
+**File**: `src/lib/factors/compositeEngine.js` (256 lines)
 **Used by**: `factorSignals.computeFactorSignals`, `FactorSignalCard`,
 `FactorMonitor`. This is the **only existing 4-gate verdict engine** (the
 closest analogue to the not-yet-existing /signal "9-gate" engine).
@@ -701,7 +702,7 @@ CONSTRUCTIVE / SELECTIVE / DEFENSIVE / WAIT verdict with 0–10 confidence.
 | # | Gate | Threshold | Logic |
 |---|---|---|---|
 | 1 | stretch | \|z\| ≥ 2.0 | significant move vs history |
-| 2 | persistence | `rotation.confirmed === true` | 3-session-confirm rule |
+| 2 | persistence | `heldSessions >= confirmSessions` (3) | established leadership (2026-08-29 audit: previously read `rotation.confirmed`, which was structurally always false — the gate could never pass and the signal was permanently WAIT) |
 | 3 | crowding | `crowdingScore < 0.7` | not too correlated with other factors |
 | 4 | breadth | `confirmation >= 0.5` | >50% of quintile members agreeing |
 
@@ -743,13 +744,20 @@ the highest-confidence one as `primary` plus all stances sorted by confidence.
 
 ## 11. Rotation detector (shared)
 
-**File**: `src/lib/factors/rotationDetector.js` (186 lines)
+**File**: `src/lib/factors/rotationDetector.js` (191 lines)
 **Used by**: `factorSignals`, `compute_crypto_factors.js`.
 
 ### 11.1 `detectRotation(history)` — generalized leader-flip detector
 
-Same algorithm as `regimeRotation.detectRegimeRotation` but accepts either
-`{leader}` or `{quadrant}` keys. Asset-class-agnostic.
+Run-based semantics (rewritten 2026-08-29): walks back from the latest
+entry to find the current label's run. `flipped` = took over from a
+different label; `confirmed` = flip + `CONFIRM_SESSIONS` held + the
+displaced leader was established (≥3 sessions) — a flip-specific
+judgement. NOTE: this deliberately diverges from
+`regimeRotation.detectRegimeRotation` (macro quadrants), which retains
+the older compare-today-vs-yesterday pattern.
+
+Asset-class-agnostic — accepts either `{leader}` or `{quadrant}` keys.
 
 **Constants**: `CONFIRM_SESSIONS = 3`, `FLIP_FRESH_SESSIONS = 10`.
 
@@ -767,7 +775,7 @@ localStorage persistence (capped at 90 entries).
 
 ## 12. Crowding matrix
 
-**File**: `src/lib/factors/crowdingMatrix.js` (217 lines)
+**File**: `src/lib/factors/crowdingMatrix.js` (222 lines)
 **Used by**: `compute_crypto_factors.js`, `FactorMonitor`.
 
 ### 12.1 `buildCrowdingMatrix(spreadSeriesByFactor, window=90)`
@@ -784,6 +792,31 @@ actually one bet?" check.
 Builds daily Q5−Q1 spread return series per factor from candle data.
 Equal-weighted Q5/Q1 portfolios, normalised to start at 1.0.
 **Output**: `{factor: number[]}`.
+
+---
+
+## 12b. Tradable-universe filter (pegged assets)
+
+**File**: `src/lib/factors/universeFilter.js` (127 lines)
+**Used by**: `compute_crypto_factors.js` (both CMC and CoinGecko paths),
+`FactorMonitor` (live-refresh path).
+
+### 12b.1 `filterTradableUniverse(coins)` / `isExcludedAsset(asset)`
+
+**Measures**: whether an asset is tradable for factor computation. Excludes
+stablecoins (symbol denylist + name patterns + CMC `stablecoin` tags),
+tokenized gold/silver, wrapped/staked derivatives (wBTC, stETH, ...), and
+exchange revenue tokens (LEO, OKB, BGB, KCS, GT).
+
+**Why** (2026-08-29 audit): 12 pegged/native assets previously sat in the
+factor universe — 9 stablecoins occupied "Low Volatility" Q1 and their
+near-zero vol / huge turnover corrupted the volatility + liquidity factors.
+
+**Input**: `Array<{symbol, name?, tags?}>` (CMC-shaped or bare).
+**Output**: filtered array (same shape).
+**In signal engine?**: YES — gates the entire factor universe upstream of
+every factor score.
+**Predictive potential**: n/a (data hygiene, not a signal).
 
 ---
 
@@ -815,7 +848,7 @@ Diff two factor states. Detects:
 
 ## 14. Scanner factor engine
 
-**File**: `src/lib/scanner/factorEngine.js` (463 lines)
+**File**: `src/lib/scanner/factorEngine.js` (592 lines)
 **Used by**: `compute_crypto_factors.js` (server-side), `FactorMonitor`
 (client-side).
 
@@ -834,14 +867,20 @@ Diff two factor states. Detects:
 
 ### 14.2 `buildQuintilePortfolios(scoredUniverse, factorName)`
 
-Winsorize (2.5/97.5 pct) → z-score → sort high→low → split into 5 quintiles.
+Winsorize (2.5/97.5 pct) → z-score → sort **ascending** (low→high; Q5 =
+top quintile, receives the integer remainder — factorwatch convention).
+Fixed 2026-08-29: the sort was previously descending, which inverted every
+factor's long/short books (sign-inverted spreads since inception).
 **Output**: `{quintiles: [Q1..Q5], longOnly: Q5, shortOnly: Q1, spread: Q5+Q1}`.
 
 ### 14.3 `computeSpreadMonitor(portfoliosByFactor, candlesBySymbol, benchmarkUniverse)`
 
 For each factor: compute equal-weighted Q5, Q1, benchmark series; compute
 relative (Q5 − benchmark) and spread (Q5 − Q1) returns at 1d/5d/20d/60d +
-YTD; each with `{ret, z, pctile}` via `horizonReturnWithStats`.
+YTD; each with `{ret, z, pctile}` via `pairHorizonReturnWithStats`
+(pair-return definition: `A[t]/A[t−h] − B[t]/B[t−h]`; replaced the old
+`horizonReturnWithStats` zero-crossing-difference baseline which produced
+±400% artifacts — 2026-08-29 audit).
 **Output**: `{factor: {factor, label, rel_1d, spread_1d, rel_5d, spread_5d,
 rel_20d, spread_20d, rel_60d, spread_60d, rel_ytd, spread_ytd}}`.
 **Used by**: `compute_crypto_factors`, `FactorMonitor`, `compositeEngine`.
@@ -869,7 +908,9 @@ flip_flag: false, trailing_20d_returns: {...}}`.
 - `zScore(arr)` — mean/stddev normalisation
 - `computeBeta(assetReturns, marketReturns)` — OLS β
 - `buildEqualWeightSeries(symbols, candlesBySymbol)` — equal-weighted normalized price series
-- `subtractSeries(a, b)` — normalised difference a_norm − b_norm
+- `subtractSeries(a, b)` — REMOVED (2026-08-29 audit): normalised difference
+  a_norm − b_norm fed spread z-scores from a zero-crossing series; replaced
+  by `pairHorizonReturnWithStats` in `regimePercentile.js`
 - `detectIdenticalQuintiles(portfoliosByFactor)` — diagnostic warning if two factors produce identical Q5
 - `computeMonthlyReturns(priceSeries)` — approximate monthly returns (uses ~30 candles/month heuristic)
 
@@ -901,7 +942,7 @@ Seed: simple average of first `period` gains/losses. Wilder smoothing.
 
 ## 16. Scanner scan engine
 
-**File**: `src/lib/scanner/scanEngine.js` (318 lines)
+**File**: `src/lib/scanner/scanEngine.js` (828 lines)
 **Used by**: `src/pages/Scanner.jsx`.
 
 ### 16.1 `analyzeAsset(asset, settings, cgMarketData, hlTickers)` — trend filter pipeline
@@ -935,7 +976,7 @@ Fetches top-300 universe, market data, Hyperliquid tickers; runs
 
 ## 17. Server-side crypto factor pipeline
 
-**File**: `scripts/compute_crypto_factors.js` (339 lines)
+**File**: `scripts/compute_crypto_factors.js` (608 lines)
 **Used by**: `build_snapshot.js` (GitHub Actions 4× daily).
 
 Mirrors the client-side `factorEngine` + `rotationDetector` +
