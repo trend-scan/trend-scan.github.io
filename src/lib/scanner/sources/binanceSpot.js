@@ -95,7 +95,10 @@ export async function fetchCandles(symbol, timeframe = '1D', limit = 300) {
   const universe = await loadUniverse();
   if (universe && !universe.has(sym)) return null;
 
-  const url = `${BASE}/klines?symbol=${encodeURIComponent(sym)}USDT&interval=${interval}&limit=${limit}`;
+  // Binance klines API max is 1000 — requesting more returns HTTP 400. Clamp
+  // here so deep lookbacks (VWAP up to 365d, 2026-09-08) degrade gracefully
+  // instead of erroring. (binancePerps clamps to 1500, its own API max.)
+  const url = `${BASE}/klines?symbol=${encodeURIComponent(sym)}USDT&interval=${interval}&limit=${Math.min(limit, 1000)}`;
   try {
     const res = await fetchWithTimeout(url);
     if (!res.ok) {

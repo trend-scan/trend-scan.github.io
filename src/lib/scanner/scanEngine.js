@@ -526,11 +526,15 @@ async function analyzeAsset(asset, settings, cgMarketData, oiData) {
     sparklineCandles
   );
 
-  // Try the selected exchange first; if it fails, fall back to 'auto' resolver once
-  let candles = await fetchCandles(asset.symbol, exchange, timeframe);
+  // Try the selected exchange first; if it fails, fall back to 'auto' resolver once.
+  // VWAP days cap raised 90→365 (2026-09-08): pass `required` as the fetch limit
+  // AND as the resolver's minCandles so sources that can't go that deep (OKX 300)
+  // yield to deeper ones (Bybit 1000 / Binance 1500 / Kraken 720 / Hyperliquid
+  // start-end) instead of winning with a shallow result that fails the check below.
+  let candles = await fetchCandles(asset.symbol, exchange, timeframe, required, required);
   if ((!candles || candles.length < required) && exchange !== 'auto') {
     // Retry once via the auto resolver (tries all sources in priority order)
-    candles = await fetchCandles(asset.symbol, 'auto', timeframe);
+    candles = await fetchCandles(asset.symbol, 'auto', timeframe, required, required);
   }
   if (!candles || candles.length < required) return null;
 

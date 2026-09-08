@@ -140,19 +140,30 @@ function recordSuccess(sourceId, symbol) {
 /**
  * Fetch candles for a symbol by trying sources sequentially in priority order.
  *
- * The first source to return ≥5 candles wins. Sources that are globally
- * blocked (HTTP 451) or per-symbol deprioritized (3+ failures) are skipped.
+ * The first source to return ≥ minCandles candles (default 5) wins. Sources
+ * that are globally blocked (HTTP 451) or per-symbol deprioritized (3+
+ * failures) are skipped.
+ *
+ * Deep-lookback mode (2026-09-08, VWAP cap 90→365): pass minCandles equal to
+ * the candle count your indicator needs. A source returning ≥5 but < minCandles
+ * candles is NOT accepted (not its fault — it just can't go that deep), so
+ * shallower tier-1 sources (OKX, 300-candle API max) yield to deeper ones
+ * (Bybit 1000 / Binance perps 1500 / Kraken 720 / Hyperliquid start-end).
+ * If no source satisfies minCandles, the longest ≥5 result is returned as
+ * best-effort so the caller can decide what to do with it.
  *
  * @param {string} symbol
  * @param {object} opts
  * @param {string} [opts.timeframe='1D']
  * @param {number} [opts.limit=300]
+ * @param {number} [opts.minCandles=5] - accept a source only if it returns at least this many candles
  * @param {string} [opts.preferredSource]  - force a specific source id
  * @param {string} [opts.type]             - 'crypto' | 'tradfi'
  * @returns {Promise<{source: string|null, candles: Array|null}>}
  */
 export async function fetchCandles(symbol, opts = {}) {
-  const { timeframe = '1D', limit = 300, preferredSource, type } = opts;
+  const { timeframe = '1D', limit = 300, minCandles = 5, preferredSource, type } = opts;
+  const acceptAt = Math.max(minCandles, 5);
   const assetType = type || classifySymbol(symbol);
   const sourceList = assetType === 'tradfi' ? TRADFI_SOURCES : CRYPTO_SOURCES;
 
@@ -184,7 +195,7 @@ export async function fetchCandles(symbol, opts = {}) {
     });
   }
 
-  // Try each source sequentially. First non-null result (≥5 candles) wins.
+  // Try each source sequentially. First result meeting minCandles wins.
   // No parallel racing, no Promise.any — just simple sequential fallback.
   //
   // This is deliberately simple. The complexity of parallel racing caused
@@ -192,19 +203,33 @@ export async function fetchCandles(symbol, opts = {}) {
   // hitting browser's 6-connections-per-host limit) which DECREASED
   // coverage vs. a single explicit source. Sequential + sourceHealth gives
   // us better coverage with simpler code.
+  //
+  // A source returning ≥5 but < minCandles candles counts as neither success
+  // nor failure (depth shortfall isn't a source health problem — we must not
+  // deprioritize OKX for other minCandles-agnostic callers). We keep the
+  // longest one as best-effort in case no source can go deep enough.
+  let best = null;
   for (const src of candidates) {
     try {
       const candles = await src.fetch(symbol, timeframe, limit);
-      if (candles && candles.length >= 5) {
+      if (candles && candles.length >= acceptAt) {
         recordSuccess(src.id, symbol);
         return { source: src.id, candles };
       }
-      recordFailure(src.id, symbol);
+      if (candles && candles.length >= 5) {
+        if (!best || candles.length > best.candles.length) best = { source: src.id, candles };
+      } else {
+        recordFailure(src.id, symbol);
+      }
     } catch {
       recordFailure(src.id, symbol);
     }
   }
 
+  if (best) {
+    recordSuccess(best.source, symbol);
+    return best;
+  }
   return { source: null, candles: null };
 }
 

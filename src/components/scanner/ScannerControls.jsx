@@ -19,7 +19,7 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
         vwapValue={settings.vwapFastDays}
         onTypeChange={v => update('fastType', v)}
         onEmaChange={v => update('emaFast', clamp(v, 2, 499))}
-        onVwapChange={v => update('vwapFastDays', clamp(v, 1, 90))}
+        onVwapChange={v => update('vwapFastDays', clamp(v, 1, 365))}
         toggleChecked={settings.fastAboveMidEnabled}
         onToggleChange={v => update('fastAboveMidEnabled', v)}
         toggleTitle="Gate: Fast > Mid"
@@ -33,7 +33,7 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
         vwapValue={settings.vwapMidDays}
         onTypeChange={v => update('midType', v)}
         onEmaChange={v => update('emaMid', clamp(v, 2, 499))}
-        onVwapChange={v => update('vwapMidDays', clamp(v, 1, 90))}
+        onVwapChange={v => update('vwapMidDays', clamp(v, 1, 365))}
       />
 
       {/* Slow (trend) indicator — toggle gates price > slow */}
@@ -44,7 +44,7 @@ export default function ScannerControls({ settings, onSettingsChange, isScanning
         vwapValue={settings.vwapDays}
         onTypeChange={v => update('slowType', v)}
         onEmaChange={v => update('emaSlow', clamp(v, 2, 500))}
-        onVwapChange={v => update('vwapDays', clamp(v, 1, 90))}
+        onVwapChange={v => update('vwapDays', clamp(v, 1, 365))}
         toggleChecked={settings.priceAboveSlowEnabled}
         onToggleChange={v => update('priceAboveSlowEnabled', v)}
         toggleTitle="Gate: Price > Slow"
@@ -423,7 +423,7 @@ function IndicatorControl({ label, type, emaValue, vwapValue, onTypeChange, onEm
       {/* Period input with spinner */}
       <div style={{ borderLeft: '1px solid var(--scanner-border2)' }} className="flex items-center">
         {type === 'vwap' ? (
-          <SpinnerInput value={vwapValue} onChange={onVwapChange} min={0} max={90} width={40} suffix="d" color={label === 'Fast' ? 'var(--scanner-fast)' : label === 'Mid' ? 'var(--scanner-slow)' : 'var(--scanner-base)'} />
+          <SpinnerInput value={vwapValue} onChange={onVwapChange} min={0} max={365} width={48} suffix="d" color={label === 'Fast' ? 'var(--scanner-fast)' : label === 'Mid' ? 'var(--scanner-slow)' : 'var(--scanner-base)'} />
         ) : (
           <SpinnerInput value={emaValue} onChange={onEmaChange} min={0} max={500} width={48} color={label === 'Fast' ? 'var(--scanner-fast)' : label === 'Mid' ? 'var(--scanner-slow)' : 'var(--scanner-base)'} />
         )}

@@ -54,7 +54,8 @@ async function fetchOKXSpotCandles(symbol, timeframe = '4H', limit = 300) {
   if (!instruments.has(instId)) return null;
 
   const bar = OKX_INTERVAL_MAP[timeframe] || '4H';
-  const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${limit}`;
+  // OKX /market/candles limit max is 300 — clamp for deep VWAP lookbacks
+  const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${Math.min(limit, 300)}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const json = await res.json();
@@ -70,7 +71,7 @@ async function fetchOKXSpotCandles(symbol, timeframe = '4H', limit = 300) {
   }));
 }
 
-// ── OKX PERPETUALS ──────────────────────────────────
+// ── OKX PERPETUALS ──────────────────────────────────────
 let _okxPerpsInstruments = null;
 
 async function loadOKXPerpsInstruments() {
@@ -94,7 +95,8 @@ async function fetchOKXPerpsCandles(symbol, timeframe = '4H', limit = 300) {
   if (!instruments.has(instId)) return null;
 
   const bar = OKX_INTERVAL_MAP[timeframe] || '4H';
-  const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${limit}`;
+  // OKX /market/candles limit max is 300 — clamp for deep VWAP lookbacks
+  const url = `https://www.okx.com/api/v5/market/candles?instId=${encodeURIComponent(instId)}&bar=${bar}&limit=${Math.min(limit, 300)}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const json = await res.json();
@@ -166,14 +168,17 @@ async function loadKrakenPairs() {
   return _krakenPairMap;
 }
 
-async function fetchKrakenCandles(symbol, timeframe = '4H') {
+async function fetchKrakenCandles(symbol, timeframe = '4H', limit = 300) {
   const pairMap = await loadKrakenPairs();
   const entry = pairMap[symbol];
   if (!entry) return null;
 
   const interval = KRAKEN_INTERVAL_MAP[timeframe] || 240;
-  // fetch enough history: 300 bars
-  const since = Math.floor(Date.now() / 1000) - (300 * interval * 60);
+  // Kraken's `since` param is in seconds; returns up to 720 candles per call.
+  // Bar count driven by `limit` (deep VWAP support, 2026-09-08) — 720 is the
+  // API ceiling, requesting more just returns the max.
+  const bars = Math.max(1, limit);
+  const since = Math.floor(Date.now() / 1000) - (bars * interval * 60);
   const url = `https://api.kraken.com/0/public/OHLC?pair=${encodeURIComponent(entry.name)}&interval=${interval}&since=${since}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
@@ -207,7 +212,8 @@ const BINANCE_INTERVAL_MAP = {
 
 async function fetchBinanceCandles(symbol, timeframe = '4H', limit = 500) {
   const interval = BINANCE_INTERVAL_MAP[timeframe] || '4h';
-  const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${limit}`;
+  // Spot klines API max is 1000 (400 beyond) — clamp for deep VWAP lookbacks
+  const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${Math.min(limit, 1000)}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) {
     // Surface a clear error for geo-block (HTTP 451) so the UI can show
@@ -237,7 +243,8 @@ async function fetchBinanceCandles(symbol, timeframe = '4H', limit = 500) {
 // ── BINANCE PERPS ─────────────────────────
 async function fetchBinancePerpsCandles(symbol, timeframe = '4H', limit = 500) {
   const interval = BINANCE_INTERVAL_MAP[timeframe] || '4h';
-  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${limit}`;
+  // Futures klines API max is 1500 (400 beyond) — clamp for deep VWAP lookbacks
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(symbol)}USDT&interval=${interval}&limit=${Math.min(limit, 1500)}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) {
     if (res.status === 451) {
@@ -495,20 +502,25 @@ export async function fetch24hChange(symbol, exchange, candles) {
 //    which tries multiple sources in priority order with automatic fallback.
 //    This is the new default; no API key required.
 //
-export async function fetchCandles(symbol, exchange, timeframe = '4H') {
+export async function fetchCandles(symbol, exchange, timeframe = '4H', limit = 300, minCandles) {
   // AUTO mode — delegate to resolver
   if (!exchange || exchange === 'auto' || exchange === 'massive') {
     // 'massive' is now an alias for AUTO — Massive key is broken per diagnosis;
     // resolver routes to working free sources instead.
-    const { candles } = await resolveCandles(symbol, { timeframe });
+    const opts = { timeframe, limit };
+    if (minCandles != null) opts.minCandles = minCandles;
+    const { candles } = await resolveCandles(symbol, opts);
     return candles;
   }
 
-  // Explicit mode — single source (legacy behavior preserved)
-  if (exchange === 'okx') return await fetchOKXSpotCandles(symbol, timeframe);
-  if (exchange === 'okx_perps') return await fetchOKXPerpsCandles(symbol, timeframe);
-  if (exchange === 'kraken') return await fetchKrakenCandles(symbol, timeframe);
-  if (exchange === 'binance') return await fetchBinanceCandles(symbol, timeframe);
+  // Explicit mode — single source (legacy behavior preserved).
+  // `limit` is optional and defaults to 300 (previous hard ceiling), so all
+  // pre-existing callers are unaffected. Deep VWAP lookbacks (up to 365d,
+  // 2026-09-08) pass a larger limit; each source clamps to its own API max.
+  if (exchange === 'okx') return await fetchOKXSpotCandles(symbol, timeframe, limit);
+  if (exchange === 'okx_perps') return await fetchOKXPerpsCandles(symbol, timeframe, limit);
+  if (exchange === 'kraken') return await fetchKrakenCandles(symbol, timeframe, limit);
+  if (exchange === 'binance') return await fetchBinanceCandles(symbol, timeframe, limit);
   // binance_perps now routes through the resolver — the new binancePerps.js
   // source handles 1000x/1000000x prefix normalization (XEC→1000XEC, etc.)
   // which the legacy fetchBinancePerpsCandles didn't, causing silent failures
@@ -518,7 +530,9 @@ export async function fetchCandles(symbol, exchange, timeframe = '4H') {
   // (gate and kucoin were removed: their public APIs are CORS-blocked for
   // browser-side fetches. The sourceResolver no longer imports them.)
   if (['hyperliquid', 'bybit', 'coingecko', 'binance_perps'].includes(exchange)) {
-    const { candles } = await resolveCandles(symbol, { timeframe, preferredSource: exchange });
+    const opts = { timeframe, limit, preferredSource: exchange };
+    if (minCandles != null) opts.minCandles = minCandles;
+    const { candles } = await resolveCandles(symbol, opts);
     return candles;
   }
   return null;

@@ -120,8 +120,11 @@ async function analyzeTradFiAsset(asset, settings, candleSource) {
     const snapCandles = snap?.[asset.symbol];
     candles = candlesFromSnapshot(snapCandles);
   } else {
-    // Binance perps or OKX perps — use user's selected timeframe
-    candles = await fetchCandles(asset.symbol, candleSource, timeframe);
+    // Binance perps or OKX perps — use user's selected timeframe.
+    // Pass `required` as fetch limit + resolver minCandles so a deep VWAP
+    // (cap raised 90→365, 2026-09-08) isn't silently starved by the 300-candle
+    // source default — deeper sources get a chance to satisfy it.
+    candles = await fetchCandles(asset.symbol, candleSource, timeframe, required, required);
   }
 
   if (!candles || candles.length < required) return null;
