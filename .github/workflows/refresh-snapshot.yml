@@ -128,7 +128,13 @@ jobs:
           # commit on top instead of failing with non-fast-forward. Conflicts
           # are impossible in practice — only this workflow commits
           # public/snapshot.json, and the concurrency group serializes runs.
-          git pull --rebase origin main
+          # --autostash: build_snapshot.js leaves unstaged changes in tracked
+          # cache files (data/historical/*, regime_history_backfill.json);
+          # a plain `git pull --rebase` aborts on those with exit 128
+          # (observed run #625). Autostash parks them for the rebase and
+          # restores them after; the stash pop cannot conflict because the
+          # replayed commit only touches public/snapshot.json.
+          git pull --rebase --autostash origin main
           git push
           echo "Pushed snapshot.json to main."
 
