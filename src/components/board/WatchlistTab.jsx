@@ -249,7 +249,7 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [cryptoKey, snapshotReady, refreshTick]);
 
   // ── TradFi live prices (OKX USDT-quoted perps; 15s refresh) ───────────────
