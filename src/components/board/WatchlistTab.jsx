@@ -288,10 +288,10 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
         // OKX-live ticker with no snapshot row (newly added universe member
         // before its first snapshot refresh) — minimal live row; indicator
         // columns render '—' until the snapshot catches up.
-        const meta = TRAD_META.get(sym) || {};
+        const meta = TRAD_META.get(sym);
         out.push({
-          symbol: sym, name: meta.name || sym, category: meta.category || '',
-          type: meta.type || null, subtheme: meta.subtheme || null,
+          symbol: sym, name: meta?.name || sym, category: meta?.category || '',
+          type: meta?.type || null, subtheme: meta?.subtheme || null,
           price: l.price, ret1d: l.ret1d ?? null,
           ret5d: null, ret20d: null, ret60d: null,
           distMa20: null, distMa50: null, atrExt50ma: null, rsi14: null,
