@@ -111,7 +111,13 @@ export async function fetchCandles(symbol, timeframe = '4H', limit = 300) {
  */
 let _tickerCache = null;
 let _tickerCacheTime = 0;
-const TICKER_TTL_MS = 30 * 1000;
+// 10s TTL (was 30s until 2026-09-30): the Board Watchlist auto-refreshes every
+// 15s and reads this for its price column — a 30s TTL would serve 15-30s-stale
+// marks on alternate cycles. 10s < 15s interval ⇒ every watchlist cycle gets a
+// fresh fetch (~4 calls/min for one active viewer — trivial vs. the generous
+// undocumented limits). Other callers (Scanner on-demand, Board OI card) just
+// see fresher data; their cadences don't change.
+const TICKER_TTL_MS = 10 * 1000;
 
 export async function fetchAllTickers() {
   const now = Date.now();

@@ -16,11 +16,13 @@
  *
  * Data flow:
  *   - Crypto rows: watchlistEngine.fetchWatchlistCryptoData (HL-first resolver,
- *     60s live refresh while the tab is mounted, snapshot fallback)
+ *     15s live refresh while the tab is mounted and the browser tab is visible,
+ *     snapshot fallback; indicators reuse 60s-cached candles — see engine)
  *   - TradFi rows: resolveWatchlistTradfi over tradData (Board loads snapshot
  *     on mount; onEnsureTradfiLive() triggers the live refresh once), then
  *     fetchWatchlistTradfiLive overlays LIVE prices + 24h moves from OKX
- *     USDT-quoted SWAP perps (60s refresh; snapshot keeps the indicators)
+ *     USDT-quoted SWAP perps (15s refresh via ONE bulk ticker call; snapshot
+ *     keeps the indicators)
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -216,44 +218,72 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
   useEffect(() => {
     if (!cryptoKey) { setCryptoData(null); return; }
     let cancelled = false;
-    const run = async () => {
-      setWlLoading(true);
+    let running = false;  // in-flight guard — never stack refresh cycles
+    const run = async (silent) => {
+      if (running) return;
+      running = true;
+      // Silent (auto) cycles keep the table and the Refresh button steady —
+      // no spinner flash every 15s; first load and manual refreshes show it.
+      if (!silent) setWlLoading(true);
       try {
         const res = await fetchWatchlistCryptoData(cryptoKey.split(','), snapshotData);
         if (!cancelled) setCryptoData(res);
       } catch (e) {
         console.warn('[WatchlistTab] crypto fetch failed:', e.message);
       } finally {
-        if (!cancelled) setWlLoading(false);
+        running = false;
+        if (!cancelled && !silent) setWlLoading(false);
       }
     };
     run();
-    // 60s live refresh — only while the tab is mounted (Board unmounts
-    // inactive tabs), so no background polling when the user is elsewhere.
-    const interval = setInterval(run, 60_000);
-    return () => { cancelled = true; clearInterval(interval); };
+    // 15s auto-refresh (2026-09-30, user request: "fresh data every 15
+    // seconds"). Only while the Board tab is mounted (Board unmounts inactive
+    // tabs) AND the browser tab is visible — hidden cycles are skipped and a
+    // catch-up refresh fires on return, so no polling into the void. The
+    // engine's 60s candle cache + 10s ticker TTLs keep network cost sane.
+    const interval = setInterval(() => { if (!document.hidden) run(true); }, 15_000);
+    const onVisible = () => { if (!document.hidden) run(true); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cryptoKey, snapshotReady, refreshTick]);
 
-  // ── TradFi live prices (OKX USDT-quoted perps; 60s refresh) ───────────────
-  // Probes `${base}-USDT-SWAP` per symbol; misses are negatively cached in
-  // the engine. Gated on tradData so the divergence guard always has snapshot
-  // prices to verify against (avoids flashing collided prices on first load).
+  // ── TradFi live prices (OKX USDT-quoted perps; 15s refresh) ───────────────
+  // ONE bulk SWAP-tickers call per cycle (see engine) — listing knowledge and
+  // fresh prices in a single request, so 15s is safe at any watchlist size.
+  // Gated on tradData so the divergence guard always has snapshot prices to
+  // verify against (avoids flashing collided prices on first load). Same
+  // hidden-tab skip + catch-up as the crypto loop above.
   const [tradfiLive, setTradfiLive] = useState(null); // { rows: Map, fetchedAt }
   useEffect(() => {
     if (!tradfiKey || !tradData) { setTradfiLive(null); return; }
     let cancelled = false;
+    let running = false;
     const run = async () => {
+      if (running) return;
+      running = true;
       try {
         const res = await fetchWatchlistTradfiLive(tradfiKey.split(','), tradData);
         if (!cancelled) setTradfiLive(res);
       } catch (e) {
         console.warn('[WatchlistTab] tradfi live fetch failed:', e.message);
+      } finally {
+        running = false;
       }
     };
     run();
-    const interval = setInterval(run, 60_000);
-    return () => { cancelled = true; clearInterval(interval); };
+    const interval = setInterval(() => { if (!document.hidden) run(); }, 15_000);
+    const onVisible = () => { if (!document.hidden) run(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [tradfiKey, tradData, refreshTick]);
 
   // ── TradFi rows (snapshot metrics + OKX live price overlay) ───────────────
@@ -491,13 +521,14 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
           className="font-mono text-[9px] font-semibold px-2.5 py-1.5"
           style={{ background: 'var(--scanner-bg2)', border: '1px solid var(--scanner-border2)', color: wlLoading ? 'var(--scanner-accent)' : 'var(--scanner-text3)', cursor: 'pointer' }}
           onClick={() => setRefreshTick(t => t + 1)}
-          title="Re-fetch live data now"
+          title="Re-fetch live data now (auto-refreshes every 15s while this tab is open)"
         >{wlLoading ? '⟳ Loading…' : '⟳ Refresh'}</button>
         {updatedLabel && (
-          <span className="text-[8px] tracking-wider" style={{ color: 'var(--scanner-text3)' }} title="Live-data fetch time · live/snapshot asset counts">
+          <span className="text-[8px] tracking-wider" style={{ color: 'var(--scanner-text3)' }} title="Live-data fetch time · live/snapshot asset counts · auto-refreshes every 15s">
             updated {updatedLabel}
             {cryptoData ? ` · crypto ${cryptoData.liveCount} live / ${cryptoData.snapshotCount} snapshot` : ''}
             {tradfiRows.length ? ` · tradfi ${tradfiLiveCount} live` : ''}
+            {' · 15s auto'}
           </span>
         )}
       </div>

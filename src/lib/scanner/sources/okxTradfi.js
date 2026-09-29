@@ -1,12 +1,10 @@
 /**
  * OKX SWAP perps — free, no API key, CORS-enabled
- * Limited tradfi coverage (7 tokenized US equities + gold + silver) but HIGH liquidity.
+ * Tokenized tradfi as USDT-quoted perpetual swaps: ~150 of the site's TRAD_UNIVERSE
+ * answer here (verified 2026-09-29), including mega-caps, ETFs, metals, index
+ * perps (US500/US100) and pre-IPO names — plus, of course, all crypto perps.
  *
- * Available tradfi tickers (verified Jun 2026):
- *   SPY-USDT-SWAP, QQQ-USDT-SWAP, NVDA-USDT-SWAP, TSLA-USDT-SWAP,
- *   AAPL-USDT-SWAP, XAU-USDT-SWAP (gold), XAG-USDT-SWAP (silver)
- *
- * Docs: https://www.okx.com/docs-v5/en/#rest-api-market-data-get-candlesticks
+ * Docs: https://www.okx.com/docs-v5/en/#rest-api-market-data-get-tickers
  */
 
 import { fetchWithTimeout } from '../fetchWithTimeout';
@@ -76,19 +74,76 @@ export async function fetchTicker(symbol) {
     if (!res.ok) return null;
     const d = await res.json();
     if (d.code !== '0' || !d.data?.length) return null;
-    const t = d.data[0];
-    const last = parseFloat(t.last);
-    const open24h = parseFloat(t.open24h);
-    return {
-      price: last,
-      change24hPct: open24h ? ((last - open24h) / open24h) * 100 : 0,
-      high24h: parseFloat(t.high24h),
-      low24h: parseFloat(t.low24h),
-      volume24hBase: parseFloat(t.vol24h),
-      volume24hUsd: parseFloat(t.volCcy24h),
-    };
+    // The single-instrument response carries its own instId — pass it through.
+    return parseTickerEntry(d.data[0], d.data[0].instId);
   } catch {
     return null;
+  }
+}
+
+// ─── Bulk tickers (Task 33, 2026-09-30) ────────────────────────────────────────
+//
+// The Watchlist auto-refreshes every 15s. Per-symbol probes (fetchTicker) would
+// fire N requests per cycle and flirt with OKX's 20-req/2s per-IP limit on
+// larger watchlists; the bulk endpoint returns ALL ~490 SWAP instruments in
+// ONE call (~35KB gzipped, ~90ms — verified live), so any watchlist size costs
+// a single request per refresh. The response also doubles as live listing
+// knowledge: new OKX perps appear in the map immediately, with no negative
+// cache wait. 10s TTL keeps the data per-cycle fresh (interval is 15s, so the
+// cache is always expired by the next cycle) while collapsing bursts from
+// other callers (e.g. multiple Board components mounting together).
+
+let _swapTickersCache = null;
+let _swapTickersCacheTime = 0;
+const SWAP_TICKERS_TTL_MS = 10 * 1000;
+
+/**
+ * Shared ticker parser — single-instrument and bulk entries have the same fields.
+ * `instId` (optional: single-instrument responses carry it themselves) lets
+ * callers display the real instrument id.
+ */
+function parseTickerEntry(t, instId = null) {
+  const last = parseFloat(t.last);
+  const open24h = parseFloat(t.open24h);
+  return {
+    price: last,
+    change24hPct: open24h ? ((last - open24h) / open24h) * 100 : 0,
+    high24h: parseFloat(t.high24h),
+    low24h: parseFloat(t.low24h),
+    volume24hBase: parseFloat(t.vol24h),
+    volume24hUsd: parseFloat(t.volCcy24h),
+    instId,
+  };
+}
+
+/**
+ * Fetch tickers for ALL USDT-quoted SWAP perps in one bulk call.
+ * @returns {Promise<Map<string, object>>} base coin ("AAPL", "XAU", "US500"…) →
+ *          { price, change24hPct, high24h, low24h, volume24hBase, volume24hUsd, instId }
+ *          Entries with a non-positive last are skipped. On failure the stale
+ *          cache is returned (better than nothing); null only when nothing has
+ *          ever succeeded — callers should fall back to per-symbol probes.
+ */
+export async function fetchAllSwapTickers() {
+  const now = Date.now();
+  if (_swapTickersCache && now - _swapTickersCacheTime < SWAP_TICKERS_TTL_MS) return _swapTickersCache;
+  try {
+    const res = await fetchWithTimeout(`${BASE}/market/tickers?instType=SWAP`);
+    if (!res.ok) return _swapTickersCache;
+    const d = await res.json();
+    if (d.code !== '0' || !Array.isArray(d.data)) return _swapTickersCache;
+    const m = new Map();
+    for (const t of d.data) {
+      if (typeof t.instId !== 'string' || !t.instId.endsWith('-USDT-SWAP')) continue;
+      const parsed = parseTickerEntry(t, t.instId);
+      if (!(parsed.price > 0)) continue;
+      m.set(t.instId.slice(0, -'-USDT-SWAP'.length), parsed);
+    }
+    _swapTickersCache = m;
+    _swapTickersCacheTime = now;
+    return m;
+  } catch {
+    return _swapTickersCache;
   }
 }
 

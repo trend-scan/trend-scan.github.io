@@ -29,10 +29,27 @@
 import { computeMetrics } from './boardEngine';
 import { fetchAllTickers as fetchHyperliquidTickers } from '../scanner/sources/hyperliquid';
 import { fetchCandles as resolveCandles } from '../scanner/sourceResolver';
-import { fetchTicker as fetchOkxTradfiTicker } from '../scanner/sources/okxTradfi';
+import {
+  fetchAllSwapTickers as fetchOkxSwapTickers,
+  fetchTicker as fetchOkxTradfiTicker,
+} from '../scanner/sources/okxTradfi';
 
 const TIMEFRAME = '1D';
 const CANDLE_LIMIT = 300;
+
+// ─── Candle cache (15s refresh support, 2026-09-30) ──────────────────────────
+// The Watchlist auto-refreshes every 15s, but only PRICES need per-cycle
+// freshness — they come from the bulk ticker layers (HL metaAndAssetCtxs and
+// OKX SWAP tickers, both 10s-TTL). 1D-candle indicators (MAs, RSI, sparklines)
+// move ~nothing in 15s, and re-downloading 300-candle histories 4×/min per
+// symbol is pure bandwidth waste, so resolved candles are reused for 60s.
+// Symbols with NO working source are tombstoned for 60s too (entry: null),
+// keeping the 15s loop off dead tickers between snapshot refreshes. Trade-off:
+// for symbols not covered by a bulk ticker layer (long-tail crypto resolved
+// through the per-exchange chain), the displayed price — last candle close —
+// can be up to 60s stale; HL-listed symbols' prices stay per-cycle fresh.
+const CANDLE_CACHE_TTL_MS = 60 * 1000;
+const _candleCache = new Map();  // SYMBOL → { entry: {source, candles} | null, ts }
 
 // Short label shown in the Src column / row badge
 const SOURCE_LABELS = {
@@ -142,6 +159,8 @@ export async function fetchWatchlistCryptoData(symbols, snapshotData, opts = {})
   //    sorts HL FIRST, then falls back to the live tier chain (OKX → Bybit →
   //    Kraken → Yahoo → Binance → CoinGecko). BTC is always fetched so
   //    RS/BTC can be computed even if BTC itself isn't on the watchlist.
+  //    The 60s _candleCache serves repeat cycles of the 15s refresh loop
+  //    (see the cache header above) — first cycle pays the full resolution.
   report(`Fetching 1D candles for ${uniq.length} assets…`);
   const wanted = uniq.includes('BTC') ? uniq : [...uniq, 'BTC'];
   const candleResults = new Map();   // symbol → { source, candles }
@@ -150,6 +169,11 @@ export async function fetchWatchlistCryptoData(symbols, snapshotData, opts = {})
   async function worker() {
     while (idx < wanted.length) {
       const sym = wanted[idx++];
+      const hit = _candleCache.get(sym);
+      if (hit && Date.now() - hit.ts < CANDLE_CACHE_TTL_MS) {
+        if (hit.entry) candleResults.set(sym, hit.entry);
+        continue;  // null entry = known-miss → snapshot fallback this cycle
+      }
       try {
         const r = await resolveCandles(sym, {
           timeframe: TIMEFRAME,
@@ -157,7 +181,12 @@ export async function fetchWatchlistCryptoData(symbols, snapshotData, opts = {})
           preferredSource: 'hyperliquid',
           type: 'crypto',
         });
-        if (r && r.candles && r.candles.length >= 5) candleResults.set(sym, r);
+        if (r && r.candles && r.candles.length >= 5) {
+          candleResults.set(sym, r);
+          _candleCache.set(sym, { entry: r, ts: Date.now() });
+        } else {
+          _candleCache.set(sym, { entry: null, ts: Date.now() });
+        }
       } catch { /* source chain exhausted — snapshot fallback */ }
     }
   }
@@ -254,10 +283,16 @@ export function resolveWatchlistTradfi(symbols, tradData) {
 // live 2026-09-29: ~150 of TRAD_UNIVERSE's 484 symbols answer there — mega-cap
 // stocks (AAPL NVDA MSFT GOOGL META AMZN …), ETFs (SPY QQQ IWM SMH SOXL …),
 // metals (XAU XAG XCU XPD XPT), index perps (US500 US100) and even pre-IPO
-// names (OPENAI ANTHROPIC). Coverage shifts as OKX lists/delists, so we PROBE
-// every watchlist tradfi symbol and simply use whatever answers ("fetching
-// OKX if available"); misses are negatively cached (10 min) so the 60s
-// refresh loop doesn't re-probe dead instruments.
+// names (OPENAI ANTHROPIC).
+//
+// BULK-FIRST (2026-09-30, 15s refresh support): one call to
+// /market/tickers?instType=SWAP returns every USDT-quoted perp (~478), so any
+// watchlist size costs ONE request per refresh regardless of symbol count —
+// per-symbol probing would fire N requests per cycle and flirt with OKX's
+// 20-req/2s per-IP limit. The bulk map doubles as live listing knowledge:
+// new OKX listings light up on the very next 15s cycle, with no negative-cache
+// wait. The per-symbol probe path survives as a FALLBACK for when the bulk
+// endpoint is unreachable (its misses stay negatively cached, 10 min).
 //
 // Hybrid data policy — best source per column, mirroring the crypto side's
 // HL-live-price + snapshot-OI aggregation:
@@ -276,19 +311,24 @@ export function resolveWatchlistTradfi(symbols, tradData) {
 //                      price, the instrument is not tracking this asset
 //                      (symbol collisions: OKX AI/S are meme tokens trading
 //                      at $0.02/$0.04, OKX SPX at $0.41) → keep the snapshot.
+//                      Re-checked every cycle — it's pure computation on data
+//                      the bulk call already returned, so recovery is instant.
 
 const OKX_TRADFI_ALIAS = { SPX: 'US500', XPL: 'XPT' };
-const OKX_TRADFI_MISS_TTL = 10 * 60 * 1000;  // negative-cache misses for 10 min
+const OKX_TRADFI_MISS_TTL = 10 * 60 * 1000;  // negative-cache misses for 10 min (fallback path)
 const OKX_TRADFI_DIVERGENCE = 0.40;           // >40% off snapshot = not tracking
-const _okxTradfiMiss = new Map();             // site symbol → miss timestamp
+const _okxTradfiMiss = new Map();             // site symbol → miss timestamp (fallback path)
 
 /**
  * Live tradfi prices for watchlist symbols from OKX USDT-quoted SWAP perps.
  *
- * Probes `${base}-USDT-SWAP` per symbol (aliased where needed). A symbol
- * yields a live entry only if OKX answers AND the price is within 40% of the
- * snapshot's price for that symbol (collision guard). Callers overlay the
- * returned { price, ret1d } onto the snapshot row — indicators stay snapshot.
+ * Bulk-first: fetchAllSwapTickers() (one request, 10s TTL) supplies every
+ * USDT perp at once; each watchlist symbol is looked up (aliased where
+ * needed) and kept only if present AND within 40% of the snapshot's price
+ * (collision guard). Callers overlay the returned { price, ret1d, … } onto
+ * the snapshot row — indicators stay snapshot. If the bulk endpoint is
+ * unreachable, falls back to per-symbol probes (Task 31 path, concurrency 4,
+ * 10-min negative cache).
  *
  * @param {string[]} symbols — tradfi watchlist symbols (e.g. ['SPY','SPX'])
  * @param {object|null} tradData — the Board's tradData (snapshot prices for
@@ -304,6 +344,30 @@ export async function fetchWatchlistTradfiLive(symbols, tradData) {
   );
 
   const rows = new Map();
+
+  // ── Bulk path: one request covers every USDT-quoted perp ──
+  const bulk = await fetchOkxSwapTickers().catch(() => null);
+  if (bulk && bulk.size > 0) {
+    for (const sym of uniq) {
+      const base = OKX_TRADFI_ALIAS[sym] || sym;
+      const t = bulk.get(base);
+      if (!t || !(t.price > 0)) continue;  // not listed — the map IS the listing knowledge
+      const ref = snapPrice.get(sym);
+      if (ref != null && Math.abs(t.price / ref - 1) > OKX_TRADFI_DIVERGENCE) {
+        continue;  // not tracking this asset — snapshot wins (re-checked next cycle, for free)
+      }
+      rows.set(sym, {
+        price: t.price,
+        ret1d: Number.isFinite(t.change24hPct) ? t.change24hPct / 100 : null,
+        high24h: Number.isFinite(t.high24h) ? t.high24h : null,
+        low24h: Number.isFinite(t.low24h) ? t.low24h : null,
+        okxInstId: t.instId || `${base}-USDT-SWAP`,
+      });
+    }
+    return { rows, fetchedAt: new Date().toISOString() };
+  }
+
+  // ── Fallback: bulk endpoint unreachable → per-symbol probes ──
   let idx = 0;
   async function worker() {
     while (idx < uniq.length) {
@@ -329,7 +393,7 @@ export async function fetchWatchlistTradfiLive(symbols, tradData) {
         ret1d: Number.isFinite(t.change24hPct) ? t.change24hPct / 100 : null,
         high24h: Number.isFinite(t.high24h) ? t.high24h : null,
         low24h: Number.isFinite(t.low24h) ? t.low24h : null,
-        okxInstId: `${base}-USDT-SWAP`,
+        okxInstId: t.instId || `${base}-USDT-SWAP`,
       });
     }
   }
