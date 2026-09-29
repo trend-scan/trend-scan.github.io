@@ -18,7 +18,9 @@
  *   - Crypto rows: watchlistEngine.fetchWatchlistCryptoData (HL-first resolver,
  *     60s live refresh while the tab is mounted, snapshot fallback)
  *   - TradFi rows: resolveWatchlistTradfi over tradData (Board loads snapshot
- *     on mount; onEnsureTradfiLive() triggers the live refresh once)
+ *     on mount; onEnsureTradfiLive() triggers the live refresh once), then
+ *     fetchWatchlistTradfiLive overlays LIVE prices + 24h moves from OKX
+ *     USDT-quoted SWAP perps (60s refresh; snapshot keeps the indicators)
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -32,7 +34,11 @@ import {
   createList, renameList, deleteList, addSymbols, removeSymbol,
   parseScreenerPaste, classifyWatchlistSymbols,
 } from '@/lib/board/watchlistStore';
-import { fetchWatchlistCryptoData, resolveWatchlistTradfi, sourceLabel } from '@/lib/board/watchlistEngine';
+import { fetchWatchlistCryptoData, fetchWatchlistTradfiLive, resolveWatchlistTradfi, sourceLabel } from '@/lib/board/watchlistEngine';
+
+/** TRAD_UNIVERSE metadata by upper symbol — used for OKX-live rows of tickers
+ *  the snapshot has no row for yet (newly added universe members). */
+const TRAD_META = new Map(TRAD_UNIVERSE.map(a => [String(a.symbol).toUpperCase(), a]));
 
 // ─── Formatting helpers (identical conventions to CryptoTab / MacroTab) ──────
 
@@ -234,11 +240,72 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cryptoKey, snapshotReady, refreshTick]);
 
-  // ── TradFi rows (from tradData; Board loads snapshot on mount) ────────────
-  const tradfiRows = useMemo(
-    () => resolveWatchlistTradfi(tradfiKey ? tradfiKey.split(',') : [], tradData),
-    [tradfiKey, tradData]
-  );
+  // ── TradFi live prices (OKX USDT-quoted perps; 60s refresh) ───────────────
+  // Probes `${base}-USDT-SWAP` per symbol; misses are negatively cached in
+  // the engine. Gated on tradData so the divergence guard always has snapshot
+  // prices to verify against (avoids flashing collided prices on first load).
+  const [tradfiLive, setTradfiLive] = useState(null); // { rows: Map, fetchedAt }
+  useEffect(() => {
+    if (!tradfiKey || !tradData) { setTradfiLive(null); return; }
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetchWatchlistTradfiLive(tradfiKey.split(','), tradData);
+        if (!cancelled) setTradfiLive(res);
+      } catch (e) {
+        console.warn('[WatchlistTab] tradfi live fetch failed:', e.message);
+      }
+    };
+    run();
+    const interval = setInterval(run, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [tradfiKey, tradData, refreshTick]);
+
+  // ── TradFi rows (snapshot metrics + OKX live price overlay) ───────────────
+  const tradfiRows = useMemo(() => {
+    const syms = tradfiKey ? tradfiKey.split(',') : [];
+    const base = resolveWatchlistTradfi(syms, tradData);
+    if (!tradfiLive?.rows?.size) return base;
+    const live = tradfiLive.rows;
+    const bySym = new Map(base.map(r => [r.symbol, r]));
+    const out = [];
+    for (const sym of syms) {
+      const l = live.get(sym);
+      const b = bySym.get(sym);
+      if (l && b) {
+        // Hybrid: live OKX price + 24h move, snapshot indicators (deep history).
+        out.push({
+          ...b,
+          price: l.price,
+          ret1d: l.ret1d ?? b.ret1d,
+          high24h: l.high24h,
+          low24h: l.low24h,
+          okxInstId: l.okxInstId,
+          dataSource: 'okx',
+          live: true,
+        });
+      } else if (l) {
+        // OKX-live ticker with no snapshot row (newly added universe member
+        // before its first snapshot refresh) — minimal live row; indicator
+        // columns render '—' until the snapshot catches up.
+        const meta = TRAD_META.get(sym) || {};
+        out.push({
+          symbol: sym, name: meta.name || sym, category: meta.category || '',
+          type: meta.type || null, subtheme: meta.subtheme || null,
+          price: l.price, ret1d: l.ret1d ?? null,
+          ret5d: null, ret20d: null, ret60d: null,
+          distMa20: null, distMa50: null, atrExt50ma: null, rsi14: null,
+          pctFrom52wHigh: null, rs_qqq_20d: null, sparkline: null,
+          high24h: l.high24h, low24h: l.low24h, okxInstId: l.okxInstId,
+          dataSource: 'okx', live: true,
+        });
+      } else if (b) {
+        out.push(b);
+      }
+    }
+    return out;
+  }, [tradfiKey, tradData, tradfiLive]);
+  const tradfiLiveCount = tradfiRows.filter(r => r.live).length;
   // Trigger the Board's one-shot live tradfi refresh when the watchlist has
   // tradfi symbols and we're still on snapshot-only data.
   const hasTradfi = classified.tradfi.length > 0;
@@ -338,8 +405,12 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
     }
   };
 
-  const updatedLabel = cryptoData?.fetchedAt
-    ? new Date(cryptoData.fetchedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const updatedTs = Math.max(
+    Date.parse(cryptoData?.fetchedAt || 0),
+    Date.parse(tradfiLive?.fetchedAt || 0),
+  );
+  const updatedLabel = updatedTs > 0
+    ? new Date(updatedTs).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : null;
 
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -430,7 +501,8 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
         {updatedLabel && (
           <span className="text-[8px] tracking-wider" style={{ color: 'var(--scanner-text3)' }} title="Live-data fetch time · live/snapshot asset counts">
             updated {updatedLabel}
-            {cryptoData ? ` · ${cryptoData.liveCount} live / ${cryptoData.snapshotCount} snapshot` : ''}
+            {cryptoData ? ` · crypto ${cryptoData.liveCount} live / ${cryptoData.snapshotCount} snapshot` : ''}
+            {tradfiRows.length ? ` · tradfi ${tradfiLiveCount} live` : ''}
           </span>
         )}
       </div>
@@ -480,7 +552,8 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
           <div className="text-[11px] max-w-md mx-auto leading-relaxed" style={{ color: 'var(--scanner-text3)' }}>
             Add assets above (crypto tickers like <span style={{ color: 'var(--scanner-text2)' }}>BTC</span> or tradfi tickers like <span style={{ color: 'var(--scanner-text2)' }}>AAPL</span>),
             or paste your screener scan results. Entries are saved in this browser and survive reloads.
-            Live data comes from Hyperliquid when an asset is listed there, then other live sources, then the snapshot.
+            Live data comes from Hyperliquid when an asset is listed there, then other live sources, then the snapshot;
+            tradfi tickers get live prices from OKX's USDT perps when listed there.
           </div>
         </div>
       )}
@@ -626,7 +699,7 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
           <SectionLabel right={
             <div className="flex items-center gap-2">
               <span className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
-                {classified.tradfi.length} tradfi{tradData ? '' : ' · loading…'}
+                {classified.tradfi.length} tradfi{tradData ? (tradfiLiveCount ? ` · ${tradfiLiveCount} live / ${classified.tradfi.length - tradfiLiveCount} snapshot` : '') : ' · loading…'}
               </span>
               <CopyCsvButtons tableId="watchlist-tradfi-table" />
             </div>
@@ -695,7 +768,7 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
                         <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{item.name}</span>
                       </td>
                       {/* Price */}
-                      <td className="py-2 px-2.5 text-[11px] font-semibold tabular-nums text-right" style={{ color: 'var(--scanner-text)' }}>
+                      <td className="py-2 px-2.5 text-[11px] font-semibold tabular-nums text-right" style={{ color: 'var(--scanner-text)' }} title={item.live && item.high24h != null ? `OKX 24h: H ${fmtPrice(item.high24h)} · L ${fmtPrice(item.low24h)}` : undefined}>
                         {fmtPrice(item.price)}
                       </td>
                       {/* 20D sparkline */}
@@ -716,8 +789,10 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
                       <td className="py-2 px-2.5 text-right">
                         <span className="text-[8px] px-1 py-0.5 rounded" style={{
                           background: 'var(--scanner-bg3, rgba(22,22,30,1))',
-                          color: 'var(--scanner-text3)',
-                        }} title={`Data source: ${item.dataSource}`}>{sourceLabel(item.dataSource)}</span>
+                          color: item.live ? 'var(--scanner-accent)' : 'var(--scanner-text3)',
+                        }} title={item.live
+                          ? `Live via OKX ${item.okxInstId || 'USDT perp'} — price + 24h move; indicators from snapshot`
+                          : `Data source: ${item.dataSource}`}>{sourceLabel(item.dataSource)}</span>
                       </td>
                       {/* Cat */}
                       <td className="py-2 px-2.5 text-right">

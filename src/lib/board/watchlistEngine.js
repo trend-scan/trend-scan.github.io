@@ -16,15 +16,20 @@
  * TradFi rows come straight from tradData.assets (traditionalMarkets.js),
  * whose own engine already prefers live sources and falls back to the
  * server-side snapshot — the same precedence, already implemented.
+ * On top of that, fetchWatchlistTradfiLive overlays LIVE prices + 24h moves
+ * from OKX's USDT-quoted SWAP perps (instId `${base}-USDT-SWAP`) for the
+ * symbols OKX lists, keeping the snapshot's deep-history indicators.
  *
  * Exports:
  *   fetchWatchlistCryptoData(symbols, snapshotData, opts) → cryptoRows[]
  *   resolveWatchlistTradfi(symbols, tradData)            → tradfiRows[]
+ *   fetchWatchlistTradfiLive(symbols, tradData)          → live-price Map
  */
 
 import { computeMetrics } from './boardEngine';
 import { fetchAllTickers as fetchHyperliquidTickers } from '../scanner/sources/hyperliquid';
 import { fetchCandles as resolveCandles } from '../scanner/sourceResolver';
+import { fetchTicker as fetchOkxTradfiTicker } from '../scanner/sources/okxTradfi';
 
 const TIMEFRAME = '1D';
 const CANDLE_LIMIT = 300;
@@ -240,4 +245,96 @@ export function resolveWatchlistTradfi(symbols, tradData) {
     if (a) out.push({ ...a, dataSource: a.source || 'snapshot' });
   }
   return out;
+}
+
+// ─── TradFi live uplift — OKX USDT-quoted SWAP perps ─────────────────────────
+//
+// OKX lists tokenized tradfi instruments as USDT-quoted perpetual swaps —
+// instId = `${base}-USDT-SWAP` ("adding the USDT in the request"). Verified
+// live 2026-09-29: ~150 of TRAD_UNIVERSE's 484 symbols answer there — mega-cap
+// stocks (AAPL NVDA MSFT GOOGL META AMZN …), ETFs (SPY QQQ IWM SMH SOXL …),
+// metals (XAU XAG XCU XPD XPT), index perps (US500 US100) and even pre-IPO
+// names (OPENAI ANTHROPIC). Coverage shifts as OKX lists/delists, so we PROBE
+// every watchlist tradfi symbol and simply use whatever answers ("fetching
+// OKX if available"); misses are negatively cached (10 min) so the 60s
+// refresh loop doesn't re-probe dead instruments.
+//
+// Hybrid data policy — best source per column, mirroring the crypto side's
+// HL-live-price + snapshot-OI aggregation:
+//   price + 1D  → OKX live (fresh tick; perps trade 24/7, incl. nights and
+//                 weekends when the underlying market is closed)
+//   indicators  → the row's existing snapshot metrics (Yahoo-sourced deep
+//                 history: 200MA / 52W / 60D returns that young OKX perps —
+//                 US500 has only ~20 daily candles — cannot provide yet)
+//
+// Guards:
+//   OKX_TRADFI_ALIAS — site symbol → OKX base where the perp ticker differs:
+//                      SPX→US500 (S&P index perp) and XPL→XPT (platinum;
+//                      OKX's own XPL is the Plasma crypto token, not the
+//                      platinum spot the site's XPL stands for).
+//   Divergence check — if OKX last deviates >40% from the row's snapshot
+//                      price, the instrument is not tracking this asset
+//                      (symbol collisions: OKX AI/S are meme tokens trading
+//                      at $0.02/$0.04, OKX SPX at $0.41) → keep the snapshot.
+
+const OKX_TRADFI_ALIAS = { SPX: 'US500', XPL: 'XPT' };
+const OKX_TRADFI_MISS_TTL = 10 * 60 * 1000;  // negative-cache misses for 10 min
+const OKX_TRADFI_DIVERGENCE = 0.40;           // >40% off snapshot = not tracking
+const _okxTradfiMiss = new Map();             // site symbol → miss timestamp
+
+/**
+ * Live tradfi prices for watchlist symbols from OKX USDT-quoted SWAP perps.
+ *
+ * Probes `${base}-USDT-SWAP` per symbol (aliased where needed). A symbol
+ * yields a live entry only if OKX answers AND the price is within 40% of the
+ * snapshot's price for that symbol (collision guard). Callers overlay the
+ * returned { price, ret1d } onto the snapshot row — indicators stay snapshot.
+ *
+ * @param {string[]} symbols — tradfi watchlist symbols (e.g. ['SPY','SPX'])
+ * @param {object|null} tradData — the Board's tradData (snapshot prices for
+ *        the divergence guard; null/undefined skips the guard)
+ * @returns {Promise<{rows: Map<string, {price,ret1d,high24h,low24h,okxInstId}>, fetchedAt: string}>}
+ */
+export async function fetchWatchlistTradfiLive(symbols, tradData) {
+  const uniq = [...new Set((symbols || []).map(s => String(s).toUpperCase()))].filter(Boolean);
+  const snapPrice = new Map(
+    (tradData?.assets || [])
+      .filter(a => Number(a.price) > 0)
+      .map(a => [String(a.symbol).toUpperCase(), a.price])
+  );
+
+  const rows = new Map();
+  let idx = 0;
+  async function worker() {
+    while (idx < uniq.length) {
+      const sym = uniq[idx++];
+      const miss = _okxTradfiMiss.get(sym);
+      if (miss != null && Date.now() - miss < OKX_TRADFI_MISS_TTL) continue;
+
+      const base = OKX_TRADFI_ALIAS[sym] || sym;
+      let t = null;
+      try { t = await fetchOkxTradfiTicker(base); } catch { t = null; }
+      if (!t || !(t.price > 0)) {
+        _okxTradfiMiss.set(sym, Date.now());  // not listed / delisted — stop probing for 10 min
+        continue;
+      }
+      const ref = snapPrice.get(sym);
+      if (ref != null && Math.abs(t.price / ref - 1) > OKX_TRADFI_DIVERGENCE) {
+        _okxTradfiMiss.set(sym, Date.now());  // not tracking this asset — snapshot wins
+        continue;
+      }
+
+      rows.set(sym, {
+        price: t.price,
+        ret1d: Number.isFinite(t.change24hPct) ? t.change24hPct / 100 : null,
+        high24h: Number.isFinite(t.high24h) ? t.high24h : null,
+        low24h: Number.isFinite(t.low24h) ? t.low24h : null,
+        okxInstId: `${base}-USDT-SWAP`,
+      });
+    }
+  }
+  if (uniq.length > 0) {
+    await Promise.all(Array.from({ length: Math.min(4, uniq.length) }, worker));
+  }
+  return { rows, fetchedAt: new Date().toISOString() };
 }
