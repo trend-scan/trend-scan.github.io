@@ -13,6 +13,7 @@ import LeveredETFTab from '@/components/board/LeveredETFTab';
 import ThemeScoresTab from '@/components/board/ThemeScoresTab';
 import EtfPulseTab from '@/components/board/EtfPulseTab';
 import ScannersTab from '@/components/board/ScannersTab';
+import WatchlistTab from '@/components/board/WatchlistTab';
 import MassiveApiKeyInput from '@/components/scanner/MassiveApiKeyInput';
 import FactorMonitor from '@/components/board/FactorMonitor';
 import QuickViewBar from '@/components/board/QuickViewBar';
@@ -24,12 +25,15 @@ import { fetchAllTickers as fetchHyperliquidTickers } from '@/lib/scanner/source
 import { getGloballyBlockedSources } from '@/lib/scanner/sourceResolver';
 
 // Two-row tab layout: crypto tabs on row 1, tradfi tabs on row 2.
-// Row 1 (indices 0-5): Daily, Crypto, Momentum, Themes, Breadth, Factor Monitor
-// Row 2 (indices 6-10): TradFi, Theme Scores, ETF Pulse, Scanners, Levered ETFs
-const CRYPTO_TABS = ['Daily', 'Crypto', 'Momentum', 'Themes', 'Breadth', 'Factor Monitor'];
+// Row 1 (indices 0-6): Watchlist, Daily, Crypto, Momentum, Themes, Breadth, Factor Monitor
+// Row 2 (indices 7-11): TradFi, Theme Scores, ETF Pulse, Scanners, Levered ETFs
+// Watchlist (index 0) renders WITHOUT board scan data — it fetches its own
+// live/snapshot data (watchlistEngine) and persists symbols in localStorage.
+const CRYPTO_TABS = ['Watchlist', 'Daily', 'Crypto', 'Momentum', 'Themes', 'Breadth', 'Factor Monitor'];
 const TRADFI_TABS = ['TradFi', 'Theme Scores', 'ETF Pulse', 'Scanners', 'Levered ETFs'];
 const ALL_TABS = [...CRYPTO_TABS, ...TRADFI_TABS];
-const CRYPTO_TAB_COUNT = CRYPTO_TABS.length; // 6 — first index of tradfi row
+const CRYPTO_TAB_COUNT = CRYPTO_TABS.length; // 7 — first index of tradfi row
+const WATCHLIST_TAB = 0; // activeTab index of the Watchlist (data-independent)
 
 const DEFAULT_EXCHANGE = 'auto';
 
@@ -361,9 +365,17 @@ export default function Board() {
     }
   }, []);
 
-  // Auto-refresh: when the user first visits any TradFi tab (indices 2-6:
-  // TradFi, Levered ETFs, Theme Scores, ETF Pulse, Scanners) and we only
-  // have snapshot data, kick off the live background refresh automatically.
+  // Auto-refresh: when the user first visits any TradFi tab (indices 7-11:
+  // TradFi, Levered ETFs, Theme Scores, ETF Pulse, Scanners) — or the
+  // Watchlist tab while it holds tradfi symbols — and we only have snapshot
+  // data, kick off the live background refresh automatically.
+  const ensureTradfiLive = useCallback(() => {
+    if (tradDataSource === 'snapshot' && !tradLoading && !tradAutoRefreshed) {
+      setTradAutoRefreshed(true);
+      runTradAnalysis();
+    }
+  }, [tradDataSource, tradLoading, tradAutoRefreshed, runTradAnalysis]);
+
   useEffect(() => {
     if (activeTab >= CRYPTO_TAB_COUNT && tradDataSource === 'snapshot' && !tradLoading && !tradAutoRefreshed) {
       setTradAutoRefreshed(true);
@@ -598,7 +610,18 @@ export default function Board() {
       </div>
 
       {/* Tab content */}
-      {!isLoading && !data && !error && (
+      {/* Watchlist tab is data-independent — it renders even before the user
+          presses Refresh (it fetches its own live + snapshot data). */}
+      {activeTab === WATCHLIST_TAB && (
+        <WatchlistTab
+          snapshotData={snapshotData}
+          tradData={tradData}
+          tradLoading={tradLoading}
+          onEnsureTradfiLive={ensureTradfiLive}
+        />
+      )}
+
+      {!isLoading && activeTab !== WATCHLIST_TAB && !data && !error && (
         <div className="text-center py-24 font-mono">
           <div className="text-4xl mb-4 opacity-20">◈</div>
           <div className="text-sm mb-2" style={{ color: 'var(--scanner-text2)' }}>No data loaded</div>
@@ -608,8 +631,8 @@ export default function Board() {
 
       {data && (
         <>
-          {/* Row 1: Crypto tabs (indices 0-5) */}
-          {activeTab === 0 && (
+          {/* Row 1: Crypto tabs (indices 1-6) */}
+          {activeTab === 1 && (
             <DailyBoard
               themes={themes}
               benchmarks={benchmarks}
@@ -620,22 +643,22 @@ export default function Board() {
               themeSectorRotation={themeSectorRotation}
             />
           )}
-          {activeTab === 1 && (
+          {activeTab === 2 && (
             <CryptoTab cryptoAssets={data?.cryptoAssets} />
           )}
-          {activeTab === 2 && (
+          {activeTab === 3 && (
             <>
               <MomentumScanTab momentumScan={momentumScan} />
               <MomentumTab cleanMomentum={cleanMomentum} />
               <ExtensionTab tooHot={tooHot} fading={fading} />
             </>
           )}
-          {activeTab === 3 && <ThemesTab themes={themes} constituents={constituents} />}
-          {activeTab === 4 && <BreadthTab breadthSeries={breadthSeries} />}
-          {activeTab === 5 && <FactorMonitor />}
+          {activeTab === 4 && <ThemesTab themes={themes} constituents={constituents} />}
+          {activeTab === 5 && <BreadthTab breadthSeries={breadthSeries} />}
+          {activeTab === 6 && <FactorMonitor />}
 
-          {/* Row 2: TradFi tabs (indices 6-10) */}
-          {activeTab === 6 && (
+          {/* Row 2: TradFi tabs (indices 7-11) */}
+          {activeTab === 7 && (
             <MacroTab
               tradData={tradData}
               isLoading={tradLoading}
@@ -643,10 +666,10 @@ export default function Board() {
               onRefresh={runTradAnalysis}
             />
           )}
-          {activeTab === 7 && <ThemeScoresTab tradData={tradData} isLoading={tradLoading} />}
-          {activeTab === 8 && <EtfPulseTab tradData={tradData} isLoading={tradLoading} />}
-          {activeTab === 9 && <ScannersTab tradData={tradData} isLoading={tradLoading} breadthHistory={snapshotData?.tradfi_breadth_history} />}
-          {activeTab === 10 && <LeveredETFTab tradData={tradData} isLoading={tradLoading} />}
+          {activeTab === 8 && <ThemeScoresTab tradData={tradData} isLoading={tradLoading} />}
+          {activeTab === 9 && <EtfPulseTab tradData={tradData} isLoading={tradLoading} />}
+          {activeTab === 10 && <ScannersTab tradData={tradData} isLoading={tradLoading} breadthHistory={snapshotData?.tradfi_breadth_history} />}
+          {activeTab === 11 && <LeveredETFTab tradData={tradData} isLoading={tradLoading} />}
         </>
       )}
 

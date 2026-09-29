@@ -16,7 +16,10 @@ function sma(arr, period) {
   return slice.reduce((s, v) => s + v, 0) / period;
 }
 
-function computeMetrics(candles) {
+// Exported (2026-09-29) for watchlistEngine.js — the Watchlist tab computes
+// the same per-asset metrics from live candles so its columns are identical
+// in meaning to the Crypto tab's all-assets table.
+export function computeMetrics(candles) {
   if (!candles || candles.length < 5) return null;
 
   // Sanitize: filter out candles with null/zero/NaN prices that would cause
