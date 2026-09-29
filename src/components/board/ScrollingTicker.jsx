@@ -1,27 +1,32 @@
 /**
  * ScrollingTicker — horizontally scrolling price marquee for major assets.
  *
- * Fetches live prices from OKX SWAP perps (single batch API call, CORS-enabled,
- * free, no API key). Polls every 5s — well within OKX's rate limit (20 req/2s
- * per IP for the /market/tickers endpoint = 600 req/min; we use 12 req/min).
+ * Fetches live prices from OKX SWAP perps via the shared bulk-tickers module
+ * (okxTradfi.fetchAllSwapTickers — ONE request returns all ~490 instruments;
+ * free, CORS-enabled, no API key). Polls every 5s — well within OKX's rate
+ * limit (20 req/2s per IP for the /market/tickers endpoint = 600 req/min;
+ * we use 12 req/min).
  *
- * Tickers displayed (10):
- *   BTC, ETH, SOL, HYPE  — crypto majors
- *   SPY, QQQ             — equity indices (OKX tokenized stock perps)
- *   DRAM, SOXL           — sector ETFs (memory + semiconductors)
- *   CL                   — crude oil (WTI futures perp)
- *   XAU                  — gold (spot perp)
+ * The 5s module-level cache is shared with the Watchlist's 15s tradfi
+ * live-price loop (Task 33): this tape keeps it perpetually fresh while the
+ * Board is open, so the watchlist rides along at zero extra requests.
+ *
+ * Tickers displayed (16):
+ *   BTC, ETH, SOL, HYPE, LIT, PUMP, AAVE, ZEC, NEAR, DOGE — crypto
+ *   SPY, QQQ — equity indices (OKX tokenized stock perps)
+ *   DRAM, SOXL — sector ETFs (memory + semiconductors)
+ *   CL — crude oil (WTI futures perp)
+ *   XAU — gold (spot perp)
  *
  * The marquee uses CSS @keyframes animation (GPU-friendly, no JS render loop).
  * Pauses on hover so users can read a specific price.
  *
- * Data source: OKX /api/v5/market/tickers?instType=SWAP
- *   Returns all SWAP tickers in one call (~446 instruments). We filter to our 8.
- *   Fields used: instId, last (price), open24h (for % change calc).
+ * Data source: OKX /api/v5/market/tickers?instType=SWAP → Map base →
+ *   { price, change24hPct, … } (parsed by the shared module).
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchWithTimeout } from '@/lib/scanner/fetchWithTimeout';
+import { fetchAllSwapTickers } from '@/lib/scanner/sources/okxTradfi';
 
 // OKX SWAP instIds for the tickers we display.
 const TICKER_INST_IDS = [
@@ -43,8 +48,9 @@ const TICKER_INST_IDS = [
   { instId: 'XAU-USDT-SWAP',  symbol: 'XAU',  label: 'GOLD',  category: 'commodity' },
 ];
 
-const OKX_TICKERS_URL = 'https://www.okx.com/api/v5/market/tickers?instType=SWAP';
 const POLL_INTERVAL_MS = 5_000;  // 5s — OKX allows 20 req/2s (600 req/min), so 12 req/min is trivial
+// (matches the shared module's cache TTL, so every poll refetches — same
+// freshness as the tape's original private implementation)
 
 /**
  * Format price with appropriate decimals based on magnitude.
@@ -71,28 +77,6 @@ function pctColor(pct) {
   return 'var(--scanner-text3)';
 }
 
-async function fetchOkxTickers() {
-  try {
-    const res = await fetchWithTimeout(OKX_TICKERS_URL);
-    if (!res.ok) return null;
-    const d = await res.json();
-    if (!d?.data || !Array.isArray(d.data)) return null;
-    // Build a map of instId → { last, open24h } for our 8 tickers
-    const map = {};
-    for (const t of d.data) {
-      if (t.instId && t.last && t.open24h) {
-        map[t.instId] = {
-          last: parseFloat(t.last),
-          open24h: parseFloat(t.open24h),
-        };
-      }
-    }
-    return map;
-  } catch {
-    return null;
-  }
-}
-
 export default function ScrollingTicker() {
   const [prices, setPrices] = useState(null);
   const [error, setError] = useState(false);
@@ -103,14 +87,22 @@ export default function ScrollingTicker() {
 
     // Initial fetch immediately
     let timer;
+    let prevMap = null;  // identity of the last map we rendered — a repeat
+    // means the shared cache served us (fetch failed or <5s old): stale feed.
     const poll = async () => {
-      const data = await fetchOkxTickers();
-      if (!mountedRef.current) return;
-      if (data) {
-        setPrices(data);
-        setError(false);
-      } else {
-        setError(true);
+      // Skip fetches while the browser tab is hidden — the marquee isn't
+      // visible anyway; the timer chain resumes polling on its own within 5s
+      // of the tab becoming visible again (no data is shown meanwhile).
+      if (!document.hidden) {
+        const data = await fetchAllSwapTickers();
+        if (!mountedRef.current) return;
+        if (data && data.size > 0) {
+          setPrices(data);
+          setError(data === prevMap);  // same Map object = cache-served (stale)
+          prevMap = data;
+        } else {
+          setError(true);  // bulk fetch unavailable and nothing ever cached
+        }
       }
       // Schedule next poll
       timer = setTimeout(poll, POLL_INTERVAL_MS);
@@ -124,14 +116,13 @@ export default function ScrollingTicker() {
     };
   }, []);
 
-  // Build the ticker items from the fetched data
-  const items = TICKER_INST_IDS.map(({ instId, symbol, label }) => {
-    const t = prices?.[instId];
+  // Build the ticker items from the fetched data (Map: base coin → entry)
+  const items = TICKER_INST_IDS.map(({ symbol, label }) => {
+    const t = prices?.get(symbol);
     if (!t) {
       return { symbol, label, price: null, pct: null };
     }
-    const pct = t.open24h > 0 ? ((t.last - t.open24h) / t.open24h) * 100 : null;
-    return { symbol, label, price: t.last, pct };
+    return { symbol, label, price: t.price, pct: Number.isFinite(t.change24hPct) ? t.change24hPct : null };
   });
 
   // Duplicate the items array so the marquee loops seamlessly.

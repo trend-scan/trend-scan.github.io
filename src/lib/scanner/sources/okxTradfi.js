@@ -83,19 +83,26 @@ export async function fetchTicker(symbol) {
 
 // ─── Bulk tickers (Task 33, 2026-09-30) ────────────────────────────────────────
 //
-// The Watchlist auto-refreshes every 15s. Per-symbol probes (fetchTicker) would
-// fire N requests per cycle and flirt with OKX's 20-req/2s per-IP limit on
-// larger watchlists; the bulk endpoint returns ALL ~490 SWAP instruments in
-// ONE call (~35KB gzipped, ~90ms — verified live), so any watchlist size costs
-// a single request per refresh. The response also doubles as live listing
-// knowledge: new OKX perps appear in the map immediately, with no negative
-// cache wait. 10s TTL keeps the data per-cycle fresh (interval is 15s, so the
-// cache is always expired by the next cycle) while collapsing bursts from
-// other callers (e.g. multiple Board components mounting together).
+// ONE shared cache for OKX's bulk SWAP-tickers endpoint, consumed by BOTH the
+// Board's ScrollingTicker (5s poll, mounted on the Board page) and the
+// Watchlist's tradfi live loop (15s refresh). The tape's 5s cadence keeps the
+// cache perpetually fresh, so the Watchlist's cycles ride along at ZERO extra
+// requests whenever the Board is open; standalone (tape somehow unmounted),
+// each 15s watchlist cycle costs exactly one request. Total budget stays at
+// the tape's documented 12 req/min vs. OKX's 600 req/min limit.
+//
+// The bulk endpoint returns ALL ~490 SWAP instruments in ONE call (~35KB
+// gzipped, ~90ms — verified live), so any watchlist size costs a single
+// request per refresh. The response also doubles as live listing knowledge:
+// new OKX perps appear in the map immediately, with no negative cache wait.
+// 5s TTL matches the tape's poll interval exactly (every tape poll refetches,
+// preserving its pre-unification freshness); failures serve the stale cache —
+// better than nothing — and consumers can detect staleness by comparing the
+// returned Map's identity across calls (same object = cache-served).
 
 let _swapTickersCache = null;
 let _swapTickersCacheTime = 0;
-const SWAP_TICKERS_TTL_MS = 10 * 1000;
+const SWAP_TICKERS_TTL_MS = 5 * 1000;
 
 /**
  * Shared ticker parser — single-instrument and bulk entries have the same fields.
