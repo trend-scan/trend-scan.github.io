@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import CopyCsvButtons from './CopyCsvButtons';
 import { CryptoGridTable } from './SMBFeatures';
+import { fmtCryptoPrice } from '@/lib/board/priceFormat';
 
 const STATUS_PILL = {
   'DOMINANT':      { bg: 'rgba(0,230,118,0.12)',  text: 'var(--scanner-green)', border: 'rgba(0,230,118,0.3)' },
@@ -54,7 +55,7 @@ function ConstituentTable({ items }) {
               <td className="py-2 px-3 text-[10px]" style={{ color: 'var(--scanner-text3)' }}>{item.name}</td>
               <td className="py-2 px-3 text-[9px]" style={{ color: 'var(--scanner-text2)' }}>{item.subtheme}</td>
               <td className="py-2 px-3 text-[11px] tabular-nums" style={{ color: 'var(--scanner-text2)' }}>
-                {item.price != null ? item.price.toPrecision(4) : '—'}
+                {fmtCryptoPrice(item.price)}
               </td>
               <td className="py-2 px-3"><PctCell v={item.ret1d} /></td>
               <td className="py-2 px-3"><PctCell v={item.ret5d} /></td>

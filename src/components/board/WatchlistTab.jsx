@@ -35,6 +35,7 @@ import {
   parseScreenerPaste, classifyWatchlistSymbols,
 } from '@/lib/board/watchlistStore';
 import { fetchWatchlistCryptoData, fetchWatchlistTradfiLive, resolveWatchlistTradfi, sourceLabel } from '@/lib/board/watchlistEngine';
+import { fmtCryptoPrice, fmtDollarPrice } from '@/lib/board/priceFormat';
 
 /** TRAD_UNIVERSE metadata by upper symbol — used for OKX-live rows of tickers
  *  the snapshot has no row for yet (newly added universe members). */
@@ -49,12 +50,6 @@ function fmtPct(v) {
 function fmtPctRaw(v) {
   if (v == null || !Number.isFinite(v)) return '—';
   return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
-}
-function fmtPrice(v) {
-  if (v == null || !Number.isFinite(v)) return '—';
-  if (v >= 1000) return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (v >= 1) return '$' + v.toFixed(2);
-  return '$' + v.toFixed(4);
 }
 function retColor(v) {
   if (v == null || !Number.isFinite(v)) return 'var(--scanner-text3)';
@@ -637,9 +632,9 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
                       <td className="py-2 px-2.5 text-[10px] text-right" style={{ color: 'var(--scanner-text3)', maxWidth: 100 }}>
                         <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{item.name}</span>
                       </td>
-                      {/* Price */}
+                      {/* Price — sub-cent cryptos (PEPE, PUMP…) get up to 7 decimals */}
                       <td className="py-2 px-2.5 text-[11px] font-semibold tabular-nums text-right" style={{ color: 'var(--scanner-text)' }}>
-                        {item.price != null ? item.price.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}
+                        {fmtCryptoPrice(item.price)}
                       </td>
                       {/* 20D sparkline */}
                       <td className="py-1.5 px-2.5 text-right">
@@ -768,8 +763,8 @@ export default function WatchlistTab({ snapshotData, tradData, tradLoading, onEn
                         <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{item.name}</span>
                       </td>
                       {/* Price */}
-                      <td className="py-2 px-2.5 text-[11px] font-semibold tabular-nums text-right" style={{ color: 'var(--scanner-text)' }} title={item.live && item.high24h != null ? `OKX 24h: H ${fmtPrice(item.high24h)} · L ${fmtPrice(item.low24h)}` : undefined}>
-                        {fmtPrice(item.price)}
+                      <td className="py-2 px-2.5 text-[11px] font-semibold tabular-nums text-right" style={{ color: 'var(--scanner-text)' }} title={item.live && item.high24h != null ? `OKX 24h: H ${fmtDollarPrice(item.high24h)} · L ${fmtDollarPrice(item.low24h)}` : undefined}>
+                        {fmtDollarPrice(item.price)}
                       </td>
                       {/* 20D sparkline */}
                       <td className="py-1.5 px-2.5 text-right">

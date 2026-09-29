@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import TradingViewChart from '@/components/scanner/TradingViewChart';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import CopyCsvButtons from './CopyCsvButtons';
+import { fmtCryptoPrice } from '@/lib/board/priceFormat';
 
 function fmtPct(v) {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -202,7 +203,7 @@ export default function CryptoTab({ cryptoAssets }) {
                   </td>
                   {/* Price */}
                   <td className="py-2 px-2.5 text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text)' }}>
-                    {item.price != null ? item.price.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}
+                    {fmtCryptoPrice(item.price)}
                   </td>
                   {/* 20D sparkline */}
                   <td className="py-2 px-2.5">

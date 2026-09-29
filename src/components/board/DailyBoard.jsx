@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { fmtCryptoPrice } from '@/lib/board/priceFormat';
 
 const STATUS_COLORS = {
   'DOMINANT':      { bg: 'rgba(0,230,118,0.10)', border: 'rgba(0,230,118,0.30)', text: 'var(--scanner-green)' },
@@ -628,7 +629,7 @@ function CryptoAssetsTable({ assets }) {
                   <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{item.name}</span>
                 </td>
                 <td className="py-2 px-2.5 text-[11px] font-semibold tabular-nums" style={{ color: 'var(--scanner-text)' }}>
-                  {item.price != null ? item.price.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}
+                  {fmtCryptoPrice(item.price)}
                 </td>
                 <td className="py-2 px-2.5">
                   <MiniSparkline data={item.sparkline?.slice(-20)} />
