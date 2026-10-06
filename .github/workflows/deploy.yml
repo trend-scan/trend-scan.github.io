@@ -262,7 +262,12 @@ jobs:
     name: Open GitHub Issue on failure
     runs-on: ubuntu-latest
     needs: build
-    if: always() && needs.build.result == 'failure'
+    # 2026-10-06: widened to 'cancelled' as well -- a hung/timed-out build
+    # job concludes 'cancelled', which the old failure-only check silently
+    # ignored (refresh run #37367063306, 2026-10-05, filed no issue for
+    # exactly this reason). Superseded-by-newer-run cancels (concurrency
+    # cancel-in-progress is true here) are filtered inside the script.
+    if: always() && (needs.build.result == 'failure' || needs.build.result == 'cancelled')
     permissions:
       issues: write
       actions: read
@@ -275,6 +280,26 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const runId = context.runId;
             const timestamp = new Date().toISOString();
+            const result = '${{ needs.build.result }}';
+
+            // 2026-10-06: deploy.yml's concurrency group uses
+            // cancel-in-progress: true, so a 'cancelled' build is usually an
+            // INTENTIONAL supersede by a newer push. Only alert when nothing
+            // newer took over (hang / runner loss / manual abort).
+            if (result === 'cancelled') {
+              const newer = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner, repo: context.repo.repo,
+                workflow_id: 'deploy.yml', per_page: 15,
+              });
+              const superseded = newer.data.workflow_runs.some(r =>
+                r.run_number > context.runNumber &&
+                (r.status === 'queued' || r.status === 'in_progress' || r.conclusion === 'success')
+              );
+              if (superseded) {
+                console.log(`Run #${context.runNumber} was cancelled as superseded by a newer run -- no alert.`);
+                return;
+              }
+            }
 
             // Ensure the label exists (create if missing)
             try {
@@ -310,6 +335,7 @@ jobs:
               `**Workflow:** [${context.workflow}](${runUrl})`,
               ``,
               `**Run:** #${context.runNumber} (\`${runId}\`)`,
+              `**Result:** ${result} (failure = red step; cancelled = hang/timeout/abort)`,
               `**Trigger:** ${context.eventName} on \`${context.ref}\``,
               `**Failed at:** ${timestamp}`,
               ``,

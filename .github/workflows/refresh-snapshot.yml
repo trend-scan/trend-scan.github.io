@@ -408,7 +408,13 @@ jobs:
     name: Open GitHub Issue on failure
     runs-on: ubuntu-latest
     needs: refresh
-    if: always() && needs.refresh.result == 'failure'
+    # 2026-10-06: widened to 'cancelled' as well. Motivating case: run
+    # #37367063306 (2026-10-05 20:00 UTC, worker-dispatched) hung for 15
+    # minutes, was cancelled with an empty step list, and filed NO issue --
+    # the snapshot silently skipped the 16:02->22:14 UTC window. This
+    # workflow's concurrency uses cancel-in-progress: false, so every
+    # 'cancelled' conclusion is a hang / timeout / manual abort worth alerting.
+    if: always() && (needs.refresh.result == 'failure' || needs.refresh.result == 'cancelled')
     permissions:
       issues: write
       actions: read
@@ -420,6 +426,7 @@ jobs:
             const label = 'ci-failure';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const timestamp = new Date().toISOString();
+            const result = '${{ needs.refresh.result }}';
 
             // Ensure the label exists
             try {
@@ -446,11 +453,14 @@ jobs:
               `**Workflow:** [${context.workflow}](${runUrl})`,
               ``,
               `**Run:** #${context.runNumber}`,
+              `**Result:** ${result} (failure = red step; cancelled = hang/timeout/abort)`,
               `**Trigger:** ${context.eventName} on \`${context.ref}\``,
               `**Failed at:** ${timestamp}`,
               ``,
               `**Failure context:**`,
-              `- The snapshot refresh job failed. The most likely cause is an upstream API outage (FRED, CoinGecko, Farside) or a network timeout during \`build_snapshot.js\`.`,
+              result === 'cancelled'
+                ? `- The job was CANCELLED without completing (runner hang, job/step timeout, or manual abort). The step list may be empty and logs incomplete -- check the run timeline. A cancelled refresh means this cycle's snapshot was NOT built.`
+                : `- The snapshot refresh job failed. The most likely cause is an upstream API outage (FRED, CoinGecko, Farside) or a network timeout during \`build_snapshot.js\`.`,
               `- If this is the first failure, the snapshot is still fresh from the previous run. After 2+ consecutive failures (12h+), the live site will be serving stale data — check the "As of" timestamp on the Macro page.`,
               ``,
               `**To resolve:**`,
