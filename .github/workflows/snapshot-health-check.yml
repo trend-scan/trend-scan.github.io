@@ -17,6 +17,12 @@
 #   2. Parses generated_at timestamp
 #   3. If age > 6h, opens (or comments on) a GitHub Issue with 'stale-snapshot' label
 #   4. If age > 12h, escalates by adding 'critical' label
+#   5. worker-watchdog job: verifies the Cloudflare refresh-trigger worker is
+#      still dispatching refresh-snapshot.yml every 4h (detects worker-signature
+#      workflow_dispatch runs); opens a 'trigger-worker' issue when dispatches
+#      stop appearing. Added 2026-10-22 after the GH_TOKEN expiry incident
+#      (worker dead 2 days before anyone noticed) — see the worker-watchdog
+#      job header comment below for the incident record.
 #
 # The 6h threshold gives one full refresh cycle of buffer (refreshes are
 # every 4h). The 12h threshold means 3+ consecutive refreshes have been
@@ -344,4 +350,202 @@ jobs:
             echo "Opened or commented on a stale-snapshot-critical issue." >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Health check failed: $STATUS" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Trigger-worker watchdog (added 2026-10-22, after the 2026-10-20 incident)
+  #
+  # INCIDENT RECORD: the Cloudflare refresh-trigger worker stopped dispatching
+  # refresh-snapshot.yml at 2026-10-20 08:00 UTC. Root cause: the GH_TOKEN
+  # secret (fine-grained PAT created with the worker on 2026-07-22, 90-day
+  # default expiry) expired exactly 90 days later. Every cron fire since then
+  # failed the workflow_dispatch call with HTTP 401 — no run created, no
+  # alert. GitHub's own scheduled runs kept the snapshot semi-fresh, so the
+  # stale-snapshot check above only saw "8.7h stale" (issue #11, auto-closed
+  # on recovery); nothing pinpointed the dispatch layer for 2 days until the
+  # user noticed and rotated the token (fixed 2026-10-22 ~06:00 UTC).
+  #
+  # This job watches the actual symptom of a dead worker: the ABSENCE of
+  # worker-signature dispatch runs. A worker fire is identifiable as
+  # event=workflow_dispatch + created_at within 15min after a 4h UTC boundary
+  # (Cloudflare cron `0 */4 * * *` = 00/04/08/12/16/20 UTC, 1-2min precision;
+  # dispatch runs are created immediately on API call, unlike GHA scheduled
+  # runs which get queued/delayed — so a wide 15min signature window is safe
+  # and human manual dispatches at random times don't match).
+  #
+  # Thresholds (worker cadence = 4h): STALE > 9h (2 consecutive missed fires),
+  # CRITICAL > 13h (3+ missed). In 3 months of operation (Jul 22 - Oct 20)
+  # the worker never missed two fires in a row, so false positives are
+  # effectively nil while detection latency stays under half a day.
+  #
+  # Label note: single 'trigger-worker' label by design — the check job's
+  # two-label stale-snapshot queries hit REST AND-semantics bugs twice
+  # (issues #5 and #11-era comment paths silently no-op'd). One label, one
+  # query, no merging needed.
+  worker-watchdog:
+    name: Trigger-worker watchdog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check trigger-worker dispatch liveness
+        id: watchdog
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const STALE_H = 9;    // 2 consecutive missed 4h fires
+            const CRIT_H = 13;    // 3+ missed fires
+            const WF = 'refresh-snapshot.yml';
+
+            // Newest-first list of recent refresh-snapshot runs (100 runs
+            // covers ~10 days of history; threshold checks need <14h).
+            const res = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: WF,
+              per_page: 100,
+            });
+            const runs = res.data.workflow_runs || [];
+            const now = Date.now();
+
+            // Worker signature: dispatch run created within 15min after a
+            // 4h UTC boundary (00/04/08/12/16/20). See job header comment.
+            const isWorkerFire = (r) => {
+              if (r.event !== 'workflow_dispatch') return false;
+              const d = new Date(r.created_at);
+              return d.getUTCHours() % 4 === 0 && d.getUTCMinutes() < 15;
+            };
+            const workerFires = runs.filter(isWorkerFire);
+            const lastFire = workerFires.length ? workerFires[0] : null;
+            const ageH = lastFire
+              ? (now - new Date(lastFire.created_at)) / 3.6e6
+              : Infinity;
+
+            // Diagnostics: ALL dispatch runs (worker + human) in last 24h.
+            const disp24 = runs.filter(r =>
+              r.event === 'workflow_dispatch' &&
+              (now - new Date(r.created_at)) < 864e5).length;
+
+            const status = ageH > CRIT_H ? 'critical' : ageH > STALE_H ? 'stale' : 'fresh';
+
+            core.setOutput('status', status);
+            core.setOutput('age_hours',
+              lastFire ? ageH.toFixed(1) : 'none-in-last-100-runs');
+            core.setOutput('last_fire', lastFire ? lastFire.created_at : 'none');
+            core.setOutput('dispatches_24h', String(disp24));
+            console.log(`Worker watchdog: status=${status} ` +
+              `lastWorkerFire=${lastFire ? lastFire.created_at : 'none'} ` +
+              `age=${lastFire ? ageH.toFixed(1) : 'unknown'}h ` +
+              `dispatches24h=${disp24} (of ${runs.length} runs listed)`);
+
+            // Single-label management (see job header comment for rationale).
+            const LABEL = 'trigger-worker';
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner, repo: context.repo.repo, name: LABEL,
+              });
+            } catch (e) {
+              if (e.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  name: LABEL, color: 'ff9933',
+                  description: 'Cloudflare refresh-trigger worker not dispatching (cron or GH_TOKEN failure)',
+                });
+              } else { throw e; }
+            }
+
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: LABEL, state: 'open', per_page: 10,
+            });
+            const existing = open.data[0] || null;
+
+            if (status === 'fresh') {
+              // Healthy: close any open watchdog issue from a prior outage.
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: existing.number,
+                  body: [
+                    `### ✅ Worker recovered — ${new Date().toISOString()}`,
+                    ``,
+                    `Last worker-signature dispatch: ${lastFire.created_at} (${ageH.toFixed(1)}h ago).`,
+                    `Closing automatically. If dispatches stop again, a new issue will be opened.`,
+                  ].join('\n'),
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: existing.number, state: 'closed',
+                });
+                console.log(`Closed recovered issue #${existing.number}`);
+              }
+              return;
+            }
+
+            // status is 'stale' or 'critical': open or comment.
+            const sev = status === 'critical' ? 'CRITICAL' : 'STALE';
+            const timestamp = new Date().toISOString();
+            const title = `Trigger worker not dispatching: last fire ${
+              lastFire ? lastFire.created_at : 'unknown'}`;
+            const body = [
+              `**Status:** ${sev} — Cloudflare refresh-trigger worker has not dispatched ${WF}`,
+              ``,
+              `**Detected at:** ${timestamp}`,
+              `**Last worker-signature dispatch:** ${
+                lastFire ? lastFire.created_at : 'none in the last 100 runs'}`,
+              `**Age:** ${
+                lastFire ? ageH.toFixed(1) + ' hours' : '>10 days (no worker fire in run history)'}`,
+              `**workflow_dispatch runs in last 24h:** ${disp24} (worker + manual combined)`,
+              ``,
+              `**What this means:** Cloudflare's cron is either no longer firing, or the worker's`,
+              `GH_TOKEN secret is being rejected by GitHub (expired/revoked PAT → HTTP 401 on the`,
+              `dispatch call → NO run is created, so no failure alert fires either). GitHub's own`,
+              `scheduled runs may still be keeping the snapshot semi-fresh — compare the two event`,
+              `types at https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/${WF}`,
+              `('schedule' runs continuing while 'workflow_dispatch' runs stopped = this failure).`,
+              ``,
+              `**Diagnosis, in order of likelihood:**`,
+              `1. **GH_TOKEN expired** — fine-grained PATs default to 90-day expiry. This exact`,
+              `   failure occurred 2026-10-20 (worker deployed 2026-07-22 + 90 days). Regenerate`,
+              `   the PAT (Actions: read+write on this repo), update the GH_TOKEN secret in the`,
+              `   Cloudflare Worker dashboard, then verify a dispatch run appears at the next`,
+              `   4h boundary (00/04/08/12/16/20 UTC).`,
+              `2. Worker deleted or cron trigger removed — Cloudflare dashboard → Workers & Pages`,
+              `   → trendscan-refresh-trigger → Settings → Triggers → Cron Triggers.`,
+              `3. Worker runtime error — Cloudflare dashboard → worker → Real-time Logs around`,
+              `   the last 4h boundary.`,
+              `4. Manual test (if WORKER_TOKEN is set): POST`,
+              `   https://trendscan-refresh-trigger.drew-724.workers.dev/trigger with header`,
+              `   X-Worker-Token — see cloudflare/REFRESH_TRIGGER_SETUP.md (Troubleshooting).`,
+              ``,
+              `**Reference:** cloudflare/REFRESH_TRIGGER_SETUP.md — setup, token rotation, and`,
+              `the 2026-10-20 incident record.`,
+            ].join('\n');
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `### Update — ${timestamp}\n\nStatus: **${sev}** — last worker-signature dispatch ` +
+                  `${lastFire ? lastFire.created_at : 'unknown'} (${
+                    lastFire ? ageH.toFixed(1) : '>10'}h ago). Issue persists.`,
+              });
+              console.log(`Commented on existing issue #${existing.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: [LABEL],
+              });
+              console.log(`Opened issue #${created.data.number}: ${created.data.html_url}`);
+            }
+
+      - name: Worker-watchdog summary
+        run: |
+          WS="${{ steps.watchdog.outputs.status }}"
+          WA="${{ steps.watchdog.outputs.age_hours }}"
+          LF="${{ steps.watchdog.outputs.last_fire }}"
+          echo "### Trigger-Worker Watchdog" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$WS" = "fresh" ]; then
+            echo "✅ Cloudflare trigger worker dispatched recently (last fire: ${LF}, ${WA}h ago)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🚨 Trigger worker ${WS}: last worker-signature dispatch ${LF} (${WA}h ago) — 'trigger-worker' issue opened/updated" >> $GITHUB_STEP_SUMMARY
           fi

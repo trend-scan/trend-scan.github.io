@@ -204,12 +204,51 @@ The GH_TOKEN expires (90 days for fine-grained, configurable for classic). When 
 
 Set a calendar reminder 5 days before expiration so you can rotate proactively.
 
+**Incident record (2026-10-20 — read this before relying on the reminder alone):**
+the original PAT was created with the worker on 2026-07-22 (90-day default) and
+expired exactly on schedule on 2026-10-20. There was no calendar reminder, and the
+failure was **completely silent for 2 days**: every cron fire failed the dispatch
+with HTTP 401 (no run created → no CI failure → no issue), while GitHub's own
+scheduled runs kept the snapshot semi-fresh so the stale-snapshot health check only
+reported "8.7h stale" (issue #11, auto-closed on recovery). The user noticed stale
+data, rotated the token on 2026-10-22 ~06:00 UTC, and the worker recovered at the
+next 4h boundary.
+
+Two mitigations now in place:
+
+- **Detection:** `snapshot-health-check.yml` ships a `worker-watchdog` job
+  (added 2026-10-22) that opens a `trigger-worker`-labeled GitHub Issue within
+  ~9-13h of dispatch runs stopping — expiry can no longer go silent.
+- **Prevention:** prefer creating the PAT with the longest expiry you're
+  comfortable with (fine-grained PATs allow up to 1 year), and still keep the
+  calendar reminder. The next rotation checkpoint for the token created
+  2026-10-22 with default 90-day expiry is **2027-01-20**.
+
 ## Troubleshooting
 
 ### Worker fires but GitHub dispatch fails (HTTP 401)
 
 - GH_TOKEN is wrong or expired
 - Regenerate the PAT and update the secret
+- **This is the most likely failure mode and it is SILENT** — the dispatch API
+  rejects the call without creating a run, so the GitHub Actions tab shows no
+  failure and no issue is filed by the refresh workflow's own alerting. The only
+  symptoms are: `workflow_dispatch` runs stop appearing at 4h boundaries while
+  `schedule` runs continue, and the snapshot gradually goes staler (8-12h
+  instead of ≤4h). Exactly this happened 2026-10-20 → 2026-10-22 (see the
+  incident record under Token rotation above). The `worker-watchdog` job in
+  `snapshot-health-check.yml` now detects it and files a `trigger-worker` issue.
+
+### Cron fires stop creating dispatch runs entirely
+
+- Verify the cron trigger still exists (Settings → Triggers → Cron Triggers,
+  expression `0 */4 * * *`)
+- If the trigger exists but no runs appear: it's the HTTP 401 case above —
+  GH_TOKEN expired. Cloudflare Real-time Logs will show
+  `✗ Failed to dispatch refresh-snapshot: GitHub API HTTP 401` at each 4h
+  boundary.
+- Confirm recovery: after updating the secret, a `workflow_dispatch` run must
+  appear within ~2 minutes of the next 4h UTC boundary (00/04/08/12/16/20).
 
 ### Worker fires but GitHub dispatch fails (HTTP 404)
 
