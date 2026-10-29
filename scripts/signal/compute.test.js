@@ -12,7 +12,7 @@
  *   5. computeAtrExt50ma (gate 4)
  *   6. computeRsVsBtc (gate 5)
  *   7. fundingZScore (gate 6)
- *   8. computeMacroZ (gate 9 — boost)
+ *   8. computeMacroZ (gate 9 — context/driver only; boost removed Task 36 S1)
  *   9. computeAssetStance (composite — all branches)
  *  10. mapStanceToVerdict
  *  11. computeMultiHorizon (new in v2)
@@ -373,27 +373,11 @@ describe('computeAssetStance — composite engine', () => {
     assert.ok(stance.confidence <= 10);
   });
 
-  test('CONSTRUCTIVE with macroZ > 2.5 boosts conf 7 → 9 (F-14-c-5)', () => {
-    // Audit F-14-c-5 (2026-08-26): previous version of this test was
-    // misnamed — it didn't actually exercise the 7→9 boost path because
-    // the test setup produced confidence=9 before the boost check could
-    // run (6 base + 2 confirmed + 1 pctile = 9). The boost only fires
-    // when confidence is EXACTLY 7 before the boost section.
-    //
-    // This rewritten test produces confidence=7 by:
-    //   6 (CONSTRUCTIVE base)
-    // + 1 (zPctile >= 80, zPctileEff === 85)
-    // - 1 (rsiOverbought, rsi=85 > 80)
-    // = 6 + 1 - 1 = 6
-    // Wait, that's 6, not 7. Let me reconsider...
-    //
-    // To land at exactly 7 before boosts:
-    //   6 (base) + 2 (confirmed) = 8  ← too high
-    //   6 (base) + 1 (pctile)   = 7  ← exactly 7 (no confirmed)
-    //
-    // So: stretchPositive + persistentOrExtreme + healthyExtension
-    // AND zPctile >= 80 AND NOT confirmed (rsVsBtc not OUTPERFORMING)
-    // AND no penalties that drop below 7.
+  test('macroZ no longer boosts confidence (Task 36 S1 — boost removed)', () => {
+    // Pre-2026-10-29 this input (conf lands at exactly 7, macroZ 2.8 > 2.5)
+    // boosted 7→9. True OOS showed boosted STRONGs hit 29.9% / -4.01% avg
+    // vs 47.8% / +1.05% unboosted — the boost was an in-sample overfit and
+    // was removed. Confidence must now stay at 7 regardless of macroZ.
     const stance = computeAssetStance({
       zScore: 1.5,          // stretchPositive
       zPctile: 85,          // extremePctile → +1
@@ -405,30 +389,29 @@ describe('computeAssetStance — composite engine', () => {
       obvSlope: 0.2,        // not bearish → no penalty
       impulseZ: 0.8,        // not decelerating → no penalty
       returns: { ret5d: 0.03, ret20d: 0.05 },
-      macroZ: { macroZ: 2.8 },  // > 2.5 → 7→9 boost should fire
+      macroZ: { macroZ: 2.8 },  // > 2.5 — would have boosted 7→9 pre-S1
       isBtc: false,
     });
     assert.equal(stance.stance, 'CONSTRUCTIVE');
-    // 6 + 1 (pctile) = 7, then macroZ > 2.5 boosts 7→9.
-    assert.equal(stance.confidence, 9,
-      `confidence should be 9 (7 + macroZ 7→9 boost), got ${stance.confidence}`);
+    // 6 + 1 (pctile) = 7 — no boost, confidence stays at 7.
+    assert.equal(stance.confidence, 7,
+      `confidence should stay 7 (macroZ boost removed), got ${stance.confidence}`);
+    // The driver is still displayed (S1 keeps the driver, drops the boost).
+    assert.equal(stance.drivers.macroZ, 2.8);
   });
 
-  test('CONSTRUCTIVE with macroZ > 1.5 (but ≤ 2.5) boosts conf 7 → 8 (F-14-c-10)', () => {
-    // Audit F-14-c-10 (2026-08-26): previously the 7→8 boost had no test
-    // coverage. Same setup as the 7→9 test but with macroZ = 1.8 (which
-    // is > 1.5 but ≤ 2.5, hitting the second boost branch).
+  test('macroZ > 1.5 (but ≤ 2.5) also does not boost (Task 36 S1)', () => {
     const stance = computeAssetStance({
       zScore: 1.5, zPctile: 85, trendTenure: 10,
       atrExt: 2.0, rsVsBtc: { label: 'NEUTRAL', value: 1.0 },
       fundingZ: 0.0, rsi: 65, obvSlope: 0.2, impulseZ: 0.8,
       returns: { ret5d: 0.03, ret20d: 0.05 },
-      macroZ: { macroZ: 1.8 },  // > 1.5, ≤ 2.5 → 7→8 boost
+      macroZ: { macroZ: 1.8 },  // > 1.5, ≤ 2.5 — would have boosted 7→8 pre-S1
       isBtc: false,
     });
     assert.equal(stance.stance, 'CONSTRUCTIVE');
-    assert.equal(stance.confidence, 8,
-      `confidence should be 8 (7 + macroZ 7→8 boost), got ${stance.confidence}`);
+    assert.equal(stance.confidence, 7,
+      `confidence should stay 7 (macroZ boost removed), got ${stance.confidence}`);
   });
 
   test('CONSTRUCTIVE with mhAlignment.aligned boosts conf 7 → 8 (F-14-c-10)', () => {
@@ -449,24 +432,22 @@ describe('computeAssetStance — composite engine', () => {
       `confidence should be 8 (7 + mhAlignment 7→8 boost), got ${stance.confidence}`);
   });
 
-  test('Boost ordering: macroZ > 2.5 takes precedence over mhAlignment (F-14-c-10)', () => {
-    // Audit F-14-c-10 (2026-08-26): the boost section runs macroZ first
-    // (lines 458-461), then mhAlignment (line 462-464). When macroZ > 2.5
-    // fires, confidence is set to 9 — the mhAlignment check (`=== 7`)
-    // then no-ops because confidence is no longer 7. When both are
-    // present and macroZ > 2.5, the macroZ boost wins.
+  test('mhAlignment is the only surviving 7-boost (Task 36 S1)', () => {
+    // Pre-S1, macroZ > 2.5 took precedence over mhAlignment (7→9 beat 7→8).
+    // With the macroZ boost removed, the mhAlignment 7→8 boost is the only
+    // one left — macroZ 2.8 present is now inert.
     const stance = computeAssetStance({
       zScore: 1.5, zPctile: 85, trendTenure: 10,
       atrExt: 2.0, rsVsBtc: { label: 'NEUTRAL', value: 1.0 },
       fundingZ: 0.0, rsi: 65, obvSlope: 0.2, impulseZ: 0.8,
       returns: { ret5d: 0.03, ret20d: 0.05 },
-      macroZ: { macroZ: 2.8 },  // > 2.5 → 7→9
+      macroZ: { macroZ: 2.8 },  // inert since S1
       mhAlignment: { aligned: true, bullAligned: true, bearAligned: false },
       isBtc: false,
     });
     assert.equal(stance.stance, 'CONSTRUCTIVE');
-    assert.equal(stance.confidence, 9,
-      `macroZ boost (7→9) should win over mhAlignment boost (7→8) when both fire; got ${stance.confidence}`);
+    assert.equal(stance.confidence, 8,
+      `mhAlignment 7→8 should be the only boost; got ${stance.confidence}`);
   });
 
   test('No boost fires when confidence ≠ 7 (boosts only fire at exactly 7)', () => {
@@ -478,7 +459,7 @@ describe('computeAssetStance — composite engine', () => {
       atrExt: 2.0, rsVsBtc: { label: 'OUTPERFORMING', value: 1.2 },  // → confirmed
       fundingZ: 0.0, rsi: 65, obvSlope: 0.2, impulseZ: 0.8,
       returns: { ret5d: 0.03, ret20d: 0.05 },
-      macroZ: { macroZ: 2.8 },  // would boost 7→9, but conf is 9 not 7
+      macroZ: { macroZ: 2.8 },  // inert since S1; conf is 9 not 7 anyway
       isBtc: false,
     });
     // 6 + 2 (confirmed) + 1 (pctile) = 9 — boost can't fire (not at 7).
@@ -566,12 +547,15 @@ describe('computeAssetStance — composite engine', () => {
 // ─── 10. mapStanceToVerdict ──────────────────────────────────────────────────
 
 describe('mapStanceToVerdict', () => {
-  test('CONSTRUCTIVE + high confidence → STRONG', () => {
+  test('CONSTRUCTIVE + confidence 9 → STRONG (threshold 9, Task 36 S2)', () => {
+    assert.equal(mapStanceToVerdict('CONSTRUCTIVE', 10), 'STRONG');
     assert.equal(mapStanceToVerdict('CONSTRUCTIVE', 9), 'STRONG');
-    assert.equal(mapStanceToVerdict('CONSTRUCTIVE', 8), 'STRONG');
   });
 
-  test('CONSTRUCTIVE + low confidence → NEUTRAL', () => {
+  test('CONSTRUCTIVE + confidence 8 → NEUTRAL at post-S2 threshold 9', () => {
+    // Pre-S2 (STRONG=8) this was STRONG. True OOS showed the conf-8 cohort
+    // at 34.3% hit / -2.64% avg — threshold raised to 9 on 2026-10-29.
+    assert.equal(mapStanceToVerdict('CONSTRUCTIVE', 8), 'NEUTRAL');
     assert.equal(mapStanceToVerdict('CONSTRUCTIVE', 7), 'NEUTRAL');
     assert.equal(mapStanceToVerdict('CONSTRUCTIVE', 5), 'NEUTRAL');
   });
@@ -596,8 +580,8 @@ describe('mapStanceToVerdict', () => {
     assert.equal(mapStanceToVerdict('CONSTRUCTIVE', 6, { STRONG: 7, WEAK: 7 }), 'NEUTRAL');
   });
 
-  test('DEFAULT_THRESHOLDS = STRONG 8, WEAK 8', () => {
-    assert.equal(DEFAULT_THRESHOLDS.STRONG, 8);
+  test('DEFAULT_THRESHOLDS = STRONG 9, WEAK 8 (Task 36 S2)', () => {
+    assert.equal(DEFAULT_THRESHOLDS.STRONG, 9);
     assert.equal(DEFAULT_THRESHOLDS.WEAK, 8);
   });
 });

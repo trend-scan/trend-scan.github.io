@@ -7,10 +7,28 @@
  *
  * No React, no fetch, no browser APIs. Pure functions only.
  *
- * Backtest results (2023-10 to 2025-07, 10-day forward, BTC/ETH/SOL):
- *   STRONG: 62.0% hit rate, +5.02% avg 10-day return (363 signals)
- *   WEAK:   54.1% hit rate, -1.37% avg 10-day return (61 signals)
- *   NEUTRAL baseline: +2.99% avg
+ * Backtest results (2023-10 to 2025-07 in-sample, 10-day forward, BTC/ETH/SOL):
+ *   STRONG: 60.8% hit rate, +4.49% avg 10-day return (426 signals)
+ *   WEAK:   55.7% hit rate, -1.07% avg 10-day return (61 signals)
+ *   NEUTRAL baseline: +2.52% avg
+ *
+ * TRUE OOS results (2025-08-01 to 2026-10-27, engine v3.1 @ macroZ boost +
+ * STRONG=8 — data the engine had never seen, Task 36 evaluation 2026-10-29):
+ *   STRONG: 41.9% hit / -0.60% avg (n=267) — INVERTED vs its own NEUTRAL
+ *   baseline (47.9% / +0.50%). The macroZ boost manufactured 87 of those
+ *   STRONGs at 29.9% hit / -4.01% avg (7 of the 8 worst entries were
+ *   macroZ-boosted), and the conf=8 cohort ran 34.3% / -2.64%.
+ *
+ * Post-fix OOS (macroZ boost removed + STRONG=9, this version — replayed
+ *   with the modified engine on the same data, Task 36 validation):
+ *   STRONG: 47.4% hit / +1.05% avg (n=154; in-sample improved to 66.1% /
+ *   +7.07%, n=183). 113 old STRONGs demoted to NEUTRAL, zero promotions,
+ *   and all five worst HYPE episodes were demoted. Within the surviving
+ *   STRONGs, the macroZ ≤ 2.5 subset ran 52.9% / +2.62% (n=121) while the
+ *   macroZ > 2.5 subset ran 27.3% / -4.69% (n=33) — that residual cohort is
+ *   a flagged RESEARCH item (regime gating, S10-class; suppressing it based
+ *   on this same OOS window would repeat the macroZ-boost overfit mistake).
+ *   It is deliberately NOT a shipped gate.
  *
  * Signal stack:
  *   1. adaptiveZ (90/365 blend) — price z-score, regime-aware
@@ -27,7 +45,11 @@
  *      non-zero effect — keep the gate, don't ablate it.
  *   7. RSI (penalty only) — overbought penalty (>80 reduces STRONG)
  *   8. impulseZ (penalty only) — decelerating penalty (falling momentum)
- *   9. macroZ (boost) — external signal, boosts conf 7→8 when macroZ > 1.5
+ *   9. macroZ (context only) — external signal, displayed as a driver.
+ *      REMOVED 2026-10-29 (Task 36 S1): the conf 7→8 / 7→9 macroZ boost was
+ *      an in-sample overfit — on true OOS (2025-08 → 2026-10) boosted
+ *      STRONGs hit 29.9% / -4.01% avg vs 47.8% / +1.05% unboosted. The
+ *      feature itself (computeMacroZ) is kept for driver display only.
  */
 
 // ─── Statistical primitives ──────────────────────────────────────────────────
@@ -223,13 +245,19 @@ export function computeMultiHorizonAlignment(closes, threshold = 0.02) {
  *   The ONLY test of macroZ in its actual TrendScan form (daily, standalone,
  *   as a confidence boost) is our own in-sample backtest (2023-10 to 2025-07),
  *   which showed 60.0% standalone bull hit rate and improved overall STRONG
- *   hit rate from 60.9% to 62.0% when used as a tiebreaker boost. This is
- *   in-sample and not walk-forward validated.
+ *   hit rate from 60.9% to 62.0% when used as a tiebreaker boost. This was
+ *   in-sample and not walk-forward validated. The true OOS test (2025-08 →
+ *   2026-10, Task 36) confirmed the fear: boosted STRONGs hit 29.9% / -4.01%
+ *   avg vs 47.8% / +1.05% unboosted — the boost manufactured entries at
+ *   blow-off tops (7 of the 8 worst OOS outcomes were macroZ-boosted).
+ *   The boost was removed 2026-10-29 (Task 36 S1); the feature survives as
+ *   a displayed driver only.
  *
  * Original 4H parameters (21/100/42) converted to daily equivalents:
  *   21×4H = 3.5 days → 4, 100×4H = 16.7 days → 17, 42×4H = 7 days → 7
  *
- * Integration: Used as a tiebreaker boost only (conf 7→8 when macroZ > 1.5).
+ * Integration: driver display only. The former tiebreaker boost
+ * (conf 7→8 when macroZ > 1.5) was removed 2026-10-29 (Task 36 S1).
  */
 export function computeMacroZ(candles, params = {}) {
   const {
@@ -467,16 +495,17 @@ export function computeAssetStance({
     if (crowdingRisk) confidence -= 2;
     if (rsiOverbought && !skipRsiPenalty) confidence -= 1;
     if (decelerating && !skipImpulsePenalty) confidence -= 1;
-    // Boosts fire at 7→8 (walk-forward validated: threshold 8 + 7→8 boosts = 54.5% OOS hit).
-    // The 8→9 restructure was tested and REJECTED — it starved the boost of candidates
-    // (only 36 OOS signals vs 343) and dropped hit rate to 47.2%. The walk-forward
-    // "optimal threshold 9" was misleading because the threshold sweep tested WITHOUT
-    // boosts active. With boosts, threshold 8 captures the boosted signals and they
-    // perform well OOS.
-    if (macroZEff) {
-      if (confidence === 7 && macroZEff.macroZ > 2.5) confidence = 9;
-      else if (confidence === 7 && macroZEff.macroZ > 1.5) confidence = 8;
-    }
+    // Boosts fire at exactly 7. The macroZ 7→8 / 7→9 boost was REMOVED
+    // 2026-10-29 (Task 36 S1): it was an in-sample overfit — on true OOS
+    // (2025-08 → 2026-10, 15 months the engine had never seen) boosted
+    // STRONGs hit 29.9% / -4.01% avg vs 47.8% / +1.05% unboosted, and 7 of
+    // the 8 worst outcomes carried macroZ > 2 at signal time. macroZ
+    // remains a displayed driver (drivers.macroZ), nothing more.
+    //
+    // mhAlignment 7→8 is the surviving boost — the only one that earned its
+    // place in OOS (49.2% hit / +2.25% avg vs 39.9% / -1.41% non-aligned).
+    // Note it cannot reach STRONG at the post-S2 threshold of 9; it exists
+    // for confidence granularity and would matter again if STRONG < 9.
     if (confidence === 7 && mhAlignmentEff?.aligned) {
       confidence = 8;
     }
@@ -535,11 +564,26 @@ export function computeAssetStance({
 // from walk_forward_results.json at STRONG=9 (the walk-forward optimum),
 // NOT at STRONG=8 (production). At STRONG=8 the TRAIN STRONG pre-hit is
 // 41.6% (below coin flip); OOS performance at STRONG=8/WEAK=8 is not
-// reported in walk_forward_results.json. These thresholds are kept
-// conservative vs the walk-forward optimum (STRONG=9, WEAK=6) for
-// stability reasons not captured in code — re-evaluate before changing.
+// reported in walk_forward_results.json.
+//
+// Task 36 (2026-10-29) — the "8 vs 9" question is now settled with 15
+// months of TRUE OOS (2025-08 → 2026-10, data the engine never saw),
+// replayed with the modified engine (no boost + STRONG=9):
+//   STRONG=8 + macroZ boost (old config): 41.9% hit / -0.60% avg (n=267)
+//   STRONG=9, no boost (this config):     47.4% hit / +1.05% avg (n=154)
+//   in-sample IMPROVED: 66.1% / +7.07% (n=183) vs 60.8% / +4.49% (n=426)
+// 113 old STRONGs demoted to NEUTRAL (incl. all five worst HYPE episodes),
+// zero NEUTRAL→STRONG promotions. The old "8→9 REJECTED" decision above was
+// based on a pseudo-OOS window that ended 2025-07 — still inside the bull
+// regime. Frequency drops (~15% → ~8.6% of rows): fewer, better calls,
+// smaller false-positive surface. Within the survivors, macroZ ≤ 2.5 ran
+// 52.9% / +2.62% (n=121) vs macroZ > 2.5 at 27.3% / -4.69% (n=33) — the
+// latter is flagged for regime-gating research (S10), not shipped as a gate
+// (post-hoc gates on the evaluation window are how the macroZ overfit
+// happened in the first place). WEAK stays at 8 (zero live fires ever; see
+// Task 36 S7 for the open question on the WEAK gate itself).
 export const DEFAULT_THRESHOLDS = {
-  STRONG: 8,
+  STRONG: 9,
   WEAK: 8,
 };
 

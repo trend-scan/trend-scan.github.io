@@ -38,6 +38,23 @@
  *   Stats are only meaningful with ≥30 resolved signals — below that, the
  *   scoreboard shows "collecting data" messaging rather than misleading
  *   small-sample numbers.
+ *
+ * TASK 36 S1/S2 (2026-10-29): the macroZ confidence boost was removed and the
+ *   STRONG threshold raised 8 → 9 after 15 months of true OOS showed the old
+ *   config inverted (41.9% hit / -0.60% avg vs 47.9% / +0.50% NEUTRAL baseline).
+ *   Replaying the modified engine on the same window: 47.4% / +1.05% (n=154;
+ *   in-sample improved to 66.1% / +7.07%), 113 old STRONGs demoted with zero
+ *   promotions. Reference texts below cite the post-fix figures.
+ *
+ * TASK 36 S3: asset cards + history rows now show "Day N" run age; day-4+
+ *   STRONGs are visually de-emphasized (OOS: 33.6% hit vs ~50% days 1-3).
+ *
+ * TASK 36 S5: 5-day exits are finalized from completed daily candles only
+ *   (btc_5d_finalized) — the old partial-candle exits are re-finalized in
+ *   place on the next refresh.
+ *
+ * TASK 36 S6: history persists per-asset ETH/SOL/HYPE verdicts (majors_verdicts)
+ *   and keeps 365 days instead of 90.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -171,10 +188,15 @@ function HorizonStrip({ horizon }) {
   );
 }
 
-function AssetCard({ symbol, name, verdict, confidence, drivers, horizon }) {
+function AssetCard({ symbol, name, verdict, confidence, drivers, horizon, runDay }) {
   const [showDetails, setShowDetails] = useState(false);
   const color = verdictColor(verdict);
   const icon = verdictIcon(verdict);
+
+  // Run-age (Task 36 S3): day-4+ STRONGs decayed hard OOS (33.6% hit /
+  // -1.90% avg vs ~50% / ~+1% days 1-3) — visually de-emphasize stale runs.
+  const staleRun = verdict === 'STRONG' && runDay != null && runDay >= 4;
+  const chipOpacity = staleRun ? 0.55 : 1;
 
   const driverLines = [];
   if (drivers) {
@@ -196,8 +218,10 @@ function AssetCard({ symbol, name, verdict, confidence, drivers, horizon }) {
         </div>
         <span
           className="text-[14px] font-bold cursor-help"
-          style={{ color }}
-          title={verdictDescription(verdict)}
+          style={{ color, opacity: chipOpacity }}
+          title={verdictDescription(verdict) + (staleRun
+            ? ` — NOTE: day ${runDay} of this run. OOS STRONG run days 4+ hit 33.6% vs ~50% days 1-3.`
+            : '')}
         >
           {icon} {verdict}
         </span>
@@ -206,6 +230,25 @@ function AssetCard({ symbol, name, verdict, confidence, drivers, horizon }) {
         <span className="text-[10px] font-semibold" style={{ color: 'var(--scanner-text2)' }}>
           Confidence: {confidence}/10
         </span>
+        {runDay != null && verdict !== 'NEUTRAL' && (
+          <span
+            className="text-[8.5px] font-bold px-1.5 py-0.5 rounded cursor-help"
+            style={{
+              background: 'var(--scanner-bg2)',
+              border: `1px solid ${staleRun ? 'var(--scanner-border2)' : `${color}44`}`,
+              color: staleRun ? 'var(--scanner-text3)' : color,
+              opacity: staleRun ? 0.75 : 1,
+            }}
+            title={runDay === 1
+              ? 'Day 1 of this verdict run (verdict changed from yesterday)'
+              : `Day ${runDay} of this ${verdict} run (consecutive days with the same verdict).`
+                + (staleRun
+                  ? ' Out-of-sample, STRONG run days 4+ hit 33.6% (vs ~50% days 1-3) — treat stale-run STRONGs with reduced conviction.'
+                  : '')}
+          >
+            {staleRun ? '⏳ ' : ''}Day {runDay}
+          </span>
+        )}
         <button
           className="text-[9px] cursor-pointer"
           style={{ color: 'var(--scanner-text3)', textDecoration: 'underline dotted', background: 'none', border: 'none', padding: 0 }}
@@ -250,6 +293,8 @@ function AssetCard({ symbol, name, verdict, confidence, drivers, horizon }) {
             {/* Verdict + confidence */}
             <div className="text-[10px] mb-3" style={{ color }}>
               Verdict: {verdict} · Confidence: {confidence}/10
+              {runDay != null && verdict !== 'NEUTRAL' && ` · Day ${runDay} of run`}
+              {staleRun && ' — stale run (day 4+): historically weaker forward returns'}
             </div>
             {/* Driver details */}
             <div className="text-[10px] leading-relaxed space-y-1">
@@ -307,7 +352,36 @@ function SignalHistory({ history }) {
   const [expanded, setExpanded] = useState(false);
   if (!history || history.length === 0) return null;
 
-  const recent = expanded ? history.slice(-90).reverse() : history.slice(-7).reverse();
+  const recent = expanded ? history.slice(-365).reverse() : history.slice(-7).reverse();
+
+  // Per-asset majors verdicts (Task 36 S6) — E/S/H letters with verdict
+  // colors, falling back to the pre-S6 strong-count for old entries.
+  const MAJOR_SYMS = ['ETH', 'SOL', 'HYPE'];
+  const renderMajors = h => {
+    const mv = h.majors_verdicts;
+    if (mv && MAJOR_SYMS.every(s => mv[s]?.verdict)) {
+      return (
+        <span className="whitespace-nowrap">
+          {MAJOR_SYMS.map(s => {
+            const v = mv[s].verdict;
+            const day = mv[s].run_day;
+            const stale = v === 'STRONG' && day != null && day >= 4;
+            return (
+              <span
+                key={s}
+                className="cursor-help font-bold"
+                style={{ color: verdictColor(v), opacity: stale ? 0.5 : 1 }}
+                title={`${s}: ${v}${day != null ? ` (day ${day} of run)` : ''}`}
+              >
+                {v === 'STRONG' ? '▲' : v === 'WEAK' ? '◈' : '·'}
+              </span>
+            );
+          })}
+        </span>
+      );
+    }
+    return h.majors_strong_count ?? '—';
+  };
 
   return (
     <div>
@@ -326,17 +400,23 @@ function SignalHistory({ history }) {
                 <th key={h} className="text-[8.5px] font-semibold tracking-[0.1em] uppercase py-2 px-3 text-left" style={{ color: 'var(--scanner-text3)', ...(hi === 0 ? { position: 'sticky', left: 0, zIndex: 10, background: 'var(--scanner-bg2)' } : {}) }}>
                   {h === 'Hit' ? (
                     <span title="✓ = directional call was correct · ✗ = directional call was wrong · · = NEUTRAL resolved (no call made, correctly silent) · — = pending (5d not elapsed)">Hit ℹ</span>
+                  ) : h === 'Majors' ? (
+                    <span title="Per-asset verdicts since 2026-10-29 (▲ = ETH/SOL/HYPE STRONG, ◈ = WEAK, · = NEUTRAL); hover a symbol for run age. Older entries show the STRONG count only.">Majors ℹ</span>
                   ) : h}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {recent.map((h, i) => (
+            {recent.map((h, i) => {
+              const btcStale = h.btc_verdict === 'STRONG' && h.btc_run_day != null && h.btc_run_day >= 4;
+              return (
               <tr key={i} style={{ borderBottom: '1px solid var(--scanner-border)' }}>
                 <td className="py-2 px-3 text-[10px]" style={{ color: 'var(--scanner-text2)', position: 'sticky', left: 0, zIndex: 5, background: 'var(--scanner-bg1)' }}>{h.date}</td>
-                <td className="py-2 px-3 text-[10px] font-semibold" style={{ color: verdictColor(h.btc_verdict) }}>{h.btc_verdict}</td>
-                <td className="py-2 px-3 text-[10px]" style={{ color: 'var(--scanner-text2)' }}>{h.majors_strong_count ?? '—'}</td>
+                <td className="py-2 px-3 text-[10px] font-semibold cursor-help whitespace-nowrap" style={{ color: verdictColor(h.btc_verdict), opacity: btcStale ? 0.55 : 1 }} title={h.btc_run_day != null && h.btc_verdict !== 'NEUTRAL' ? `Day ${h.btc_run_day} of this ${h.btc_verdict} run${btcStale ? ' — day 4+ STRONGs decayed OOS (33.6% hit vs ~50% days 1-3)' : ''}` : undefined}>
+                  {h.btc_verdict}{h.btc_run_day != null && h.btc_verdict !== 'NEUTRAL' && h.btc_run_day > 1 ? <span style={{ color: 'var(--scanner-text3)', fontWeight: 400 }}>{` D${h.btc_run_day}`}</span> : null}
+                </td>
+                <td className="py-2 px-3 text-[10px]" style={{ color: 'var(--scanner-text2)' }}>{renderMajors(h)}</td>
                 <td className="py-2 px-3 text-[10px]" style={{ color: 'var(--scanner-text2)' }}>{h.cash_pct}%</td>
                 <td className="py-2 px-3 text-[10px] tabular-nums" style={{ color: h.btc_5d_return != null ? (h.btc_5d_return >= 0 ? 'var(--scanner-green)' : 'var(--scanner-red)') : 'var(--scanner-text3)' }}>
                   {h.btc_5d_return != null ? `${h.btc_5d_return > 0 ? '+' : ''}${h.btc_5d_return.toFixed(2)}%` : '—'}
@@ -357,7 +437,8 @@ function SignalHistory({ history }) {
                    : '—'}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -569,18 +650,18 @@ function SignalScoreboard({ history }) {
             correctly silent — they have no directional call to hit or miss, so they don't count toward
             significance. Currently accumulating ~1 signal/day in trending markets (zero in chop).
             Walk-forward backtest reference:{' '}
-            <span style={{ color: 'var(--scanner-text2)' }}>OOS STRONG 54.5% · WEAK 41.6%</span>{' '}
-            (1444 signals, 2024-07 to 2025-07).
+            <span style={{ color: 'var(--scanner-text2)' }}>OOS STRONG 47.4% · +1.05% avg 10d</span>{' '}
+            (2025-08 to 2026-10, true OOS at the shipped thresholds — see below).
           </div>
         )}
 
-        {/* Walk-forward reference */}
+        {/* OOS reference (post-S1/S2 configuration) */}
         {significant && (
           <div className="text-[8.5px] mt-2" style={{ color: 'var(--scanner-text3)' }}>
-            <strong style={{ color: 'var(--scanner-text2)' }}>Walk-forward reference (OOS, 13 symbols, 2024-07 to 2025-07):</strong>{' '}
-            STRONG 54.5% hit · WEAK 41.6% hit · 1444 signals. Live hit rates should converge
-            toward these figures as the sample grows; persistent divergence &gt;10pp may indicate
-            regime shift or threshold drift.
+            <strong style={{ color: 'var(--scanner-text2)' }}>OOS reference (2025-08 to 2026-10, 4 assets, thresholds STRONG≥9 / macroZ boost removed):</strong>{' '}
+            STRONG 47.4% hit · +1.05% avg 10-day return (n=154; the pre-fix config ran 41.9% / -0.60%
+            on the same window). Live hit rates should converge toward these figures as the sample
+            grows; persistent divergence &gt;10pp may indicate regime shift or threshold drift.
           </div>
         )}
       </div>
@@ -604,7 +685,7 @@ function InterpretationGuide() {
       color: 'var(--scanner-green)',
       meaning: 'Constructive conditions',
       action: 'Risk-on — exposure warranted',
-      detail: 'Trend confirmed by ≥3 gates (z-score stretch + persistence + healthy extension + confirmation). 10-day forward expected return is positive in walk-forward OOS (avg +5.70%, 54.5% hit rate).',
+      detail: 'Trend confirmed by ≥3 gates (z-score stretch + persistence + healthy extension + confirmation). Requires confidence ≥9 (zPctile-confirmed) since 2026-10-29. True OOS 2025-08 to 2026-10: 47.4% hit, avg +1.05% 10-day return (n=154) at this configuration vs -0.60% pre-fix.',
     },
     {
       verdict: 'WEAK',
@@ -612,7 +693,7 @@ function InterpretationGuide() {
       color: '#f5c842',
       meaning: 'Defensive conditions',
       action: 'Risk-off — raise cash / reduce exposure',
-      detail: 'Trend breaking down (negative z-stretch + persistence) OR overextended+crowded (atrExt>5 + fundingZ>2). NOT a "signal failure" — it is an actionable defensive call. Walk-forward OOS: 41.6% directional hit, avg -2.90% 10-day return.',
+      detail: 'Trend breaking down (negative z-stretch + persistence) OR overextended+crowded (atrExt>5 + fundingZ>2). NOT a "signal failure" — it is an actionable defensive call. Never fired live in 100+ days (see Task 36 S7); treat as informational.',
     },
     {
       verdict: 'NEUTRAL',
@@ -825,6 +906,7 @@ export default function Signal() {
           confidence={sm.btc_stance.confidence}
           drivers={sm.btc_stance.drivers}
           horizon={sm.btc_stance.horizon}
+          runDay={sm.btc_stance.run_day}
         />
       </div>
 
@@ -845,6 +927,7 @@ export default function Signal() {
               confidence={a.confidence}
               drivers={a.drivers}
               horizon={a.horizon}
+              runDay={a.run_day}
             />
           ))}
         </div>
@@ -873,10 +956,13 @@ export default function Signal() {
       {/* Backtest stats (if available) */}
       {history.length >= 10 && (
         <div className="text-[8px]" style={{ color: 'var(--scanner-text3)' }}>
-          <strong style={{ color: 'var(--scanner-text2)' }}>Backtest reference (walk-forward OOS, 13 symbols, 2024-07 to 2025-07):</strong>{' '}
-          STRONG 54.5% hit (343 signals, avg +5.70% 10d return) · WEAK 41.6% hit (1101 signals, avg -2.90% 10d return).
-          Thresholds tuned on TRAIN (2022-01 to 2023-06) only; applied unchanged to OOS. 20bps round-trip fees + funding
-          cost included. Live hit rates should converge toward these figures as sample grows.
+          <strong style={{ color: 'var(--scanner-text2)' }}>Backtest reference (true OOS, 4 assets, 2025-08 to 2026-10):</strong>{' '}
+          STRONG 47.4% hit (154 signals, avg +1.05% 10d return) at the current configuration
+          (STRONG≥9, macroZ boost removed 2026-10-29) vs 41.9% hit / -0.60% avg for the pre-fix
+          configuration (STRONG≥8 + macroZ boost) on the same window — the fix demoted 113 of the
+          old STRONGs (including the five worst episodes) with zero new promotions. In-sample
+          (2023-10 to 2025-07) improved to 66.1% / +7.07% (n=183). Live hit rates should converge
+          toward the OOS figures as the sample grows.
         </div>
       )}
       </div>

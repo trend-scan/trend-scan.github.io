@@ -46,17 +46,17 @@ penalties/boosts to a composite stance + 0–10 confidence):
 | 6 | fundingZ | `fundingZScore` | Funding rate z-score (crowding/reversal risk) — gate 6 is effectively dead in v3.1 (see code comment) |
 | 7 | RSI (penalty only) | `computeRSI` | Overbought penalty (>80 reduces STRONG) |
 | 8 | impulseZ (penalty only) | `computeImpulseZ` | Decelerating penalty (falling momentum) |
-| 9 | macroZ (boost) | `computeMacroZ` | External signal, boosts confidence 7→8 when macroZ > 1.5 |
+| 9 | macroZ (context only) | `computeMacroZ` | External signal, displayed as a driver. Former conf 7→8/7→9 boost removed 2026-10-29 (Task 36 S1 — in-sample overfit: boosted OOS STRONGs 29.9% hit / -4.01% vs 47.8% / +1.05% unboosted) |
 
-**Verdict mapping** (from `mapStanceToVerdict` + `DEFAULT_THRESHOLDS`):
-- STRONG: stretched + persistent + confirmed → high confidence
+**Verdict mapping** (from `mapStanceToVerdict` + `DEFAULT_THRESHOLDS`, post-Task 36 S2):
+- STRONG: CONSTRUCTIVE stance with confidence ≥ 9 (zPctile-confirmed + confirmation + no penalties)
 - NEUTRAL: baseline
-- WEAK: stretched negative + persistent bearish
+- WEAK: DEFENSIVE stance with confidence ≥ 8
 
-**Backtest results** (2023-10 to 2025-07, 10-day forward, BTC/ETH/SOL — from file header):
-- STRONG: 62.0% hit rate, +5.02% avg 10-day return (363 signals)
-- WEAK:   54.1% hit rate, -1.37% avg 10-day return (61 signals)
-- NEUTRAL baseline: +2.99% avg
+**Backtest results** (from the compute.js file header + Task 36 modified-engine replay):
+- In-sample 2023-10 to 2025-07: PRE-fix STRONG 60.8% hit / +4.49% avg 10-day (426 signals); CURRENT config STRONG 66.1% / +7.07% (183); WEAK 55.7% / -1.07% (61); NEUTRAL +2.52%
+- True OOS 2025-08 to 2026-10, PRE-fix config (STRONG=8 + macroZ boost): STRONG 41.9% / -0.60% (n=267) — inverted vs its own NEUTRAL baseline (47.9% / +0.50%)
+- True OOS 2025-08 to 2026-10, CURRENT config (STRONG=9, no boost, replayed with the modified engine): STRONG 47.4% hit / +1.05% avg (n=154); 113 old STRONGs demoted, zero promotions; the macroZ ≤ 2.5 subset ran 52.9% / +2.62% (n=121), the macroZ > 2.5 subset 27.3% / -4.69% (n=33, flagged for regime-gating research, not shipped as a gate)
 
 The other verdict engines in the codebase are the **4-gate**
 `compositeEngine.computeFactorStance` (stretch / persistence / crowding /
@@ -1037,7 +1037,7 @@ The core verdict function. Returns `{ stance, confidence, drivers }` where
 | 6 | fundingZ | `fundingZScore(fundingHistory, asOfTs, 90)` | Funding rate z-score (crowding/reversal risk). Note: gate 6 is effectively dead in v3.1 per code comment — historical funding data was incomplete during backtest, so its weight is suppressed |
 | 7 | RSI (penalty only) | `computeRSI(closes, 14)` | Overbought penalty (>80 reduces STRONG confidence) |
 | 8 | impulseZ (penalty only) | `computeImpulseZ(closes, 13, 52)` | Decelerating penalty (falling momentum reduces STRONG) |
-| 9 | macroZ (boost) | `computeMacroZ(candles, params)` | External macro signal, boosts confidence 7→8 when macroZ > 1.5 |
+| 9 | macroZ (context only) | `computeMacroZ(candles, params)` | External macro signal, displayed as a driver only. The former conf 7→8 boost was removed 2026-10-29 (Task 36 S1 — in-sample overfit) |
 
 ### 15.2 `mapStanceToVerdict(stance, confidence, thresholds)`
 
@@ -1052,10 +1052,23 @@ and returns the final verdict + driver breakdown used by the /signal page.
 
 ### 15.4 Backtest results
 
-From the file header (2023-10 to 2025-07, 10-day forward, BTC/ETH/SOL):
-- **STRONG**: 62.0% hit rate, +5.02% avg 10-day return (363 signals)
-- **WEAK**:   54.1% hit rate, -1.37% avg 10-day return (61 signals)
-- **NEUTRAL baseline**: +2.99% avg
+From the compute.js file header + the Task 36 modified-engine replay:
+- **In-sample** (2023-10 to 2025-07, 10-day forward, BTC/ETH/SOL):
+  PRE-fix STRONG 60.8% hit / +4.49% avg (426 signals) · CURRENT config
+  **STRONG 66.1% hit / +7.07% avg (183 signals)** · WEAK 55.7% / -1.07% (61) ·
+  NEUTRAL +2.52%
+- **True OOS** (2025-08 to 2026-10) at the pre-2026-10-29 config (STRONG=8 +
+  macroZ boost): **STRONG 41.9% hit / -0.60% avg (n=267)** — below its own
+  NEUTRAL baseline (47.9% / +0.50%); the macroZ boost manufactured 87 of
+  those STRONGs at 29.9% / -4.01%.
+- **True OOS** (same window) at the current config (STRONG=9, boost removed,
+  Task 36 S1+S2, replayed with the modified engine): **STRONG 47.4% hit /
+  +1.05% avg (n=154)** — 113 old STRONGs demoted to NEUTRAL (incl. all five
+  worst HYPE episodes), zero promotions. Within the survivors: macroZ ≤ 2.5
+  ran 52.9% / +2.62% (n=121); macroZ > 2.5 ran 27.3% / -4.69% (n=33) —
+  flagged for regime-gating research (S10-class), deliberately NOT shipped
+  as a gate (a post-hoc gate on the evaluation window would repeat the
+  macroZ-boost overfit mistake).
 
 ### 15.5 Ablation support
 
