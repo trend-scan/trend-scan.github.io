@@ -30,6 +30,18 @@ import { fetchWithTimeout } from '../src/lib/scanner/fetchWithTimeout.js';
  * 365, percentile 90+252, horizon-medium 375) AND the horizon-long stance
  * (740) so the panel no longer shows "insufficient". Graceful degradation:
  * if a later page fails, earlier pages' candles are still returned.
+ *
+ * Audit A-02 (2026-11-07): bar='1D' candles open on the HONG KONG grid
+ * (16:00 UTC — probe: ts % 86400000 === 57600000), because OKX's '1D' is a
+ * local-market day. The 5d-exit math below (and every window in the engine)
+ * assumes UTC midnights, so recorded "5-day" exits actually closed ~6.7 days
+ * after the UTC-midnight entry date (HK D+5 candle opens D+5 16:00Z, closes
+ * D+6 16:00Z) — the live scoreboard was ~1.7 days longer-horizon than the
+ * Task 36 OOS stats, which used Binance UTC-midnight candles. Fix: use
+ * bar='1Dutc' (UTC-midnight grid, ts % 86400000 === 0), aligning the live
+ * engine AND the exit grid with the backtested data. Legacy history entries
+ * finalized on the HK grid are recomputed once via the btc_5d_grid stamp in
+ * the finalization loop below.
  */
 async function fetchOkxCandles(instId, limit) {
   const PER_PAGE = 300; // OKX hard cap per request
@@ -38,7 +50,7 @@ async function fetchOkxCandles(instId, limit) {
   const maxPages = Math.ceil(limit / PER_PAGE);
 
   for (let page = 0; page < maxPages; page++) {
-    const params = new URLSearchParams({ instId, bar: '1D', limit: String(PER_PAGE) });
+    const params = new URLSearchParams({ instId, bar: '1Dutc', limit: String(PER_PAGE) });
     if (after != null) params.set('after', String(after));
     try {
       const res = await fetchWithTimeout(`https://www.okx.com/api/v5/market/candles?${params}`, {
@@ -92,44 +104,131 @@ async function fetchCandles(symbol, limit = 365) {
 }
 
 /**
+ * Downsample hourly funding entries to 8h buckets (audit A-01, 2026-11-07).
+ *
+ * Hyperliquid pays funding HOURLY; Binance/OKX pay every 8h. fundingZScore's
+ * window is entry-count based (slice(-lookback)), and every OOS validation of
+ * gate 6 ran on 8h Binance data where 90 entries = trailing ~30 days. Feeding
+ * raw hourly entries would silently shrink that window to 90 HOURS (~3.75
+ * days) — a different statistic from the one that was validated. Summing each
+ * 8-hour bucket's hourly rates produces a Binance-equivalent 8h rate (the
+ * total funding paid over the span), so a 90-entry window means ~30 days on
+ * both cadences. Entries are stamped at the newest hourly ts inside the
+ * bucket; a trailing partial bucket (< 8 entries) is dropped so the
+ * "current" rate in the z-score is never an in-progress sum.
+ */
+function downsampleFundingTo8h(entries) {
+  const byBucket = new Map();
+  for (const e of entries) {
+    const b = Math.floor(e.ts / 28800000); // 8h in ms
+    const cur = byBucket.get(b);
+    if (cur) { cur.rate += e.rate; cur.ts = Math.max(cur.ts, e.ts); cur.n += 1; }
+    else byBucket.set(b, { ts: e.ts, rate: e.rate, n: 1 });
+  }
+  const out = [...byBucket.values()].sort((a, b) => a.ts - b.ts);
+  if (out.length && out[out.length - 1].n < 8) out.pop();
+  return out.map(({ ts, rate }) => ({ ts, rate }));
+}
+
+/**
  * Fetch funding rate history from Hyperliquid (not geo-blocked, no key needed).
  * Falls back to OKX funding rate if Hyperliquid doesn't have the symbol.
+ *
+ * Audit A-01 (2026-11-07, Critical): Hyperliquid's fundingHistory endpoint
+ * caps at 500 entries per request and returns the OLDEST 500 of the requested
+ * window — a [now−90d, now] request came back spanning 2026-08-09..2026-08-30,
+ * i.e. data ending 69 DAYS in the past. Since ~Aug 21 (commit 745fe0d) gate 6
+ * (fundingZ) was computed on August rates while the OKX fallback never fired
+ * (HL always returns non-empty, just stale). Fix: page FORWARD — advance the
+ * startTime cursor past the newest entry received and re-request until the
+ * window is covered — then downsample hourly → 8h (see above). A staleness
+ * check on the freshest entry (warn > 48h) plus the funding_as_of /
+ * funding_stale stamps in signal_metrics make a future regression visible
+ * in the deployed snapshot, not just CI logs.
+ *
+ * Robustness: pages are paced (200ms) and retried once — the endpoint
+ * transiently rate-limits bursts (observed: page 2+ of a 5-page sweep
+ * erroring while single requests succeed moments later). If the HL sweep
+ * still ends > 48h stale (partial pagination), we fall through to the OKX
+ * fallback rather than returning stale data; stale HL data is only returned
+ * as a last resort when OKX also fails — flagged by the warning above.
  */
 async function fetchFunding(symbol, days = 90) {
+  const endTime = Date.now();
+  const startTime = endTime - days * 86400000;
+  let hlResult = null; // downsampled 8h entries from HL (fresh or stale)
+
   // Try Hyperliquid first (has funding history endpoint)
   try {
-    const startTime = Date.now() - days * 86400000;
-    const hlRes = await fetchWithTimeout('https://api.hyperliquid.xyz/info', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'fundingHistory',
-        coin: symbol,
-        startTime,
-        endTime: Date.now(),
-      }),
-    });
-    if (hlRes.ok) {
-      const arr = await hlRes.json();
-      if (Array.isArray(arr) && arr.length > 0) {
-        return arr.map(f => ({ ts: f.time, rate: parseFloat(f.fundingRate) }));
+    const raw = [];
+    let cursor = startTime;
+    for (let page = 0; page < 40; page++) { // 90d hourly ≈ 2160 entries ≈ 5 pages; 40 = runaway guard
+      let arr = null;
+      for (let attempt = 0; attempt < 2 && arr == null; attempt++) {
+        try {
+          const hlRes = await fetchWithTimeout('https://api.hyperliquid.xyz/info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'fundingHistory',
+              coin: symbol,
+              startTime: cursor,
+              endTime,
+            }),
+          });
+          if (hlRes.ok) {
+            const body = await hlRes.json();
+            if (Array.isArray(body) && body.length > 0) arr = body;
+            else break; // definitive empty page — no retry
+          }
+        } catch {}
+        if (arr == null && attempt === 0) await new Promise(r => setTimeout(r, 500));
+      }
+      if (arr == null) break; // page failed twice — keep what we have
+      for (const f of arr) raw.push({ ts: f.time, rate: parseFloat(f.fundingRate) });
+      if (arr.length < 500) break;          // window exhausted
+      const lastTs = arr[arr.length - 1].time;
+      if (lastTs <= cursor) break;           // safety: no forward progress
+      cursor = lastTs + 1;
+      await new Promise(r => setTimeout(r, 200)); // pace the sweep
+    }
+    if (raw.length > 0) {
+      raw.sort((a, b) => a.ts - b.ts);
+      // Staleness assert (A-01): the freshest entry must be < 48h old,
+      // otherwise gate 6 is computing on a dead feed. Warn loudly here;
+      // computeSignalMetrics also stamps funding_as_of / funding_stale into
+      // signal_metrics so the condition is visible in the live snapshot.
+      const newest = raw[raw.length - 1].ts;
+      const ageH = (endTime - newest) / 3600000;
+      hlResult = downsampleFundingTo8h(raw);
+      if (ageH > 48) {
+        console.warn(`  ⚠ ${symbol} funding feed STALE: newest entry ${new Date(newest).toISOString()} (${Math.round(ageH)}h old) — trying OKX fallback (A-01)`);
+      } else {
+        return hlResult;
       }
     }
   } catch {}
 
-  // Fall back to OKX funding rate
+  // Fall back to OKX funding rate (native 8h cadence — already the
+  // granularity fundingZScore's entry-count window expects; 100 entries
+  // ≈ 33 days, covering the 90-entry ≈ 30-day window). Sorted ascending so
+  // fundingZScore's slice(-lookback) takes the NEWEST entries (OKX returns
+  // newest-first).
   try {
     const okxUrl = `https://www.okx.com/api/v5/public/funding-rate-history?instId=${symbol}-USDT-SWAP&limit=${Math.min(days * 3, 100)}`;
     const res = await fetchWithTimeout(okxUrl, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
     if (res.ok) {
       const json = await res.json();
       if (json.code === '0' && json.data?.length) {
-        return json.data.map(f => ({ ts: parseInt(f.fundingTime), rate: parseFloat(f.fundingRate) }));
+        return json.data
+          .map(f => ({ ts: parseInt(f.fundingTime), rate: parseFloat(f.fundingRate) }))
+          .sort((a, b) => a.ts - b.ts);
       }
     }
   } catch {}
 
-  return [];
+  // Last resort: stale HL data beats no data (already warned above).
+  return hlResult ?? [];
 }
 
 /**
@@ -151,6 +250,19 @@ export async function computeSignalMetrics({
     btcCandles = await fetchCandles('BTC', 750);
     btcFunding = await fetchFunding('BTC', 90);
     console.log(`  Signal: BTC ${btcCandles.length} candles, ${btcFunding.length} funding entries`);
+  }
+
+  // Funding freshness stamps (A-01, 2026-11-07): gate 6's BTC confirmation
+  // (fundingZ < 1 → +2) and the crowding penalty (fundingZ > 2 → −2) are only
+  // trustworthy if the funding feed is recent. fetchFunding warns in CI logs;
+  // these fields make the condition inspectable in the deployed snapshot
+  // (signal_metrics.funding_as_of / funding_stale) without log access.
+  const newestFundingTs = Array.isArray(btcFunding) && btcFunding.length
+    ? btcFunding[btcFunding.length - 1].ts : null;
+  const fundingAsOf = newestFundingTs != null ? new Date(newestFundingTs).toISOString() : null;
+  const fundingStale = fundingAsOf == null || (Date.now() - newestFundingTs) > 48 * 3600000;
+  if (fundingStale) {
+    console.warn(`  ⚠ Signal: BTC funding data STALE (as of ${fundingAsOf ?? 'none'}) — fundingZ gate suspect (A-01)`);
   }
 
   // ── BTC signal ──────────────────────────────────────────────────────────
@@ -291,6 +403,8 @@ export async function computeSignalMetrics({
   const signalMetrics = {
     as_of: asOf,
     is_weekend: isWeekend,
+    funding_as_of: fundingAsOf,
+    funding_stale: fundingStale,
     btc_stance: {
       verdict: btcSignal.verdict,
       confidence: btcSignal.confidence,
@@ -345,16 +459,31 @@ export async function computeSignalMetrics({
   // btc_5d_finalized flag marks exact entries — legacy entries written
   // pre-S5 (no flag) are re-finalized once from completed candles, which
   // repairs the historical partial-candle exits in place.
+  //
+  // Audit A-02 (2026-11-07): every exit finalized before today was measured
+  // on OKX bar='1D' candles — the HONG KONG grid (16:00 UTC open) — so the
+  // "first candle at/after entryDate+5d" rule selected the HK candle opening
+  // D+5 16:00Z, whose close lands ~6.7 days after the UTC-midnight entry:
+  // recorded "5-day" returns were actually ~6.7-day returns. Candles are now
+  // bar='1Dutc' (UTC midnights — the same grid as the Task 36 OOS backtest's
+  // Binance data), and every legacy entry is recomputed ONCE via the
+  // btc_5d_grid stamp: an exit is final only when stamped btc_5d_grid='utc'.
+  // The stamp makes the migration idempotent — after this build, subsequent
+  // runs skip already-stamped entries exactly like the finalized flag.
   const nowMs = Date.now();
   for (const entry of signalHistory) {
-    if (entry.btc_5d_finalized || entry.btc_close_at_signal == null) continue;
+    if (entry.btc_close_at_signal == null) continue;
     const entryDate = new Date(entry.date).getTime();
     const daysAgo = (nowMs - entryDate) / 86400000;
     if (daysAgo < 5) continue;
+    // Already finalized on the UTC grid — nothing to do (A-02 idempotency).
+    if (entry.btc_5d_finalized && entry.btc_5d_grid === 'utc') continue;
     // Find the first candle at/after entryDate + 5 days; use its close only
-    // if that candle's UTC day has completed. btcCandles is oldest→newest.
-    // (750-candle fetch window covers D+5 exits for entries up to ~745 days
-    // old — beyond the 365-day history cap, so every entry is covered.)
+    // if that candle's UTC day has completed. btcCandles is oldest→newest
+    // and 1Dutc (A-02), so the selected candle is the UTC day-D+5 candle and
+    // its close IS the day-D+5 close. (750-candle fetch window covers D+5
+    // exits for entries up to ~745 days old — beyond the 365-day history
+    // cap, so every entry is covered.)
     const targetTs = entryDate + 5 * 86400000;
     let exitClose = null;
     for (let i = 0; i < btcCandles.length; i++) {
@@ -369,9 +498,12 @@ export async function computeSignalMetrics({
         (entry.btc_verdict === 'STRONG' && entry.btc_5d_return > 0) ||
         (entry.btc_verdict === 'WEAK' && entry.btc_5d_return < 0);
       entry.btc_5d_finalized = true;
+      entry.btc_5d_grid = 'utc';
     } else if (entry.btc_5d_return != null) {
-      // Legacy value came from a partial candle and the exact candle is
-      // still forming — retract it; a later build fills in the exact exit.
+      // Legacy value came from a partial candle (or the HK grid — A-02) and
+      // the exact UTC candle is still forming — retract it; a later build
+      // fills in the exact exit. The grid stamp is deliberately NOT set, so
+      // the entry is re-processed next run.
       entry.btc_5d_return = null;
       entry.btc_5d_hit = null;
     }

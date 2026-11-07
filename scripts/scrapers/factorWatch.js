@@ -300,7 +300,14 @@ function parseBaskets(html) {
  * data as suspicious and logging a warning.
  */
 function parseAsOfDate(html) {
-  const m = html.match(/as of\s*(\d{4}-\d{2}-\d{2})/i);
+  // Audit A-06 (2026-11-07): FactorWatch changed their header markup — the
+  // date now sits in a separate element after the label ("as of </span>2026-11-06"),
+  // so the original /as of\s*(date)/ pattern missed and as_of came back null
+  // for every scrape from ~Nov 5 2026 (which build_snapshot then mislabeled
+  // with the build date — the relocated F-14-b-9 lie). The pattern now
+  // tolerates intervening closing tags and whitespace; it still returns null
+  // on a genuine miss (no date at all), preserving the F-14-b-9 contract.
+  const m = html.match(/as of\s*(?:<\/[a-zA-Z][^>]*>|\s)*(\d{4}-\d{2}-\d{2})/i);
   return m ? m[1] : null;
 }
 

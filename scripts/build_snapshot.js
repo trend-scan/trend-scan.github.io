@@ -2296,8 +2296,21 @@ async function main() {
   // Same pattern as crypto_factor_history — enables detectRotation() for TradFi.
   let fwLeaderHistory = _prevSnapshot?.factor_watch_leader_history || [];
 
-  if (factorWatch?.sp500?.factors?.momentum && factorWatch?.fw3000?.factors?.momentum) {
-    const today = factorWatch.as_of || new Date().toISOString().slice(0, 10);
+  // Audit A-06 (2026-11-07): the history append below used `as_of || new Date()`,
+  // which relocated the F-14-b-9 freshness lie from the scraper to this caller —
+  // when the FactorWatch header regex misses (as it did from ~Nov 5 2026, when
+  // FW wrapped the date in a closing </span> that broke the pattern), unknown-
+  // vintage data was appended to factor_watch_history / leader history under
+  // TODAY's date. The append now requires a real as_of; when null we warn and
+  // skip, so the charts pause instead of accumulating mislabeled points. (The
+  // scraper regex itself was also fixed to tolerate the new markup — see
+  // scrapers/factorWatch.js parseAsOfDate.)
+  if (factorWatch && !factorWatch.as_of && factorWatch.sp500?.factors?.momentum) {
+    console.warn('⚠ FactorWatch as_of is null (header parse miss) — skipping history/leader append (A-06)');
+  }
+
+  if (factorWatch?.sp500?.factors?.momentum && factorWatch?.fw3000?.factors?.momentum && factorWatch.as_of) {
+    const today = factorWatch.as_of;
     const sp500Mom5dSigma = factorWatch.sp500.factors.momentum['5d_sigma'];
     const fw3000Mom5dSigma = factorWatch.fw3000.factors.momentum['5d_sigma'];
     const sp500Mom20dSigma = factorWatch.sp500.factors.momentum['20d_sigma'];

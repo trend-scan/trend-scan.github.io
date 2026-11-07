@@ -413,13 +413,21 @@ async function fetchTradfiCandles(symbol, limit = 300, snapCandles = null) {
   // Used by fetchTradMarketData to label each ticker's source for UI display.
   //
   // SNAPSHOT PRIORITY (fixed 2026-07-21):
-  //   The Yahoo Cloudflare Worker proxy is configured WITHOUT a token in
-  //   production (GitHub secrets VITE_YAHOO_PROXY_URL and VITE_YAHOO_PROXY_TOKEN
-  //   are not set). The proxy responds 401 to every request, so
-  //   fetchYahooProxyCandles always returns null. This caused the live refresh
-  //   to fall back to Lighter (a low-liquidity prediction market) for ALL
-  //   public tickers, overwriting correct Yahoo-sourced snapshot data with
-  //   stale prediction-market prices.
+  //   History: in July 2026 the Yahoo proxy had no token configured at build
+  //   time (VITE_YAHOO_PROXY_TOKEN unset), so every browser-side proxy call
+  //   401'd, fetchYahooProxyCandles always returned null, and the live
+  //   refresh fell back to Lighter (a low-liquidity prediction market) for
+  //   ALL public tickers, overwriting correct Yahoo-sourced snapshot data
+  //   with stale prediction-market prices.
+  //
+  //   2026-11-07 audit re-verification (A-07): the token gate IS live and
+  //   working now — the deployed bundle carries a baked X-TrendScan-Token
+  //   literal and authenticated /chart requests return 200. The original
+  //   audit claim that "every browser-side proxy call 401s in production"
+  //   was an evidence error (the token literal was hidden behind minified
+  //   variable indirection). Snapshot-first is kept anyway: the server-side
+  //   snapshot is already fetched and paid for, so live sources are only a
+  //   fallback for tickers the snapshot lacks.
   //
   //   Fix: if the snapshot already has data for this ticker, return it
   //   directly. Skip all live sources. The snapshot is fetched server-side

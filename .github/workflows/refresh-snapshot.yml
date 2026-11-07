@@ -1,10 +1,10 @@
 # TrendScan — Snapshot Refresh (4× daily, 7 days/week)
 #
 # This is a lightweight workflow that ONLY refreshes the snapshot data.
-# It commits snapshot.json (small, ~450KB) to main, then pushes
-# snapshot.tradfi.json (large, ~13MB) DIRECTLY to the gh-pages branch,
+# It commits snapshot.json (small, ~1.4MB) to main, then pushes
+# snapshot.tradfi.json (large, ~22MB) DIRECTLY to the gh-pages branch,
 # bypassing main entirely. This prevents Git repository bloat — committing
-# a 13MB file 4× daily to main would add ~52MB/day to .git history.
+# a 22MB file ~9× daily to main would add ~200MB/day to .git history.
 #
 # Why split the commit targets?
 #   - snapshot.json is small and useful for first-paint — commit to main
@@ -139,9 +139,21 @@ jobs:
           echo "Pushed snapshot.json to main."
 
       # ── Push snapshot.tradfi.json directly to gh-pages ─────────────────────
-      # This avoids committing the 13MB file to main's history. The gh-pages
-      # branch is the deployed branch — it's force-pushed on every deploy
-      # anyway, so its history is ephemeral. Main's history stays clean.
+      # This avoids committing the ~22MB file to main's history. gh-pages here
+      # is a DATA SHUTTLE, not the deployed site — the live site is deployed
+      # by deploy.yml through the Pages artifact API (actions/deploy-pages),
+      # which never reads or writes this branch; deploy.yml only fetches it
+      # (--depth=1) to pick up snapshot.tradfi.json for the build.
+      #
+      # Audit A-03 (2026-11-07): the old comment claimed "gh-pages is
+      # force-pushed on every deploy anyway, so its history is ephemeral" —
+      # false. Nobody rewrote the branch: this workflow APPENDS a commit per
+      # refresh (~9/day, each carrying a fresh ~22MB blob), growing gh-pages
+      # to 1,052 commits, and every run's checkout (fetch-depth: 0) downloaded
+      # that entire history. The "Measure gh-pages history size" +
+      # "Orphan-reset gh-pages history" steps below bound it: above 100
+      # commits the branch is replaced with a single orphan commit carrying
+      # the same files.
       #
       # RETRY LOGIC: The gh-pages push was the #1 failure point in July 2026
       # (10/45 runs failed here). Root causes were:
@@ -244,10 +256,82 @@ jobs:
         run: |
           echo "⚠️ snapshot.tradfi.json push failed after 3 retries." >> $GITHUB_STEP_SUMMARY
           echo "The snapshot.json was committed to main, but the tradfi snapshot" >> $GITHUB_STEP_SUMMARY
-          echo "(13MB) was NOT pushed to gh-pages. The live site will continue" >> $GITHUB_STEP_SUMMARY
+          echo "(~22MB) was NOT pushed to gh-pages. The live site will continue" >> $GITHUB_STEP_SUMMARY
           echo "serving the previous tradfi snapshot until the next successful run." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "This is non-blocking — the next scheduled run will retry." >> $GITHUB_STEP_SUMMARY
+
+      # ── gh-pages history maintenance (audit A-03, 2026-11-07) ──────────────
+      # Count the branch's commits via the API (no git fetch needed) and, above
+      # a threshold, replace the branch with a single orphan commit carrying
+      # the same three files. Content is identical to what this run just built
+      # (or just pushed), so nothing is lost — only the accumulated history of
+      # superseded 22MB blobs. A failed reset is non-blocking: the next run
+      # counts again and retries with a (slightly) bigger number.
+      - name: Measure gh-pages history size
+        id: ghpages_size
+        uses: actions/github-script@v9
+        with:
+          script: |
+            let count = 0;
+            try {
+              const res = await github.rest.repos.listCommits({
+                owner: context.repo.owner, repo: context.repo.repo,
+                sha: 'gh-pages', per_page: 1,
+              });
+              count = res.data.length;
+              // Link header rel="last" page number = total commit count
+              const link = res.headers.link || '';
+              const m = link.match(/[?&]page=(\d+)>;\s*rel="last"/);
+              if (m) count = parseInt(m[1], 10);
+            } catch (e) {
+              console.log(`gh-pages not readable (${e.status ?? e.message}) — treating as 0 commits`);
+            }
+            console.log(`gh-pages commit count: ${count}`);
+            core.setOutput('count', String(count));
+            core.setOutput('reset', count > 100 ? 'true' : 'false');
+            if (count > 100) {
+              core.notice(`gh-pages has ${count} commits — orphan-resetting to 1 this run`);
+            }
+
+      - name: Orphan-reset gh-pages history (>100 commits)
+        if: steps.ghpages_size.outputs.reset == 'true'
+        timeout-minutes: 5
+        run: |
+          set -e
+          # The files must exist locally — build_snapshot.js wrote them this run.
+          [ -f public/snapshot.tradfi.json ] || { echo "no tradfi file present — skipping reset"; exit 0; }
+          COUNT="${{ steps.ghpages_size.outputs.count }}"
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          # Copy to /tmp BEFORE any branch switching (public/ only exists on main)
+          cp public/snapshot.tradfi.json /tmp/snapshot.tradfi.json
+          cp public/snapshot.json /tmp/snapshot.json
+          git stash --include-untracked || true
+          git checkout --orphan gh-pages-reset
+          git rm -rf . 2>/dev/null || true
+          cp /tmp/snapshot.tradfi.json snapshot.tradfi.json
+          cp /tmp/snapshot.json snapshot.json
+          touch .nojekyll
+          git add snapshot.tradfi.json snapshot.json .nojekyll
+          git commit -m "chore(gh-pages): orphan-reset history (${COUNT} commits -> 1) — data-shuttle branch; site deploys via Actions artifact API (A-03)"
+          # Retry the force-push — non-blocking on failure: the next run
+          # counts again and retries (history just grows a little meanwhile).
+          for attempt in 1 2 3; do
+            if git push --force origin HEAD:gh-pages; then
+              echo "✓ gh-pages history orphan-reset: ${COUNT} commits -> 1"
+              echo "gh-pages history orphan-reset: ${COUNT} commits -> 1 (A-03)" >> $GITHUB_STEP_SUMMARY
+              git checkout main
+              git stash pop || true
+              exit 0
+            fi
+            echo "⚠ Reset push attempt ${attempt} failed — retrying in $((attempt * 10))s..."
+            sleep $((attempt * 10))
+          done
+          echo "⚠️ gh-pages orphan-reset failed after 3 attempts (non-blocking; next run retries)" >> $GITHUB_STEP_SUMMARY
+          git checkout main 2>/dev/null || true
+          git stash pop 2>/dev/null || true
+          exit 0
 
       - name: Trigger deploy
         if: steps.diff.outputs.changed == 'true'

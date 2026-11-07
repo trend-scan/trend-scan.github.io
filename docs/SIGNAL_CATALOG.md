@@ -43,7 +43,7 @@ penalties/boosts to a composite stance + 0–10 confidence):
 | 3 | trendTenure | `computeTrendTenure` | Consecutive days closing above 50-MA (persistence) |
 | 4 | atrExt50ma | `computeAtrExt50ma` | Extension from 50-MA in ATR units (volatility-normalized) |
 | 5 | RS vs BTC (7-day) | `computeRsVsBtc` | Return ratio for majors (confirmation) |
-| 6 | fundingZ | `fundingZScore` | Funding rate z-score (crowding/reversal risk) — gate 6 is effectively dead in v3.1 (see code comment) |
+| 6 | fundingZ | `fundingZScore` | Funding rate z-score (crowding/reversal risk). Production feed (since 2026-11-07, audit A-01 fix): Hyperliquid hourly funding, forward-paginated past the 500-entry API cap and downsampled to 8h buckets so the 90-entry window = trailing ~30 days — the cadence gate 6 was OOS-validated on. Before the fix, HL's cap silently fed 69–90-day-stale August rates into the gate (~78 days) |
 | 7 | RSI (penalty only) | `computeRSI` | Overbought penalty (>80 reduces STRONG) |
 | 8 | impulseZ (penalty only) | `computeImpulseZ` | Decelerating penalty (falling momentum) |
 | 9 | macroZ (context only) | `computeMacroZ` | External signal, displayed as a driver. Former conf 7→8/7→9 boost removed 2026-10-29 (Task 36 S1 — in-sample overfit: boosted OOS STRONGs 29.9% hit / -4.01% vs 47.8% / +1.05% unboosted) |
@@ -1034,7 +1034,7 @@ The core verdict function. Returns `{ stance, confidence, drivers }` where
 | 3 | trendTenure | `computeTrendTenure(closes)` | Consecutive days closing above 50-MA (persistence) |
 | 4 | atrExt50ma | `computeAtrExt50ma(candles)` | Extension from 50-MA in ATR units (volatility-normalized) |
 | 5 | RS vs BTC (7-day) | `computeRsVsBtc(candles, btcCandles, 7)` | Return ratio for majors (confirmation) |
-| 6 | fundingZ | `fundingZScore(fundingHistory, asOfTs, 90)` | Funding rate z-score (crowding/reversal risk). Note: gate 6 is effectively dead in v3.1 per code comment — historical funding data was incomplete during backtest, so its weight is suppressed |
+| 6 | fundingZ | `fundingZScore(fundingHistory, asOfTs, 90)` | Funding rate z-score (crowding/reversal risk). The window is entry-count based (slice(-90)): 90 × 8h entries = trailing ~30 days. Production feeds 8h-downsampled Hyperliquid funding (A-01 fix, 2026-11-07) so live and backtest cadences match; backtests use the Binance 8h archive. (The old "gate 6 effectively dead in v3.1" note referred to the pre-2026-07-21 `.ts`/`.t` caching bug, long fixed.) |
 | 7 | RSI (penalty only) | `computeRSI(closes, 14)` | Overbought penalty (>80 reduces STRONG confidence) |
 | 8 | impulseZ (penalty only) | `computeImpulseZ(closes, 13, 52)` | Decelerating penalty (falling momentum reduces STRONG) |
 | 9 | macroZ (context only) | `computeMacroZ(candles, params)` | External macro signal, displayed as a driver only. The former conf 7→8 boost was removed 2026-10-29 (Task 36 S1 — in-sample overfit) |
