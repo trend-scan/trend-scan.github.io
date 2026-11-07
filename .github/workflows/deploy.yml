@@ -286,17 +286,51 @@ jobs:
             // cancel-in-progress: true, so a 'cancelled' build is usually an
             // INTENTIONAL supersede by a newer push. Only alert when nothing
             // newer took over (hang / runner loss / manual abort).
+            //
+            // 2026-11-07 (issue #13 post-mortem): the superseding run can be
+            // created SECONDS before this job queries the run list, and
+            // listWorkflowRuns is eventually consistent — production race:
+            // run #1478 was cancelled at finalization 14:29:47Z, superseding
+            // run #1479 was created 14:29:45Z, this guard queried at
+            // 14:29:52Z, missed it, and filed a spurious issue. Hardened:
+            //   1. Retry the list query with backoff (4 attempts, ~60s max).
+            //      A newer run in ANY state counts as a supersede — if that
+            //      newer run itself failed, ITS alert job files the issue.
+            //   2. If every step of the build job already concluded
+            //      success/skipped, the cancel landed AFTER build + deploy +
+            //      smoke test completed — the work shipped, so no alert.
+            //      Reads only this run's own jobs (no list-lag dependency).
             if (result === 'cancelled') {
-              const newer = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner, repo: context.repo.repo,
-                workflow_id: 'deploy.yml', per_page: 15,
-              });
-              const superseded = newer.data.workflow_runs.some(r =>
-                r.run_number > context.runNumber &&
-                (r.status === 'queued' || r.status === 'in_progress' || r.conclusion === 'success')
-              );
+              let superseded = false;
+              let newerSeen = 'none';
+              for (let attempt = 1; attempt <= 4 && !superseded; attempt++) {
+                if (attempt > 1) {
+                  console.log(`Supersede check: no newer run visible yet (attempt ${attempt - 1}); waiting 20s for run-list replication...`);
+                  await new Promise(resolve => setTimeout(resolve, 20000));
+                }
+                const newer = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  workflow_id: 'deploy.yml', per_page: 15,
+                });
+                const newerRuns = newer.data.workflow_runs.filter(r => r.run_number > context.runNumber);
+                if (newerRuns.length > 0) {
+                  superseded = true;
+                  newerSeen = newerRuns.map(r => `#${r.run_number}(${r.status}/${r.conclusion})`).join(', ');
+                }
+              }
               if (superseded) {
-                console.log(`Run #${context.runNumber} was cancelled as superseded by a newer run -- no alert.`);
+                console.log(`Run #${context.runNumber} was cancelled as superseded by newer run(s) [${newerSeen}] -- no alert.`);
+                return;
+              }
+              const jobs = await github.rest.actions.listJobsForWorkflowRun({
+                owner: context.repo.owner, repo: context.repo.repo,
+                run_id: context.runId,
+              });
+              const buildJob = jobs.data.jobs.find(j => j.name === 'Build & deploy to GitHub Pages');
+              const allStepsDone = buildJob && (buildJob.steps || []).length > 0 &&
+                buildJob.steps.every(s => s.conclusion === 'success' || s.conclusion === 'skipped');
+              if (allStepsDone) {
+                console.log(`Run #${context.runNumber}: job concluded 'cancelled' but all ${buildJob.steps.length} steps succeeded/skipped -- work completed before the cancel landed; no alert.`);
                 return;
               }
             }
