@@ -107,6 +107,16 @@ async function fetchText(url, opts = {}) {
   return res.text();
 }
 
+// Issue #14 (2026-11-15): several legacy call sites used raw fetch() with NO
+// timeout — a single hung upstream socket there (Binance OI fallback, Ken
+// French zip, CBOE VIX, Farside scrape, Yahoo OHLCV) silently consumed the
+// whole 10-minute step budget and failed run #1558. fetchJson/fetchText have
+// been bounded since audit F-14-a-8; this extends the same 15s bound to the
+// remaining raw fetch() call sites so a hang degrades into a warn + fallback
+// instead of a red deploy. Farside intentionally gets 30s (large HTML pages).
+const FETCH_TIMEOUT_MS = 15000;
+const FETCH_TIMEOUT_MS_FARSIDE = 30000;
+
 async function safeFetchJson(label, url, opts) {
   try {
     return await fetchJson(url, opts);
@@ -656,7 +666,8 @@ async function fetchBinanceOI() {
         const batch = perpSymbols.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(
           batch.map(async ({ base, symbol }) => {
-            const res = await fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`);
+            const res = await fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`,
+              { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
             if (!res.ok) return null;
             const d = await res.json();
             const oiCoin = parseFloat(d.openInterest || '0');
@@ -781,7 +792,8 @@ async function fetchKenFrench() {
   try {
     // Download + unzip the CSV server-side (CORS-blocked in browser)
     const AdmZip = (await import('adm-zip')).default;
-    const res = await fetch('https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip');
+    const res = await fetch('https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip',
+      { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     const zip = new AdmZip(buf);
@@ -839,7 +851,8 @@ async function fetchKenFrench() {
 async function fetchVIXRealtime() {
   console.log('── CBOE VIX real-time ──');
   try {
-    const res = await fetch('https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json');
+    const res = await fetch('https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json',
+      { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) { console.warn(`  ✗ CBOE VIX: HTTP ${res.status}`); return null; }
     const d = await res.json();
     const vix = d?.data;
@@ -969,6 +982,7 @@ async function fetchFarsideETFFlows() {
       try {
         const res = await fetch(url, {
           headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS_FARSIDE),
         });
         if (!res.ok) {
           console.warn(`  ✗ Farside ${asset}: HTTP ${res.status} from ${url}`);
@@ -1065,7 +1079,7 @@ async function fetchYahooOHLCV(symbol, limit = 250, retries = 2) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySymbol)}?range=1y&interval=1d`;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' } });
+      const res = await fetch(url, { headers: { 'User-Agent': 'TrendScan-Snapshot/1.0' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
       if (res.status === 429 || res.status === 503) {
         // Rate limited — wait and retry (exponential backoff: 2s, 4s)
         if (attempt < retries) {

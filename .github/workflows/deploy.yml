@@ -108,14 +108,23 @@ jobs:
         # The daily 23:00 UTC cron safety-net deploy now relies on
         # refresh-snapshot's workflow_dispatch trigger (which already fires
         # a deploy after each 4-hourly snapshot rebuild).
+        #
+        # Issue #14 (2026-11-15): the guard below said != 'schedule', but the
+        # F-14-a-14 intent above was push-ONLY. Every workflow_dispatch deploy
+        # (6+/day, fired by refresh-snapshot right after it builds AND commits
+        # public/snapshot.json to main — verified: the checkout already holds
+        # a minutes-old snapshot) redundantly re-hit FRED/CMC/Yahoo/etc. Run
+        # #1558 was exactly this path: 10m42s hang in this step → red deploy →
+        # issue #14. Now push-only: dispatch/schedule deploys package the
+        # committed snapshot; pushes still rebuild so the site matches code.
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
         timeout-minutes: 10
         run: node scripts/build_snapshot.js
-        # Skip on daily cron — refresh-snapshot.yml already runs 4× daily
-        # and triggers a deploy via workflow_dispatch after each run.
-        if: github.event_name != 'schedule'
+        # Push only — refresh-snapshot.yml builds + commits the snapshot 4×
+        # daily and dispatches this deploy; rebuilding here is redundant.
+        if: github.event_name == 'push'
 
       # Fetch snapshot.tradfi.json from the gh-pages branch.
       # It's NOT committed to main (gitignored) to prevent repository bloat.
@@ -172,7 +181,17 @@ jobs:
         run: |
           mkdir -p dist
           cp public/snapshot.json dist/snapshot.json
-          cp public/snapshot.tradfi.json dist/snapshot.tradfi.json
+          # Issue #14 follow-up: on dispatch/schedule deploys the snapshot
+          # build step is skipped (push-only), so snapshot.tradfi.json comes
+          # solely from the gh-pages fetch step above. If that fetch also
+          # came up empty, warn + omit instead of failing the whole deploy —
+          # the client's EnvironmentPanel degrades gracefully; a hard red
+          # deploy here would re-open the issue-#14-style noise.
+          if [ -f public/snapshot.tradfi.json ]; then
+            cp public/snapshot.tradfi.json dist/snapshot.tradfi.json
+          else
+            echo "⚠ public/snapshot.tradfi.json missing — dist omits it (EnvironmentPanel falls back)"
+          fi
           # .nojekyll tells GitHub Pages to serve files as-is (no Jekyll processing)
           touch dist/.nojekyll
 
