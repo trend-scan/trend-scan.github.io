@@ -33,6 +33,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchFactorWatch } from './scrapers/factorWatch.js';
 import { computeCryptoFactors } from './compute_crypto_factors.js';
+import { fetchBtcEnrichment, accumulateBtcOiHistory } from './btcEnrichment.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2464,6 +2465,15 @@ async function main() {
   const cryptoGrid = computeCryptoGrid(cryptoUniverse, coingecko);
   const signalVerification = computeSignalVerification(regimeHistory, signalHistory, cryptoFactors?.factorHistory);
 
+  // ── BTC on-chain & derivatives enrichment (Task 42, 2026-11-23) ─────────
+  // Four new sections for the weekly desk update: btc_market (spot + 111D/
+  // 200W/350W MAs + Mayer + Pi Cycle from 8y of closes), btc_onchain (BD
+  // gated daily with per-field as-of stamps + CM CSV MVRV backfill),
+  // btc_vol (DVOL history + 25Δ skew + ATM term structure), btc_derivatives
+  // (BTC funding fix + L/S ratio + OI history). Runs AFTER the fallbacks
+  // above so coingecko is already the carried-previous value if CG 429'd.
+  const btcEnrich = await fetchBtcEnrichment(coingecko, _prevSnapshot);
+
   // Small snapshot — loaded by every page (FRED proxy, CoinGecko fallback,
   // Fear&Greed, Ken French seasonality, CBOE put/call, ETF flows, FactorWatch,
   // crypto factors, signal metrics). Keeping this lean is critical for first paint.
@@ -2497,6 +2507,17 @@ async function main() {
     factor_universe: factorUniverse,
     crypto_grid: cryptoGrid,
     signal_verification: signalVerification,
+    // BTC on-chain & derivatives enrichment (Task 42, 2026-11-23)
+    btc_market: btcEnrich.btc_market,
+    btc_onchain: btcEnrich.btc_onchain,
+    btc_vol: btcEnrich.btc_vol,
+    btc_derivatives: {
+      ...btcEnrich.btc_derivatives,
+      // OI history accumulation uses the fresh binance_oi value, so the
+      // daily BTC OI series persists regardless of the on-chain gating.
+      oi_history: accumulateBtcOiHistory(_prevSnapshot?.btc_derivatives?.oi_history, binanceOI),
+    },
+    mvrv_backfill: btcEnrich.mvrv_backfill,
   };
 
   // Large snapshot — only loaded when Board or Macro needs tradfi OHLCV.
@@ -2525,6 +2546,10 @@ async function main() {
   console.log(`  ETF flow assets:        ${Object.keys(etfFlows).length} (BTC, ETH, SOL, HYPE)`);
   console.log(`  FactorWatch:            ${factorWatch ? '✓ populated' : 'null'} (history: ${factorWatchHistory.length} days)`);
   console.log(`  Crypto factors:         ${cryptoFactors?.factorData ? '✓ populated' : 'null'} (history: ${cryptoFactors?.factorHistory?.length || 0} days)`);
+  console.log(`  BTC market:            ${btcEnrich.btc_market?.spot ? `spot $${Math.round(btcEnrich.btc_market.spot.price).toLocaleString()} | Mayer ${btcEnrich.btc_market.mayer}` : 'null'}`);
+  console.log(`  BTC on-chain:          ${btcEnrich.btc_onchain ? `BD ${Object.keys(btcEnrich.btc_onchain).filter(k => btcEnrich.btc_onchain[k]?.value != null).length} fields` : 'null'} (MVRV backfill: ${btcEnrich.mvrv_backfill ? btcEnrich.mvrv_backfill.rows.length + ' rows' : 'none'})`);
+  console.log(`  BTC vol:               ${btcEnrich.btc_vol?.dvol ? `DVOL ${btcEnrich.btc_vol.dvol} (${btcEnrich.btc_vol.skew_25d?.length || 0} skew tenors)` : 'null'}`);
+  console.log(`  BTC derivatives:       ${btcEnrich.btc_derivatives?.funding ? `funding ${(btcEnrich.btc_derivatives.funding.rate_8h * 100).toFixed(4)}%/8h` : 'null'} | L/S ${btcEnrich.btc_derivatives?.long_short?.ratio ?? 'null'}`);
   console.log(`  snapshot.json:          ${snapshotBytes.toLocaleString()} bytes`);
   console.log(`  snapshot.tradfi.json:   ${tradfiBytes.toLocaleString()} bytes`);
 
