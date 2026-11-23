@@ -240,8 +240,10 @@ const LIGHTER_EXPLORER = 'https://explorer.elliot.ai/api';
 // flip from $207.29 (snapshot) to $202.92 (Lighter) for NVDA, with
 // volume dropping from 106M to 4,260 — clearly wrong.
 const PRIVATE_TICKERS = new Set([
-  'OPENAI', 'ANTHROPIC', 'MINIMAX', 'ZHIPU',
+  'OPENAI', 'MINIMAX', 'ZHIPU',
   'WLFI', 'YZY',
+  // ANTHROPIC removed — IPO'd Nov 19 2026 on Nasdaq as ANT (same conversion
+  // as SPCX before it; see the ANT universe entry for details).
 ]);
 
 // Known market IDs — used directly without API lookup
@@ -260,6 +262,12 @@ const LIGHTER_MARKET_IDS = {
   SAMSUNG:140, SAMSUNGUSD:162, SKHYNIX:143, SKHYNIXUSD:161,
   HYUNDAI:141, HYUNDAIUSD:160, KRCOMP:142, BYD:205, EWY:166,
   OPENAI:192, ANTHROPIC:193, MINIMAX:199,
+  // NOTE: ANTHROPIC market ID 193 is kept even though the company IPO'd as ANT
+  // (Nasdaq, 2026-11-19): Lighter's prediction-market history for ANTHROPIC is
+  // still the only pre-IPO price record, and the ID is harmless if unused.
+  // ANT itself has no Lighter market yet — it reaches users via the Yahoo
+  // snapshot path, and this map is only consulted when the snapshot has no
+  // data for a ticker.
   GME:176, TTWO:179, IP:34, NOK:208,
   WHEAT:170, MAGS:155, BOTZ:154,
   EURUSD:96, GBPUSD:97, USDJPY:98, USDCHF:99, USDCAD:100,
@@ -713,8 +721,13 @@ export const TRAD_UNIVERSE = [
   { symbol: 'EWY',      name: 'iShares MSCI South Korea ETF',           category: 'International',                subtheme: 'Korea ETF',                tier: 'Active',       type: 'ETF' },
   // Pre-IPO
   { symbol: 'OPENAI',   name: 'OpenAI',                                 category: 'Pre-IPO',                      subtheme: 'AI',                       tier: 'Core',         type: 'Private' },
-  { symbol: 'ANTHROPIC',name: 'Anthropic',                              category: 'Pre-IPO',                      subtheme: 'AI',                       tier: 'Core',         type: 'Private' },
   { symbol: 'MINIMAX',  name: 'MiniMax',                                category: 'Pre-IPO',                      subtheme: 'AI',                       tier: 'Active',       type: 'Private' },
+  // Anthropic IPO'd 2026-11-19 on Nasdaq Global Select as ANT (priced $83,
+  // opened $111.50, first-day close $97.17, ~$81B raise). Converted from the
+  // private/pre-IPO entry to a regular stock: Yahoo Finance serves it as
+  // NasdaqGS:ANT, so it flows through the same snapshot OHLCV path as every
+  // other listed name and joins the AI Applications basket with MSFT/PLTR.
+  { symbol: 'ANT',      name: 'Anthropic',                              category: 'AI Applications',              subtheme: 'Frontier AI',              tier: 'Core',         type: 'Stock' },
   // Consumer
   { symbol: 'GME',      name: 'GameStop',                               category: 'Consumer',                     subtheme: 'Meme Stock',               tier: 'Active',       type: 'Stock' },
   { symbol: 'TTWO',     name: 'Take-Two Interactive',                   category: 'Consumer',                     subtheme: 'Gaming',                   tier: 'Active',       type: 'Stock' },

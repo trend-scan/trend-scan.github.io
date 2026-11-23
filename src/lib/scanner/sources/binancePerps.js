@@ -8,7 +8,9 @@
  * COST, HD, PYPL, ADBE, CRM, ORCL, IBM, CSCO, QCOM, AVGO, TXN, MU, AMAT, LRCX,
  * MRVL, AAOI, CIEN, LITE, plus ETFs IWM/USO/XLE/XBI, commodities XAU/XAG/XPT/XPD,
  * leveraged ETFs TQQQ/SQQQ/SOXL/SOXS/UVXY, Asian stocks TENCENT/SAMSUNG/HK0700,
- * and private companies OPENAI/ANTHROPIC/MINIMAX/ZHIPU).
+ * and private companies OPENAI/MINIMAX/ZHIPU — ANTHROPIC's Binance perp was
+ * delisted after its Nov 19 2026 Nasdaq IPO as ANT; the equity itself is now
+ * tracked via the Yahoo snapshot path).
  * These are used by the TradFi scanner mode.
  *
  * Docs: https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data

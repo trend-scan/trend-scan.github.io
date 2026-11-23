@@ -283,7 +283,7 @@ export function resolveWatchlistTradfi(symbols, tradData) {
 // live 2026-09-29: ~150 of TRAD_UNIVERSE's 484 symbols answer there — mega-cap
 // stocks (AAPL NVDA MSFT GOOGL META AMZN …), ETFs (SPY QQQ IWM SMH SOXL …),
 // metals (XAU XAG XCU XPD XPT), index perps (US500 US100) and even pre-IPO
-// names (OPENAI ANTHROPIC).
+// names (OPENAI ANTHROPIC — the latter since IPO'd 2026-11-19 as Nasdaq ANT).
 //
 // BULK-FIRST (2026-09-30, 15s refresh support): one call to
 // /market/tickers?instType=SWAP returns every USDT-quoted perp (~478), so any

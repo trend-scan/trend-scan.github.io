@@ -41,6 +41,8 @@ const TRADFI_TV_PREFIX = {
   QCOM: 'NASDAQ', AVGO: 'NASDAQ', TXN: 'NASDAQ', MU: 'NASDAQ',
   AMAT: 'NASDAQ', LRCX: 'NASDAQ', MRVL: 'NASDAQ', AAOI: 'NASDAQ',
   CIEN: 'NYSE', LITE: 'NYSE', ON: 'NASDAQ',
+  // Anthropic — IPO'd Nov 19 2026, Nasdaq Global Select (was private/ANTHROPIC)
+  ANT: 'NASDAQ',
   // Commodities (TradingView TVC prefix)
   XAU: 'TVC:GOLD', XAG: 'TVC:SILVER', XPT: 'TVC:PLATINUM',
   XPD: 'TVC:PALLADIUM', XCU: 'TVC:COPPER',
@@ -56,7 +58,8 @@ const TRADFI_TV_PREFIX = {
   SKHYNIX: 'KRX', HYUNDAI: 'KRX', POPMART: 'HKEX', SONY: 'NYSE',
   NOK: 'NYSE', BABA: 'NYSE',
   // Private companies (TradingView may not have equity charts — use Binance perp)
-  OPENAI: 'PRIVATE', ANTHROPIC: 'PRIVATE',
+  // (ANTHROPIC removed — IPO'd 2026-11-19 as Nasdaq ANT, see TRADFI_TV_PREFIX)
+  OPENAI: 'PRIVATE',
   MINIMAX: 'PRIVATE', ZHIPU: 'PRIVATE',
   // SpaceX (IPO'd — now SPCX on Binance as TRADIFI perp)
   SPCX: 'BINANCE',
@@ -91,7 +94,8 @@ const INTERVAL_MAP = {
  * Exceptions (use equity/commodity prefix instead of Binance perp):
  *   - Commodities XAU/XAG/XPT/XPD/XCU → TVC:GOLD etc. (Binance doesn't have these)
  *   - Index spot SPX → SP:SPX (Binance doesn't have SPX spot)
- *   - Private companies OPENAI/ANTHROPIC/MINIMAX/ZHIPU → BINANCE perp (only source)
+ *   - Private companies OPENAI/MINIMAX/ZHIPU → BINANCE perp (only source)
+ *     (ANTHROPIC IPO'd 2026-11-19 — now ANT on Nasdaq, maps to NASDAQ:ANT)
  *
  * @param {string} symbol - e.g. "BTC" or "SPY" or "NVDA"
  * @param {string} exchange - e.g. "hyperliquid" or "auto" (tradfi)

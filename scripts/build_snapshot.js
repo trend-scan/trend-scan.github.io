@@ -1062,8 +1062,10 @@ const YAHOO_SPECIAL_MAP = {
 //
 // NOTE: SPCX (SpaceX) IPO'd in 2026 and is now on Yahoo Finance — removed
 // from this list. If other private companies IPO, remove them here too.
+// ANTHROPIC likewise IPO'd 2026-11-19 (Nasdaq Global Select, ticker ANT) and
+// was removed — the universe entry is now the stock ANT in AI Applications.
 const PRIVATE_TICKERS = new Set([
-  'OPENAI', 'ANTHROPIC', 'MINIMAX', 'ZHIPU',
+  'OPENAI', 'MINIMAX', 'ZHIPU',
   'WLFI', 'YZY', 'UNKNOWN',
 ]);
 function toYahooSymbol(symbol) {
@@ -1866,7 +1868,10 @@ function computeLeveredAppetite(tradfiOHLCV) {
 
 const FACTOR_BASKETS = {
   'Concentration': {
-    'Mag 7': ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA'],
+    // ANT added 2026-11-23: Anthropic's Nasdaq IPO (Nov 19 2026) at ~$81B
+    // raise puts it in mega-cap territory on day one — grouped with the
+    // Mag 7 concentration basket it now belongs to.
+    'Mag 7': ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','ANT'],
     'Parabolic 7': ['NVDA','MSTR','COIN','HOOD','CRCL','PLTR','APP'],
   },
   'Index ETFs': {

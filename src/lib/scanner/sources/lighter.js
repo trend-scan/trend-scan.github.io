@@ -190,7 +190,9 @@ export const KNOWN_MARKET_IDS = {
   BABA: 177, TENCENT: 201, XIAOMI: 203, POPMART: 204,
   SAMSUNG: 140, SAMSUNGUSD: 162, SKHYNIX: 143, SKHYNIXUSD: 161,
   HYUNDAI: 141, HYUNDAIUSD: 160, KRCOMP: 142, BYD: 205,
-  // Pre-IPO (SPACEX removed — IPO'd, now SPCX on Binance as TRADIFI perp)
+  // Pre-IPO (SPACEX removed — IPO'd, now SPCX on Binance as TRADIFI perp;
+  // ANTHROPIC id 193 kept — IPO'd 2026-11-19 as Nasdaq ANT, but Lighter's
+  // prediction-market history is the only pre-IPO price record)
   OPENAI: 192, ANTHROPIC: 193, MINIMAX: 199,
   // Consumer
   GME: 176, TTWO: 179, IP: 34, NOK: 208,
