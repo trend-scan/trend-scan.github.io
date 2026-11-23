@@ -164,14 +164,17 @@ const BD_REQUESTS_PER_PULL = 8;
 const BD_GATE_HOURS = 20;
 
 const BD_ENDPOINTS = [
-  ['realized_price', 'realizedPrice'],
-  ['mvrv', 'mvrv'],
-  ['sopr', 'sopr'],
-  ['nupl', 'nupl'],
-  ['puell', 'puellMultiple'],
-  ['lth_realized_price', 'lthRealizedPrice'],
-  ['hashrate', 'hashrate'],
-  ['ssr', 'ssrStablecoin'],
+  // Path components are hyphenated on BD's real API — underscored forms 404
+  // (verified on the GitHub Actions runner, run #1282: realized_price/puell/
+  // lth_realized_price all 404'd while their hyphenated forms serve data).
+  ['realized_price', 'realizedPrice', 'realized-price'],
+  ['mvrv', 'mvrv', 'mvrv'],
+  ['sopr', 'sopr', 'sopr'],
+  ['nupl', 'nupl', 'nupl'],
+  ['puell', 'puellMultiple', 'puell-multiple'],
+  ['lth_realized_price', 'lthRealizedPrice', 'lth-realized-price'],
+  ['hashrate', 'hashrate', 'hashrate'],
+  ['ssr', 'ssrStablecoin', 'ssr'],
 ];
 
 async function fetchBtcOnchain(prevSection) {
@@ -188,10 +191,10 @@ async function fetchBtcOnchain(prevSection) {
 
   const out = { as_of: null, delayed_days: 7, source: 'bitcoin-data.com (free, delayed)' };
   let fetched = 0;
-  for (const [key, field] of BD_ENDPOINTS) {
+  for (const [key, field, path] of BD_ENDPOINTS) {
     if (fetched >= BD_REQUESTS_PER_PULL) break;
     try {
-      const row = await fetchJson(`${BD_BASE}/${key}/latest`);
+      const row = await fetchJson(`${BD_BASE}/${path}/latest`);
       const norm = bdRow(row?.[field] ?? null, row?.d ?? null);
       if (norm.value != null) {
         out[key] = norm;
@@ -383,17 +386,52 @@ async function fetchBtcDerivatives(prevSection) {
     console.warn(`  ✗ OKX funding: ${e.message}`);
   }
 
-  // Long/short: Binance account-ratio (geo-block risk from US runners) with
-  // Bybit fallback. Both give ratio + long%.
+  // Long/short + perp context: Hyperliquid as the runner-safe primary.
+  // Binance geo-blocks GitHub Actions runners (HTTP 451, observed run #1282)
+  // and Bybit's account-ratio 403'd the runner too; OKX's rubik stats return
+  // 404 for every param shape. Hyperliquid's public info API is keyless,
+  // POST-only, and not geo-blocked — the codebase already trusts it
+  // client-side for funding rates. It has no long/short ACCOUNT ratio, but
+  // it gives taker-side positioning proxies: premium + impact-price skew.
+  // Chain: Hyperliquid (positioning proxies) → Binance (true account L/S,
+  // sandbox/local runs) → Bybit (last-ditch).
   try {
     let ls = null;
     try {
-      const bin = await fetchJson('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=1d&limit=1');
-      if (Array.isArray(bin) && bin[0]) {
-        ls = { source: 'binance', long_pct: parseFloat(bin[0].longAccount) * 100, ratio: parseFloat(bin[0].longShortRatio), as_of: new Date().toISOString() };
+      const hl = await fetch('https://api.hyperliquid.xyz/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'metaAndAssetCtxs' }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (hl.ok) {
+        const [meta, ctxs] = await hl.json();
+        const idx = (meta?.universe || []).findIndex(p => p?.name === 'BTC');
+        const ctx = ctxs?.[idx];
+        if (ctx) {
+          ls = {
+            source: 'hyperliquid',
+            // Positioning proxies (no account ratio on HL):
+            premium: parseFloat(ctx.premium),               // perp vs oracle (positive = longs pay)
+            funding_next_8h: parseFloat(ctx.funding),       // HL funding is hourly
+            oi_usd: parseFloat(ctx.openInterest) * parseFloat(ctx.markPx || '0'),
+            mark_px: parseFloat(ctx.markPx),
+            as_of: new Date().toISOString(),
+          };
+        }
       }
     } catch (e) {
-      console.warn(`  ⚠ Binance L/S unavailable (${e.message}) — trying Bybit`);
+      console.warn(`  ⚠ Hyperliquid ctx unavailable (${e.message}) — trying Binance`);
+    }
+    if (!ls) {
+      try {
+        const bin = await fetchJson('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=1d&limit=1');
+        if (Array.isArray(bin) && bin[0]) {
+          ls = { source: 'binance', long_pct: parseFloat(bin[0].longAccount) * 100, ratio: parseFloat(bin[0].longShortRatio), as_of: new Date().toISOString() };
+        }
+      } catch (e) {
+        console.warn(`  ⚠ Binance L/S unavailable (${e.message}) — trying Bybit`);
+      }
     }
     if (!ls) {
       const by = await fetchJson('https://api.bybit.com/v5/market/account-ratio?category=linear&symbol=BTCUSDT&period=1d&limit=1');
@@ -402,6 +440,13 @@ async function fetchBtcDerivatives(prevSection) {
         ls = { source: 'bybit', long_pct: parseFloat(row.buyRatio) * 100, ratio: parseFloat(row.buyRatio) / parseFloat(row.sellRatio), as_of: new Date().toISOString() };
       }
     }
+    // Carry forward the last true account-ratio when only the HL proxy is
+    // available this run (merge-previous at the field level).
+    if (ls && ls.source === 'hyperliquid' && prevSection?.long_short && (prevSection.long_short.long_pct != null)) {
+      ls.long_pct = prevSection.long_short.long_pct;
+      ls.ratio = prevSection.long_short.ratio;
+      ls.ratio_as_of = prevSection.long_short.as_of;
+    }
     out.long_short = ls;
   } catch (e) {
     console.warn(`  ✗ long/short: ${e.message}`);
@@ -409,7 +454,13 @@ async function fetchBtcDerivatives(prevSection) {
 
   out.as_of = new Date().toISOString();
   const f = out.funding?.rate_8h;
-  console.log(`  ✓ funding ${f != null ? (f * 100).toFixed(4) + '%/8h (ann ' + (out.funding.annualized_pct).toFixed(1) + '%)' : 'null'} | L/S ${out.long_short ? out.long_short.ratio.toFixed(2) + ' (' + out.long_short.source + ')' : 'null'}`);
+  const ls = out.long_short;
+  const lsDesc = ls
+    ? (ls.ratio != null
+        ? `ratio ${ls.ratio.toFixed(2)} (${ls.source}${ls.ratio_as_of ? ', ratio as-of ' + ls.ratio_as_of.slice(0, 10) : ''})`
+        : `HL proxy (premium ${(ls.premium * 100).toFixed(4)}%, OI $${Math.round(ls.oi_usd / 1e9)}B)`)
+    : 'null';
+  console.log(`  ✓ funding ${f != null ? (f * 100).toFixed(4) + '%/8h (ann ' + (out.funding.annualized_pct).toFixed(1) + '%)' : 'null'} | L/S ${lsDesc}`);
   return out;
 }
 
